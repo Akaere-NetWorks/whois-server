@@ -263,7 +263,12 @@ fn run_blocking_server(addr: &str, timeout_secs: u64, dump_traffic: bool, dump_d
                 let response = match &query_type {
                     QueryType::Domain(domain) => {
                         info!("Processing domain query: {}", domain);
-                        blocking_query_with_iana_referral(domain, timeout)
+                        if domain.to_lowercase().ends_with(".dn42") {
+                            info!("Detected .dn42 domain, using DN42 query");
+                            blocking_query_whois(domain, DN42_WHOIS_SERVER, DN42_WHOIS_PORT, timeout)
+                        } else {
+                            blocking_query_with_iana_referral(domain, timeout)
+                        }
                     }
                     QueryType::IPv4(ip) => {
                         info!("Processing IPv4 query: {}", ip);
@@ -294,7 +299,26 @@ fn run_blocking_server(addr: &str, timeout_secs: u64, dump_traffic: bool, dump_d
                     }
                     QueryType::Unknown(q) => {
                         info!("Unknown query type: {}", q);
-                        blocking_query_with_iana_referral(q, timeout)
+                        if q.to_uppercase().ends_with("-DN42") || q.to_uppercase().ends_with("-MNT") {
+                            info!("Detected DN42 related query ({}), using DN42 query", q);
+                            blocking_query_whois(q, DN42_WHOIS_SERVER, DN42_WHOIS_PORT, timeout)
+                        } else {
+                            let public_result = blocking_query_with_iana_referral(q, timeout);
+                            
+                            match &public_result {
+                                Ok(response) if response.trim().is_empty() 
+                                    || response.contains("No entries found") 
+                                    || response.contains("Not found") => {
+                                    info!("Public query returned no results, trying DN42 for: {}", q);
+                                    blocking_query_whois(q, DN42_WHOIS_SERVER, DN42_WHOIS_PORT, timeout)
+                                },
+                                Err(_) => {
+                                    info!("Public query failed, trying DN42 for: {}", q);
+                                    blocking_query_whois(q, DN42_WHOIS_SERVER, DN42_WHOIS_PORT, timeout)
+                                },
+                                _ => public_result,
+                            }
+                        }
                     }
                 };
                 
@@ -480,7 +504,12 @@ async fn handle_connection(
     let result = match &query_type {
         QueryType::Domain(domain) => {
             debug!("Processing domain query: {}", domain);
-            query_with_iana_referral(domain).await
+            if domain.to_lowercase().ends_with(".dn42") {
+                debug!("Detected .dn42 domain, using DN42 query");
+                query_whois(domain, DN42_WHOIS_SERVER, DN42_WHOIS_PORT).await
+            } else {
+                query_with_iana_referral(domain).await
+            }
         }
         QueryType::IPv4(ip) => {
             debug!("Processing IPv4 query: {}", ip);
@@ -511,7 +540,26 @@ async fn handle_connection(
         }
         QueryType::Unknown(q) => {
             debug!("Unknown query type: {}", q);
-            query_with_iana_referral(q).await
+            if q.to_uppercase().ends_with("-DN42") || q.to_uppercase().ends_with("-MNT") {
+                debug!("Detected DN42 related query ({}), using DN42 query", q);
+                query_whois(q, DN42_WHOIS_SERVER, DN42_WHOIS_PORT).await
+            } else {
+                let public_result = query_with_iana_referral(q).await;
+                
+                match &public_result {
+                    Ok(response) if response.trim().is_empty() 
+                        || response.contains("No entries found") 
+                        || response.contains("Not found") => {
+                        debug!("Public query returned no results, trying DN42 for: {}", q);
+                        query_whois(q, DN42_WHOIS_SERVER, DN42_WHOIS_PORT).await
+                    },
+                    Err(_) => {
+                        debug!("Public query failed, trying DN42 for: {}", q);
+                        query_whois(q, DN42_WHOIS_SERVER, DN42_WHOIS_PORT).await
+                    },
+                    _ => public_result,
+                }
+            }
         }
     };
     
@@ -601,6 +649,16 @@ fn dump_to_file(filename: &str, content: &str) {
 }
 
 fn analyze_query(query: &str) -> QueryType {
+    // Check if it's a .dn42 domain
+    if query.to_lowercase().ends_with(".dn42") {
+        return QueryType::Domain(query.to_string());
+    }
+    
+    // Check if it has -DN42 suffix or ends with -MNT
+    if query.to_uppercase().ends_with("-DN42") || query.to_uppercase().ends_with("-MNT") {
+        return QueryType::Unknown(query.to_string());
+    }
+    
     // Try to parse as IP address
     if let Ok(ip) = query.parse::<IpAddr>() {
         match ip {
