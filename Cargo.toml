@@ -1,0 +1,17 @@
+[package]
+name = "whois-server"
+version = "0.1.0"
+edition = "2024"
+license = "AGPL-3.0-or-later"
+authors = ["Akaere Networks"]
+description = "A WHOIS server with DN42 support"
+
+[dependencies]
+tokio = { version = "1.35.1", features = ["full"] }
+anyhow = "1.0.79"
+clap = { version = "4.4.14", features = ["derive"] }
+regex = "1.10.2"
+tracing = "0.1.40"
+tracing-subscriber = "0.3.18"
+cidr = "0.2.2"
+chrono = "0.4.31"
