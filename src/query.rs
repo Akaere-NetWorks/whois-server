@@ -11,10 +11,17 @@ pub enum QueryType {
     IPv6(Ipv6Addr),
     ASN(String),
     EmailSearch(String), // For queries ending with -EMAIL
+    BGPTool(String),     // For queries ending with -BGPTOOL
     Unknown(String),
 }
 
 pub fn analyze_query(query: &str) -> QueryType {
+    // Check if it's a BGP Tools query
+    if query.to_uppercase().ends_with("-BGPTOOL") {
+        let base_query = &query[..query.len() - 8]; // Remove "-BGPTOOL" suffix
+        return QueryType::BGPTool(base_query.to_string());
+    }
+    
     // Check if it's an email search query
     if query.to_uppercase().ends_with("-EMAIL") {
         let base_query = &query[..query.len() - 6]; // Remove "-EMAIL" suffix

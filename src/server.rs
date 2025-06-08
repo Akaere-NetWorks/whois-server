@@ -9,6 +9,7 @@ use tokio::net::{TcpListener as AsyncTcpListener, TcpStream as AsyncTcpStream};
 use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
 
+use crate::bgptool::{process_bgptool_query, process_bgptool_query_blocking};
 use crate::config::{SERVER_BANNER, DN42_WHOIS_SERVER, DN42_WHOIS_PORT};
 use crate::email::{process_email_search, process_email_search_blocking};
 use crate::query::{analyze_query, is_private_ipv4, is_private_ipv6, QueryType};
@@ -174,6 +175,10 @@ pub fn run_blocking_server(addr: &str, timeout_secs: u64, dump_traffic: bool, du
                     QueryType::EmailSearch(base_query) => {
                         info!("Processing email search query: {}", base_query);
                         process_email_search_blocking(base_query, timeout)
+                    }
+                    QueryType::BGPTool(base_query) => {
+                        info!("Processing BGP Tools query: {}", base_query);
+                        process_bgptool_query_blocking(base_query, timeout)
                     }
                     QueryType::Unknown(q) => {
                         info!("Unknown query type: {}", q);
@@ -366,6 +371,10 @@ async fn handle_connection(
         QueryType::EmailSearch(base_query) => {
             debug!("Processing email search query: {}", base_query);
             process_email_search(base_query).await
+        }
+        QueryType::BGPTool(base_query) => {
+            debug!("Processing BGP Tools query: {}", base_query);
+            process_bgptool_query(base_query).await
         }
         QueryType::Unknown(q) => {
             debug!("Unknown query type: {}", q);
