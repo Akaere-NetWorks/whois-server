@@ -19,6 +19,7 @@ use crate::whois::{
     blocking_query_whois, blocking_query_with_iana_referral,
     query_whois, query_with_iana_referral,
 };
+use crate::stats::StatsState;
 
 pub async fn run_async_server(
     addr: &str,
@@ -26,6 +27,7 @@ pub async fn run_async_server(
     timeout: u64,
     dump_traffic: bool,
     dump_dir: &str,
+    stats: StatsState,
 ) -> Result<()> {
     // Start server
     let listener = AsyncTcpListener::bind(&addr).await
@@ -44,6 +46,7 @@ pub async fn run_async_server(
                     Ok((stream, addr)) => {
                         info!("Accepted connection from {}", addr);
                         let tx_clone = tx.clone();
+                        let stats_clone = stats.clone();
                         
                         // Set timeout
                         let timeout = Duration::from_secs(timeout);
@@ -52,7 +55,7 @@ pub async fn run_async_server(
                         
                         // Handle connection
                         tokio::spawn(async move {
-                            if let Err(e) = handle_connection(stream, addr, timeout, dump_traffic, &dump_dir).await {
+                            if let Err(e) = handle_connection(stream, addr, timeout, dump_traffic, &dump_dir, stats_clone).await {
                                 error!("Connection handling error: {}", e);
                             }
                             
@@ -282,6 +285,7 @@ async fn handle_connection(
     timeout: Duration,
     dump_traffic: bool,
     dump_dir: &str,
+    stats: StatsState,
 ) -> Result<()> {
     // Set nodelay to ensure responses are sent immediately
     if let Err(e) = stream.set_nodelay(true) {
@@ -476,6 +480,9 @@ async fn handle_connection(
                 error!("Failed to flush response: {}", e);
             }
             debug!("Query response sent: {}", query);
+            
+            // Record statistics
+            crate::stats::record_request(&stats, formatted_response.len()).await;
         },
         Err(e) => {
             error!("Failed to send response for {}: {}", query, e);

@@ -132,7 +132,7 @@ telnet localhost 43
 | **Domain queries** | Forwarded through IANA WHOIS server to identify and route to the appropriate registrar's WHOIS server | `example.com` |
 | **Public IP addresses** | Forwarded through IANA WHOIS server to identify and route to the appropriate RIR | `8.8.8.8` |
 | **Private IP addresses** | Forwarded to DN42 WHOIS server | `10.10.10.10` |
-| **Regular ASNs** | Forwarded through IANA WHOIS server | `AS15169` |
+| **Regular ASNs** | Forwarded through IANA WHOIS server | `AS213605` |
 | **DN42 ASNs** | Forwarded to DN42 WHOIS server | `AS4242420000` |
 
 ## 📜 License

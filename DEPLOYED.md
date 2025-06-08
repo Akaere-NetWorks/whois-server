@@ -102,4 +102,4 @@ whois.akae.re is deployed in the following environment:
 
 ---
 
-*Last updated: May 21, 2024* 
+*Last updated: May 21, 2025* 

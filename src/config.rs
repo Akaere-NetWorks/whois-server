@@ -70,4 +70,8 @@ pub struct Cli {
     /// Use blocking (non-async) network operations
     #[arg(long)]
     pub use_blocking: bool,
+    
+    /// Web dashboard port
+    #[arg(long, default_value_t = 9999)]
+    pub web_port: u16,
 } 

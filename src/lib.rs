@@ -4,5 +4,7 @@ pub mod email;
 pub mod geo;
 pub mod query;
 pub mod server;
+pub mod stats;
 pub mod utils;
+pub mod web;
 pub mod whois; 

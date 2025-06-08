@@ -1,6 +1,6 @@
 /*
  * WHOIS Server with DN42 Support
- * Copyright (C) 2024 Akaere Networks
+ * Copyright (C) 2025 Akaere Networks
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -22,7 +22,9 @@ mod email;
 mod geo;
 mod query;
 mod server;
+mod stats;
 mod utils;
+mod web;
 mod whois;
 
 use anyhow::Result;
@@ -32,6 +34,8 @@ use tracing_subscriber::fmt::format::FmtSpan;
 
 use config::Cli;
 use server::{create_dump_dir_if_needed, run_async_server, run_blocking_server};
+use stats::{create_stats_state, save_stats_on_shutdown};
+use web::run_web_server;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -51,8 +55,21 @@ async fn main() -> Result<()> {
         .with_span_events(FmtSpan::CLOSE)
         .init();
     
+    // Create statistics state
+    let stats = create_stats_state().await;
+    
     // Create dump directory if needed
     create_dump_dir_if_needed(args.dump_traffic, &args.dump_dir)?;
+    
+    // Start web server
+    let web_stats = stats.clone();
+    let web_port = args.web_port;
+    tokio::spawn(async move {
+        info!("Starting web server on port {}", web_port);
+        if let Err(e) = run_web_server(web_stats, web_port).await {
+            tracing::error!("Web server error: {}", e);
+        }
+    });
     
     // Create server address
     let addr = format!("{}:{}", args.host, args.port);
@@ -65,5 +82,11 @@ async fn main() -> Result<()> {
     }
     
     // Start async server
-    run_async_server(&addr, args.max_connections, args.timeout, args.dump_traffic, &args.dump_dir).await
+    let result = run_async_server(&addr, args.max_connections, args.timeout, args.dump_traffic, &args.dump_dir, stats.clone()).await;
+    
+    // Save stats on shutdown
+    info!("Saving statistics before shutdown...");
+    save_stats_on_shutdown(&stats).await;
+    
+    result
 }
