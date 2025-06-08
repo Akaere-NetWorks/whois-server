@@ -13,6 +13,7 @@ pub enum QueryType {
     EmailSearch(String), // For queries ending with -EMAIL
     BGPTool(String),     // For queries ending with -BGPTOOL
     Geo(String),         // For queries ending with -GEO
+    RirGeo(String),      // For queries ending with -RIRGEO
     Unknown(String),
 }
 
@@ -21,6 +22,12 @@ pub fn analyze_query(query: &str) -> QueryType {
     if query.to_uppercase().ends_with("-BGPTOOL") {
         let base_query = &query[..query.len() - 8]; // Remove "-BGPTOOL" suffix
         return QueryType::BGPTool(base_query.to_string());
+    }
+    
+    // Check if it's a RIR geo query
+    if query.to_uppercase().ends_with("-RIRGEO") {
+        let base_query = &query[..query.len() - 7]; // Remove "-RIRGEO" suffix
+        return QueryType::RirGeo(base_query.to_string());
     }
     
     // Check if it's a geo query

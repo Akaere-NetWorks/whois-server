@@ -5,6 +5,7 @@ use std::time::Duration;
 
 // API endpoints
 const RIPE_STAT_API_BASE: &str = "https://stat.ripe.net/data/maxmind-geo-lite/data.json";
+const RIPE_RIR_GEO_API_BASE: &str = "https://stat.ripe.net/data/rir-geo/data.json";
 const IPINFO_API_BASE: &str = "https://api.ipinfo.io/lite";
 const IPINFO_TOKEN: &str = "29a9fd77d1bd76";
 
@@ -77,6 +78,65 @@ struct IpinfoResponse {
     latitude: Option<String>,
     #[allow(dead_code)]
     longitude: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct RirGeoResponse {
+    data: Option<RirGeoData>,
+    status: String,
+    #[allow(dead_code)]
+    messages: Option<Vec<Vec<String>>>,
+    #[allow(dead_code)]
+    see_also: Option<Vec<String>>,
+    #[allow(dead_code)]
+    version: String,
+    #[allow(dead_code)]
+    data_call_name: String,
+    #[allow(dead_code)]
+    data_call_status: String,
+    #[allow(dead_code)]
+    cached: bool,
+    #[allow(dead_code)]
+    query_id: String,
+    #[allow(dead_code)]
+    process_time: u32,
+    #[allow(dead_code)]
+    server_id: String,
+    #[allow(dead_code)]
+    build_version: String,
+    #[allow(dead_code)]
+    status_code: u16,
+    #[allow(dead_code)]
+    time: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct RirGeoData {
+    located_resources: Option<Vec<RirGeoResource>>,
+    #[allow(dead_code)]
+    result_time: String,
+    #[allow(dead_code)]
+    parameters: RirGeoParameters,
+    #[allow(dead_code)]
+    earliest_time: String,
+    #[allow(dead_code)]
+    latest_time: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct RirGeoResource {
+    resource: String,
+    location: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct RirGeoParameters {
+    #[allow(dead_code)]
+    resource: String,
+    #[allow(dead_code)]
+    query_time: String,
+    #[allow(dead_code)]
+    cache: Option<String>,
 }
 
 /// Process geo location queries ending with -GEO
@@ -193,6 +253,134 @@ fn query_ipinfo_api_blocking(client: &reqwest::blocking::Client, resource: &str)
     
     let json_response: IpinfoResponse = response.json()?;
     Ok(json_response)
+}
+
+/// Process RIR geo location queries ending with -RIRGEO
+pub async fn process_rir_geo_query(resource: &str) -> Result<String> {
+    debug!("Processing RIR geo query for: {}", resource);
+    
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(10))
+        .build()?;
+    
+    let response = query_rir_geo_api(&client, resource).await?;
+    format_rir_geo_response(resource, &response)
+}
+
+/// Query RIPE NCC STAT RIR Geo API
+async fn query_rir_geo_api(client: &reqwest::Client, resource: &str) -> Result<RirGeoResponse> {
+    let url = format!("{}?resource={}", RIPE_RIR_GEO_API_BASE, urlencoding::encode(resource));
+    debug!("RIPE RIR Geo API URL: {}", url);
+    
+    let response = client
+        .get(&url)
+        .header("User-Agent", "akaere-whois-server/1.0")
+        .send()
+        .await?;
+    
+    if !response.status().is_success() {
+        return Err(anyhow!("RIPE RIR Geo API HTTP error: {}", response.status()));
+    }
+    
+    let json_response: RirGeoResponse = response.json().await?;
+    
+    if json_response.status != "ok" {
+        return Err(anyhow!("RIPE RIR Geo API error: status={}", json_response.status));
+    }
+    
+    Ok(json_response)
+}
+
+/// Process RIR geo location queries ending with -RIRGEO (blocking version)
+pub fn process_rir_geo_query_blocking(resource: &str, timeout: Duration) -> Result<String> {
+    debug!("Processing RIR geo query (blocking) for: {}", resource);
+    
+    let client = reqwest::blocking::Client::builder()
+        .timeout(timeout)
+        .build()?;
+    
+    let response = query_rir_geo_api_blocking(&client, resource)?;
+    format_rir_geo_response(resource, &response)
+}
+
+/// Query RIPE NCC STAT RIR Geo API (blocking version)
+fn query_rir_geo_api_blocking(client: &reqwest::blocking::Client, resource: &str) -> Result<RirGeoResponse> {
+    let url = format!("{}?resource={}", RIPE_RIR_GEO_API_BASE, urlencoding::encode(resource));
+    debug!("RIPE RIR Geo API URL (blocking): {}", url);
+    
+    let response = client
+        .get(&url)
+        .header("User-Agent", "akaere-whois-server/1.0")
+        .send()?;
+    
+    if !response.status().is_success() {
+        return Err(anyhow!("RIPE RIR Geo API HTTP error: {}", response.status()));
+    }
+    
+    let json_response: RirGeoResponse = response.json()?;
+    
+    if json_response.status != "ok" {
+        return Err(anyhow!("RIPE RIR Geo API error: status={}", json_response.status));
+    }
+    
+    Ok(json_response)
+}
+
+/// Format RIR geo location response
+fn format_rir_geo_response(resource: &str, response: &RirGeoResponse) -> Result<String> {
+    let mut formatted = String::new();
+    
+    // Header
+    formatted.push_str("% RIPE NCC STAT RIR Geographic Query\n");
+    formatted.push_str("% Data from RIR Statistics\n");
+    formatted.push_str(&format!("% Query: {}\n", resource));
+    formatted.push_str("\n");
+    
+    let data = match &response.data {
+        Some(data) => data,
+        None => {
+            formatted.push_str("% No RIR geographic data available\n");
+            return Ok(formatted);
+        }
+    };
+    
+    // Display located resources
+    if let Some(located) = &data.located_resources {
+        if !located.is_empty() {
+            formatted.push_str("RIR Geographic Location Results\n");
+            formatted.push_str("===============================\n\n");
+            formatted.push_str("Resource                    | Country Code\n");
+            formatted.push_str("----------------------------|-------------\n");
+            
+            for item in located {
+                formatted.push_str(&format!(
+                    "{:<27} | {}\n",
+                    truncate_string(&item.resource, 27),
+                    item.location
+                ));
+            }
+            formatted.push_str("\n");
+            
+            // Summary
+            formatted.push_str(&format!("% Total located resources: {}\n", located.len()));
+        }
+    } else {
+        formatted.push_str("% No located resources found\n");
+    }
+    
+    // Show messages if any
+    if let Some(messages) = &response.messages {
+        if !messages.is_empty() {
+            formatted.push_str("\n% API Messages:\n");
+            for message in messages {
+                for msg_part in message {
+                    formatted.push_str(&format!("% {}\n", msg_part));
+                }
+            }
+        }
+    }
+    
+    Ok(formatted)
 }
 
 /// Format combined geo location response from both APIs
@@ -498,5 +686,73 @@ mod tests {
         assert!(formatted.contains("% RIPE NCC STAT Geo Location Query"));
         assert!(formatted.contains("% Query: 192.168.1.1"));
         assert!(formatted.contains("% No geo location data available"));
+    }
+    
+    #[test]
+    fn test_format_rir_geo_response_empty() {
+        let response = RirGeoResponse {
+            data: None,
+            status: "ok".to_string(),
+            messages: None,
+            see_also: None,
+            version: "1.0".to_string(),
+            data_call_name: "rir-geo".to_string(),
+            data_call_status: "supported".to_string(),
+            cached: false,
+            query_id: "test".to_string(),
+            process_time: 41,
+            server_id: "test".to_string(),
+            build_version: "test".to_string(),
+            status_code: 200,
+            time: "2025-06-08T18:05:15.809098".to_string(),
+        };
+        
+        let formatted = format_rir_geo_response("2001:67c:2e8::/48", &response).unwrap();
+        assert!(formatted.contains("% RIPE NCC STAT RIR Geographic Query"));
+        assert!(formatted.contains("% Query: 2001:67c:2e8::/48"));
+        assert!(formatted.contains("% No RIR geographic data available"));
+    }
+    
+    #[test]
+    fn test_format_rir_geo_response_with_data() {
+        let response = RirGeoResponse {
+            data: Some(RirGeoData {
+                located_resources: Some(vec![
+                    RirGeoResource {
+                        resource: "2001:67c:2e8::/48".to_string(),
+                        location: "NL".to_string(),
+                    }
+                ]),
+                result_time: "2025-06-07T00:00:00".to_string(),
+                parameters: RirGeoParameters {
+                    resource: "2001:67c:2e8::/48".to_string(),
+                    query_time: "2025-06-07T00:00:00".to_string(),
+                    cache: None,
+                },
+                earliest_time: "2005-02-18T00:00:00".to_string(),
+                latest_time: "2025-06-07T00:00:00".to_string(),
+            }),
+            status: "ok".to_string(),
+            messages: None,
+            see_also: None,
+            version: "1.0".to_string(),
+            data_call_name: "rir-geo".to_string(),
+            data_call_status: "supported".to_string(),
+            cached: false,
+            query_id: "test".to_string(),
+            process_time: 41,
+            server_id: "test".to_string(),
+            build_version: "test".to_string(),
+            status_code: 200,
+            time: "2025-06-08T18:05:15.809098".to_string(),
+        };
+        
+        let formatted = format_rir_geo_response("2001:67c:2e8::/48", &response).unwrap();
+        assert!(formatted.contains("% RIPE NCC STAT RIR Geographic Query"));
+        assert!(formatted.contains("% Query: 2001:67c:2e8::/48"));
+        assert!(formatted.contains("RIR Geographic Location Results"));
+        assert!(formatted.contains("2001:67c:2e8::/48"));
+        assert!(formatted.contains("NL"));
+        assert!(formatted.contains("% Total located resources: 1"));
     }
 } 
