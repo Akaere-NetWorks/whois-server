@@ -197,7 +197,7 @@ pub async fn get_stats_response(stats: &StatsState) -> StatsResponse {
         });
     }
     
-    // Generate last 30 days (using daily data)
+    // Generate last 30 days (using daily data, ensure today is included)
     let mut daily_30d = Vec::new();
     for i in 0..30 {
         let date = (now - ChronoDuration::days(29 - i)).format("%Y-%m-%d").to_string();
@@ -208,6 +208,20 @@ pub async fn get_stats_response(stats: &StatsState) -> StatsResponse {
             bytes_served: daily_stat.map(|s| s.bytes_served).unwrap_or(0),
             kb_served: daily_stat.map(|s| s.bytes_served).unwrap_or(0) as f64 / 1024.0,
         });
+    }
+    
+    // Ensure today's date is included in the 30-day data even if no data exists yet
+    let today = now.format("%Y-%m-%d").to_string();
+    if !daily_30d.iter().any(|entry| entry.date == today) {
+        let today_stat = stats_data.daily_stats.get(&today);
+        daily_30d.push(DailyStatsEntry {
+            date: today,
+            requests: today_stat.map(|s| s.requests).unwrap_or(0),
+            bytes_served: today_stat.map(|s| s.bytes_served).unwrap_or(0),
+            kb_served: today_stat.map(|s| s.bytes_served).unwrap_or(0) as f64 / 1024.0,
+        });
+        // Sort to maintain chronological order
+        daily_30d.sort_by(|a, b| a.date.cmp(&b.date));
     }
     
     StatsResponse {

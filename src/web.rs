@@ -40,7 +40,7 @@ pub async fn run_web_server(stats: StatsState, port: u16) -> Result<(), Box<dyn 
 async fn dashboard() -> impl IntoResponse {
     let html = r#"
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="dark" id="html-root">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -48,12 +48,129 @@ async fn dashboard() -> impl IntoResponse {
     <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --cute-pink-50: #fef7f7;
+            --cute-pink-100: #feeaea;
+            --cute-pink-200: #fdd5d5;
+            --cute-pink-300: #fcb5b5;
+            --cute-pink-400: #f98d8d;
+            --cute-pink-500: #f472b6;
+            --cute-pink-600: #e879a7;
+            --cute-pink-700: #d97398;
+            --cute-pink-800: #c96d89;
+            --cute-pink-900: #b8677a;
+        }
+        
+        .title-gradient {
+            background: linear-gradient(135deg, var(--cute-pink-400), var(--cute-pink-500));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            filter: brightness(1.1);
+        }
+        
+        [data-theme="light"] .title-gradient {
+            background: linear-gradient(135deg, var(--cute-pink-500), var(--cute-pink-600));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .pink-command {
+            background: linear-gradient(135deg, var(--cute-pink-50), var(--cute-pink-100));
+            border: 2px solid var(--cute-pink-200);
+            color: var(--cute-pink-700);
+            border-radius: 12px;
+        }
+        
+        [data-theme="light"] .pink-command {
+            background: linear-gradient(135deg, var(--cute-pink-50), var(--cute-pink-100));
+            border: 2px solid var(--cute-pink-200);
+            color: var(--cute-pink-600);
+        }
+        
+        .btn-pink {
+            background: linear-gradient(135deg, var(--cute-pink-300), var(--cute-pink-400));
+            border: none;
+            color: white;
+            transition: all 0.3s ease;
+            border-radius: 12px;
+            font-weight: 600;
+        }
+        
+        .btn-pink:hover {
+            background: linear-gradient(135deg, var(--cute-pink-400), var(--cute-pink-500));
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(244, 114, 182, 0.25);
+            color: white;
+        }
+        
+        .btn-pink-outline {
+            background: rgba(244, 114, 182, 0.05);
+            border: 2px solid var(--cute-pink-300);
+            color: var(--cute-pink-600);
+            border-radius: 12px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-pink-outline:hover {
+            background: linear-gradient(135deg, var(--cute-pink-200), var(--cute-pink-300));
+            border-color: var(--cute-pink-400);
+            color: var(--cute-pink-700);
+            transform: translateY(-1px);
+        }
+        
+        [data-theme="light"] .btn-pink-outline {
+            border-color: var(--cute-pink-300);
+            color: var(--cute-pink-600);
+            background: rgba(244, 114, 182, 0.03);
+        }
+        
+        [data-theme="light"] .btn-pink-outline:hover {
+            background: linear-gradient(135deg, var(--cute-pink-100), var(--cute-pink-200));
+            border-color: var(--cute-pink-400);
+            color: var(--cute-pink-700);
+        }
+    </style>
 </head>
 <body class="bg-base-200 min-h-screen">
     <div class="container mx-auto px-4 py-8 max-w-6xl">
         <!-- Header -->
         <div class="text-center mb-12">
-            <h1 class="text-5xl font-bold text-primary mb-4">Akaere Networks Whois Server</h1>
+            <div class="flex justify-between items-center mb-6">
+                <div></div> <!-- Spacer for centering -->
+                <h1 class="text-5xl font-bold title-gradient">Akaere Networks Whois Server</h1>
+                <!-- Theme Toggle -->
+                <div class="dropdown dropdown-end">
+                    <div tabindex="0" role="button" class="btn btn-ghost btn-circle" id="theme-toggle">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" id="theme-icon">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+                        </svg>
+                    </div>
+                    <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-32">
+                        <li><a onclick="setTheme('light')">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+                            </svg>
+                            Light
+                        </a></li>
+                        <li><a onclick="setTheme('dark')">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+                            </svg>
+                            Dark
+                        </a></li>
+                        <li><a onclick="setTheme('auto')">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                            </svg>
+                            Auto
+                        </a></li>
+                    </ul>
+                </div>
+            </div>
             <p class="text-xl text-base-content/70 max-w-2xl mx-auto">
                 High-performance WHOIS server with comprehensive DN42 support, geo-location services, and advanced query capabilities
             </p>
@@ -69,8 +186,8 @@ async fn dashboard() -> impl IntoResponse {
                     Quick Start
                 </h2>
                 
-                <div class="bg-base-200 p-4 rounded-lg mb-4">
-                    <code class="text-primary font-mono">whois -h whois.akae.re [query]</code>
+                <div class="pink-command p-4 rounded-lg mb-4">
+                    <code class="font-mono font-semibold">whois -h whois.akae.re [query]</code>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -152,8 +269,8 @@ async fn dashboard() -> impl IntoResponse {
         <!-- Chart Period Selection -->
         <div class="text-center mb-6">
             <div class="btn-group">
-                <button class="btn btn-primary" id="btn24h" onclick="switchPeriod('24h')">Last 24 Hours</button>
-                <button class="btn btn-outline btn-primary" id="btn30d" onclick="switchPeriod('30d')">Last 30 Days</button>
+                <button class="btn btn-pink" id="btn24h" onclick="switchPeriod('24h')">Last 24 Hours</button>
+                <button class="btn btn-pink-outline" id="btn30d" onclick="switchPeriod('30d')">Last 30 Days</button>
             </div>
         </div>
 
@@ -199,21 +316,12 @@ async fn dashboard() -> impl IntoResponse {
                 document.getElementById('total-requests').textContent = data.total_requests.toLocaleString();
                 document.getElementById('total-data').textContent = data.total_kb_served.toFixed(2);
                 
-                // Calculate today's stats from hourly data
-                const now = new Date();
-                const todayRequests = data.daily_stats_24h
-                    .filter(h => {
-                        const hour = parseInt(h.date.split(':')[0]);
-                        return hour <= now.getHours();
-                    })
-                    .reduce((sum, h) => sum + h.requests, 0);
+                // Calculate today's stats from daily data (more reliable)
+                const today = new Date().toISOString().split('T')[0];
+                const todayStats = data.daily_stats_30d.find(s => s.date === today);
                 
-                const todayData = data.daily_stats_24h
-                    .filter(h => {
-                        const hour = parseInt(h.date.split(':')[0]);
-                        return hour <= now.getHours();
-                    })
-                    .reduce((sum, h) => sum + h.kb_served, 0);
+                const todayRequests = todayStats ? todayStats.requests : 0;
+                const todayData = todayStats ? todayStats.kb_served : 0;
                 
                 document.getElementById('today-requests').textContent = todayRequests.toLocaleString();
                 document.getElementById('today-data').textContent = todayData.toFixed(2);
@@ -229,8 +337,8 @@ async fn dashboard() -> impl IntoResponse {
             currentPeriod = period;
             
             // Update button styles
-            document.getElementById('btn24h').className = period === '24h' ? 'btn btn-primary' : 'btn btn-outline btn-primary';
-            document.getElementById('btn30d').className = period === '30d' ? 'btn btn-primary' : 'btn btn-outline btn-primary';
+            document.getElementById('btn24h').className = period === '24h' ? 'btn btn-pink' : 'btn btn-pink-outline';
+            document.getElementById('btn30d').className = period === '30d' ? 'btn btn-pink' : 'btn btn-pink-outline';
             
             // Update chart titles
             const periodText = period === '24h' ? 'Last 24 Hours' : 'Last 30 Days';
@@ -241,9 +349,22 @@ async fn dashboard() -> impl IntoResponse {
             updateCharts();
         }
 
+        function getThemeColors() {
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            return {
+                textColor: isDark ? '#a6adba' : '#374151',
+                gridColor: isDark ? '#374151' : '#e5e7eb',
+                primaryColor: isDark ? 'rgb(249, 141, 141)' : 'rgb(217, 115, 152)', // Cute light pink
+                primaryBg: isDark ? 'rgba(249, 141, 141, 0.12)' : 'rgba(217, 115, 152, 0.08)',
+                successColor: isDark ? 'rgb(252, 181, 181)' : 'rgb(232, 121, 167)', // Very light pink
+                successBg: isDark ? 'rgba(252, 181, 181, 0.7)' : 'rgba(232, 121, 167, 0.6)'
+            };
+        }
+
         function updateCharts() {
             if (!currentData) return;
             
+            const colors = getThemeColors();
             const dailyStats = currentPeriod === '24h' ? currentData.daily_stats_24h : currentData.daily_stats_30d;
             const dates = dailyStats.map(s => {
                 if (currentPeriod === '24h') {
@@ -265,8 +386,8 @@ async fn dashboard() -> impl IntoResponse {
                     datasets: [{
                         label: 'Daily Requests',
                         data: requests,
-                        borderColor: 'rgb(99, 102, 241)',
-                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                        borderColor: colors.primaryColor,
+                        backgroundColor: colors.primaryBg,
                         tension: 0.4,
                         fill: true,
                         pointRadius: 3,
@@ -282,20 +403,20 @@ async fn dashboard() -> impl IntoResponse {
                     },
                     plugins: {
                         legend: {
-                            labels: { color: '#a6adba' }
+                            labels: { color: colors.textColor }
                         }
                     },
                     scales: {
                         x: { 
                             ticks: { 
-                                color: '#a6adba',
+                                color: colors.textColor,
                                 maxTicksLimit: currentPeriod === '24h' ? 12 : 15
                             },
-                            grid: { color: '#374151' }
+                            grid: { color: colors.gridColor }
                         },
                         y: { 
-                            ticks: { color: '#a6adba' },
-                            grid: { color: '#374151' },
+                            ticks: { color: colors.textColor },
+                            grid: { color: colors.gridColor },
                             beginAtZero: true
                         }
                     }
@@ -312,8 +433,8 @@ async fn dashboard() -> impl IntoResponse {
                     datasets: [{
                         label: 'Data Served (KB)',
                         data: kbServed,
-                        backgroundColor: 'rgba(34, 197, 94, 0.8)',
-                        borderColor: 'rgb(34, 197, 94)',
+                        backgroundColor: colors.successBg,
+                        borderColor: colors.successColor,
                         borderWidth: 1
                     }]
                 },
@@ -326,26 +447,72 @@ async fn dashboard() -> impl IntoResponse {
                     },
                     plugins: {
                         legend: {
-                            labels: { color: '#a6adba' }
+                            labels: { color: colors.textColor }
                         }
                     },
                     scales: {
                         x: { 
                             ticks: { 
-                                color: '#a6adba',
+                                color: colors.textColor,
                                 maxTicksLimit: currentPeriod === '24h' ? 12 : 15
                             },
-                            grid: { color: '#374151' }
+                            grid: { color: colors.gridColor }
                         },
                         y: { 
-                            ticks: { color: '#a6adba' },
-                            grid: { color: '#374151' },
+                            ticks: { color: colors.textColor },
+                            grid: { color: colors.gridColor },
                             beginAtZero: true
                         }
                     }
                 }
             });
         }
+
+        // Theme management
+        function getSystemTheme() {
+            return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+
+        function setTheme(theme) {
+            const htmlRoot = document.getElementById('html-root');
+            const themeIcon = document.getElementById('theme-icon');
+            
+            let actualTheme = theme;
+            if (theme === 'auto') {
+                actualTheme = getSystemTheme();
+            }
+            
+            htmlRoot.setAttribute('data-theme', actualTheme);
+            localStorage.setItem('theme', theme);
+            
+            // Update theme icon
+            if (actualTheme === 'dark') {
+                themeIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>';
+            } else {
+                themeIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>';
+            }
+            
+            // Update charts with new theme colors
+            if (currentData) {
+                updateCharts();
+            }
+        }
+
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'auto';
+            setTheme(savedTheme);
+            
+            // Listen for system theme changes
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+                const currentTheme = localStorage.getItem('theme') || 'auto';
+                if (currentTheme === 'auto') {
+                    setTheme('auto');
+                }
+            });
+        }
+
+        // Initialize theme before anything else
+        initTheme();
 
         // Initial fetch and setup auto-refresh
         fetchStats();
