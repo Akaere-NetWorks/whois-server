@@ -12,6 +12,7 @@ use tracing::{debug, error, info, warn};
 use crate::bgptool::{process_bgptool_query, process_bgptool_query_blocking};
 use crate::config::{SERVER_BANNER, DN42_WHOIS_SERVER, DN42_WHOIS_PORT};
 use crate::email::{process_email_search, process_email_search_blocking};
+use crate::geo::{process_geo_query, process_geo_query_blocking};
 use crate::query::{analyze_query, is_private_ipv4, is_private_ipv6, QueryType};
 use crate::utils::dump_to_file;
 use crate::whois::{
@@ -179,6 +180,10 @@ pub fn run_blocking_server(addr: &str, timeout_secs: u64, dump_traffic: bool, du
                     QueryType::BGPTool(base_query) => {
                         info!("Processing BGP Tools query: {}", base_query);
                         process_bgptool_query_blocking(base_query, timeout)
+                    }
+                    QueryType::Geo(resource) => {
+                        info!("Processing geo location query: {}", resource);
+                        process_geo_query_blocking(resource, timeout)
                     }
                     QueryType::Unknown(q) => {
                         info!("Unknown query type: {}", q);
@@ -375,6 +380,10 @@ async fn handle_connection(
         QueryType::BGPTool(base_query) => {
             debug!("Processing BGP Tools query: {}", base_query);
             process_bgptool_query(base_query).await
+        }
+        QueryType::Geo(resource) => {
+            debug!("Processing geo location query: {}", resource);
+            process_geo_query(resource).await
         }
         QueryType::Unknown(q) => {
             debug!("Unknown query type: {}", q);

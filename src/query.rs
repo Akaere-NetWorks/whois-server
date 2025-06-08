@@ -12,6 +12,7 @@ pub enum QueryType {
     ASN(String),
     EmailSearch(String), // For queries ending with -EMAIL
     BGPTool(String),     // For queries ending with -BGPTOOL
+    Geo(String),         // For queries ending with -GEO
     Unknown(String),
 }
 
@@ -20,6 +21,12 @@ pub fn analyze_query(query: &str) -> QueryType {
     if query.to_uppercase().ends_with("-BGPTOOL") {
         let base_query = &query[..query.len() - 8]; // Remove "-BGPTOOL" suffix
         return QueryType::BGPTool(base_query.to_string());
+    }
+    
+    // Check if it's a geo query
+    if query.to_uppercase().ends_with("-GEO") {
+        let base_query = &query[..query.len() - 4]; // Remove "-GEO" suffix
+        return QueryType::Geo(base_query.to_string());
     }
     
     // Check if it's an email search query
