@@ -10,6 +10,7 @@ use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
 
 use crate::config::{SERVER_BANNER, DN42_WHOIS_SERVER, DN42_WHOIS_PORT};
+use crate::email::{process_email_search, process_email_search_blocking};
 use crate::query::{analyze_query, is_private_ipv4, is_private_ipv6, QueryType};
 use crate::utils::dump_to_file;
 use crate::whois::{
@@ -169,6 +170,10 @@ pub fn run_blocking_server(addr: &str, timeout_secs: u64, dump_traffic: bool, du
                         } else {
                             blocking_query_with_iana_referral(asn, timeout)
                         }
+                    }
+                    QueryType::EmailSearch(base_query) => {
+                        info!("Processing email search query: {}", base_query);
+                        process_email_search_blocking(base_query, timeout)
                     }
                     QueryType::Unknown(q) => {
                         info!("Unknown query type: {}", q);
@@ -357,6 +362,10 @@ async fn handle_connection(
             } else {
                 query_with_iana_referral(asn).await
             }
+        }
+        QueryType::EmailSearch(base_query) => {
+            debug!("Processing email search query: {}", base_query);
+            process_email_search(base_query).await
         }
         QueryType::Unknown(q) => {
             debug!("Unknown query type: {}", q);

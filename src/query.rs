@@ -10,10 +10,17 @@ pub enum QueryType {
     IPv4(Ipv4Addr),
     IPv6(Ipv6Addr),
     ASN(String),
+    EmailSearch(String), // For queries ending with -EMAIL
     Unknown(String),
 }
 
 pub fn analyze_query(query: &str) -> QueryType {
+    // Check if it's an email search query
+    if query.to_uppercase().ends_with("-EMAIL") {
+        let base_query = &query[..query.len() - 6]; // Remove "-EMAIL" suffix
+        return QueryType::EmailSearch(base_query.to_string());
+    }
+    
     // Check if it's a .dn42 domain
     if query.to_lowercase().ends_with(".dn42") {
         return QueryType::Domain(query.to_string());

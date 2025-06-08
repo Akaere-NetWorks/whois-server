@@ -17,6 +17,7 @@
  */
 
 mod config;
+mod email;
 mod query;
 mod server;
 mod utils;

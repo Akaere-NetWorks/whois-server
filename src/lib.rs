@@ -1,4 +1,5 @@
 pub mod config;
+pub mod email;
 pub mod query;
 pub mod server;
 pub mod utils;
