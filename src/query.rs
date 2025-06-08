@@ -14,6 +14,7 @@ pub enum QueryType {
     BGPTool(String),     // For queries ending with -BGPTOOL
     Geo(String),         // For queries ending with -GEO
     RirGeo(String),      // For queries ending with -RIRGEO
+    Prefixes(String),    // For queries ending with -PREFIXES
     Unknown(String),
 }
 
@@ -22,6 +23,12 @@ pub fn analyze_query(query: &str) -> QueryType {
     if query.to_uppercase().ends_with("-BGPTOOL") {
         let base_query = &query[..query.len() - 8]; // Remove "-BGPTOOL" suffix
         return QueryType::BGPTool(base_query.to_string());
+    }
+    
+    // Check if it's a prefixes query
+    if query.to_uppercase().ends_with("-PREFIXES") {
+        let base_query = &query[..query.len() - 9]; // Remove "-PREFIXES" suffix
+        return QueryType::Prefixes(base_query.to_string());
     }
     
     // Check if it's a RIR geo query

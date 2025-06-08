@@ -6,6 +6,7 @@ use std::time::Duration;
 // API endpoints
 const RIPE_STAT_API_BASE: &str = "https://stat.ripe.net/data/maxmind-geo-lite/data.json";
 const RIPE_RIR_GEO_API_BASE: &str = "https://stat.ripe.net/data/rir-geo/data.json";
+const RIPE_PREFIXES_API_BASE: &str = "https://stat.ripe.net/data/announced-prefixes/data.json";
 const IPINFO_API_BASE: &str = "https://api.ipinfo.io/lite";
 const IPINFO_TOKEN: &str = "29a9fd77d1bd76";
 
@@ -137,6 +138,66 @@ struct RirGeoParameters {
     query_time: String,
     #[allow(dead_code)]
     cache: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct PrefixesResponse {
+    data: Option<PrefixesData>,
+    status: String,
+    #[allow(dead_code)]
+    messages: Option<Vec<Vec<String>>>,
+    #[allow(dead_code)]
+    see_also: Option<Vec<String>>,
+    #[allow(dead_code)]
+    version: Option<String>,
+    #[allow(dead_code)]
+    data_call_name: Option<String>,
+    #[allow(dead_code)]
+    data_call_status: Option<String>,
+    #[allow(dead_code)]
+    cached: Option<bool>,
+    #[allow(dead_code)]
+    query_id: Option<String>,
+    #[allow(dead_code)]
+    process_time: Option<u32>,
+    #[allow(dead_code)]
+    server_id: Option<String>,
+    #[allow(dead_code)]
+    build_version: Option<String>,
+    #[allow(dead_code)]
+    status_code: Option<u16>,
+    #[allow(dead_code)]
+    time: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct PrefixesData {
+    prefixes: Option<Vec<PrefixInfo>>,
+    #[allow(dead_code)]
+    query_starttime: Option<String>,
+    #[allow(dead_code)]
+    query_endtime: Option<String>,
+    #[allow(dead_code)]
+    resource: Option<String>,
+    #[allow(dead_code)]
+    latest_time: Option<String>,
+    #[allow(dead_code)]
+    earliest_time: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct PrefixInfo {
+    prefix: String,
+    #[allow(dead_code)]
+    timelines: Option<Vec<Timeline>>,
+}
+
+#[derive(Debug, Deserialize)]
+struct Timeline {
+    #[allow(dead_code)]
+    starttime: Option<String>,
+    #[allow(dead_code)]
+    endtime: Option<String>,
 }
 
 /// Process geo location queries ending with -GEO
@@ -651,6 +712,368 @@ fn format_geo_response(resource: &str, response: &RipeStatResponse) -> Result<St
     }
     
     Ok(formatted)
+}
+
+/// Process ASN prefixes queries ending with -PREFIXES
+pub async fn process_prefixes_query(asn: &str) -> Result<String> {
+    debug!("Processing prefixes query for ASN: {}", asn);
+    
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(10))
+        .build()?;
+    
+    // Query prefixes API
+    let prefixes_result = query_prefixes_api(&client, asn).await;
+    
+    match prefixes_result {
+        Ok(prefixes_response) => {
+            format_prefixes_response(asn, &prefixes_response, &client).await
+        }
+        Err(e) => {
+            let mut formatted = String::new();
+            formatted.push_str("% ASN Announced Prefixes Query\n");
+            formatted.push_str("% Data from RIPE NCC STAT\n");
+            formatted.push_str(&format!("% Query: {}\n", asn));
+            formatted.push_str("\n");
+            formatted.push_str(&format!("% Error: {}\n", e));
+            Ok(formatted)
+        }
+    }
+}
+
+/// Query RIPE NCC STAT announced-prefixes API
+async fn query_prefixes_api(client: &reqwest::Client, asn: &str) -> Result<PrefixesResponse> {
+    let url = format!("{}?resource={}", RIPE_PREFIXES_API_BASE, urlencoding::encode(asn));
+    debug!("RIPE Prefixes API URL: {}", url);
+    
+    let response = client
+        .get(&url)
+        .header("User-Agent", "akaere-whois-server/1.0")
+        .send()
+        .await?;
+    
+    if !response.status().is_success() {
+        return Err(anyhow!("RIPE Prefixes API HTTP error: {}", response.status()));
+    }
+    
+    let json_response: PrefixesResponse = response.json().await?;
+    
+    if json_response.status != "ok" {
+        return Err(anyhow!("RIPE Prefixes API error: status={}", json_response.status));
+    }
+    
+    Ok(json_response)
+}
+
+/// Process ASN prefixes queries ending with -PREFIXES (blocking version)
+pub fn process_prefixes_query_blocking(asn: &str, timeout: Duration) -> Result<String> {
+    debug!("Processing prefixes query (blocking) for ASN: {}", asn);
+    
+    let client = reqwest::blocking::Client::builder()
+        .timeout(timeout)
+        .build()?;
+    
+    // Query prefixes API
+    let prefixes_result = query_prefixes_api_blocking(&client, asn);
+    
+    match prefixes_result {
+        Ok(prefixes_response) => {
+            format_prefixes_response_blocking(asn, &prefixes_response, &client)
+        }
+        Err(e) => {
+            let mut formatted = String::new();
+            formatted.push_str("% ASN Announced Prefixes Query\n");
+            formatted.push_str("% Data from RIPE NCC STAT\n");
+            formatted.push_str(&format!("% Query: {}\n", asn));
+            formatted.push_str("\n");
+            formatted.push_str(&format!("% Error: {}\n", e));
+            Ok(formatted)
+        }
+    }
+}
+
+/// Query RIPE NCC STAT announced-prefixes API (blocking version)
+fn query_prefixes_api_blocking(client: &reqwest::blocking::Client, asn: &str) -> Result<PrefixesResponse> {
+    let url = format!("{}?resource={}", RIPE_PREFIXES_API_BASE, urlencoding::encode(asn));
+    debug!("RIPE Prefixes API URL (blocking): {}", url);
+    
+    let response = client
+        .get(&url)
+        .header("User-Agent", "akaere-whois-server/1.0")
+        .send()?;
+    
+    if !response.status().is_success() {
+        return Err(anyhow!("RIPE Prefixes API HTTP error: {}", response.status()));
+    }
+    
+    let json_response: PrefixesResponse = response.json()?;
+    
+    if json_response.status != "ok" {
+        return Err(anyhow!("RIPE Prefixes API error: status={}", json_response.status));
+    }
+    
+    Ok(json_response)
+}
+
+/// Format prefixes response with country and AS name information from IPinfo
+async fn format_prefixes_response(
+    asn: &str, 
+    response: &PrefixesResponse,
+    client: &reqwest::Client
+) -> Result<String> {
+    let mut formatted = String::new();
+    
+    // Header
+    formatted.push_str("% ASN Announced Prefixes Query\n");
+    formatted.push_str("% Data from RIPE NCC STAT\n");
+    formatted.push_str(&format!("% Query: {}\n", asn));
+    formatted.push_str("\n");
+    
+    let data = match &response.data {
+        Some(data) => data,
+        None => {
+            formatted.push_str("% No prefixes data available\n");
+            return Ok(formatted);
+        }
+    };
+    
+    if let Some(prefixes) = &data.prefixes {
+        if !prefixes.is_empty() {
+            // Collect prefix information with country and AS name data
+            let mut prefix_data = Vec::new();
+            for prefix_info in prefixes {
+                let ip_addr = extract_ip_from_prefix(&prefix_info.prefix);
+                debug!("Querying IPinfo for IP: {} (from prefix: {})", ip_addr, prefix_info.prefix);
+                
+                let (country, as_name) = match query_ipinfo_api(client, &ip_addr).await {
+                    Ok(ipinfo_response) => {
+                        debug!("IPinfo response for {}: as_name={:?}, country={:?}", ip_addr, ipinfo_response.as_name, ipinfo_response.country);
+                        let country = ipinfo_response.country.as_deref().unwrap_or("N/A").to_string();
+                        let as_name = ipinfo_response.as_name.as_deref().unwrap_or("N/A").to_string();
+                        (country, as_name)
+                    }
+                    Err(e) => {
+                        debug!("IPinfo query failed for {}: {}", ip_addr, e);
+                        ("N/A".to_string(), "N/A".to_string())
+                    }
+                };
+                prefix_data.push((prefix_info.prefix.clone(), country, as_name));
+            }
+            
+            // Calculate adaptive column widths
+            let prefix_width = std::cmp::max(
+                6, // Minimum width for "Prefix"
+                prefix_data.iter().map(|(p, _, _)| p.len()).max().unwrap_or(6)
+            );
+            
+            let country_width = std::cmp::max(
+                7, // Minimum width for "Country"
+                prefix_data.iter().map(|(_, c, _)| c.len()).max().unwrap_or(7)
+            );
+            
+            let as_name_width = std::cmp::max(
+                7, // Minimum width for "AS Name"
+                prefix_data.iter().map(|(_, _, a)| a.len()).max().unwrap_or(7)
+            );
+            
+            formatted.push_str("Currently Announced Prefixes\n");
+            formatted.push_str("============================\n\n");
+            
+            // Dynamic header
+            formatted.push_str(&format!(
+                "{:<width1$} | {:<width2$} | {:<width3$}\n",
+                "Prefix", "Country", "AS Name",
+                width1 = prefix_width,
+                width2 = country_width,
+                width3 = as_name_width
+            ));
+            
+            // Dynamic separator
+            formatted.push_str(&format!(
+                "{:-<width1$}-|-{:-<width2$}-|-{:-<width3$}\n",
+                "", "", "",
+                width1 = prefix_width,
+                width2 = country_width,
+                width3 = as_name_width
+            ));
+            
+            // Data rows
+            for (prefix, country, as_name) in prefix_data {
+                formatted.push_str(&format!(
+                    "{:<width1$} | {:<width2$} | {:<width3$}\n",
+                    truncate_string(&prefix, prefix_width),
+                    truncate_string(&country, country_width),
+                    truncate_string(&as_name, as_name_width),
+                    width1 = prefix_width,
+                    width2 = country_width,
+                    width3 = as_name_width
+                ));
+            }
+            
+            formatted.push_str(&format!("\n% Total announced prefixes: {}\n", prefixes.len()));
+        } else {
+            formatted.push_str("% No announced prefixes found\n");
+        }
+    } else {
+        formatted.push_str("% No prefixes data available\n");
+    }
+    
+    // Show messages if any
+    if let Some(messages) = &response.messages {
+        if !messages.is_empty() {
+            formatted.push_str("\n% API Messages:\n");
+            for message in messages {
+                for msg_part in message {
+                    formatted.push_str(&format!("% {}\n", msg_part));
+                }
+            }
+        }
+    }
+    
+    Ok(formatted)
+}
+
+/// Format prefixes response with country information from IPinfo (blocking version)
+fn format_prefixes_response_blocking(
+    asn: &str, 
+    response: &PrefixesResponse,
+    client: &reqwest::blocking::Client
+) -> Result<String> {
+    let mut formatted = String::new();
+    
+    // Header
+    formatted.push_str("% ASN Announced Prefixes Query\n");
+    formatted.push_str("% Data from RIPE NCC STAT\n");
+    formatted.push_str(&format!("% Query: {}\n", asn));
+    formatted.push_str("\n");
+    
+    let data = match &response.data {
+        Some(data) => data,
+        None => {
+            formatted.push_str("% No prefixes data available\n");
+            return Ok(formatted);
+        }
+    };
+    
+    if let Some(prefixes) = &data.prefixes {
+        if !prefixes.is_empty() {
+            // Collect prefix information with country and AS name data
+            let mut prefix_data = Vec::new();
+            for prefix_info in prefixes {
+                let ip_addr = extract_ip_from_prefix(&prefix_info.prefix);
+                debug!("Querying IPinfo for IP: {} (from prefix: {})", ip_addr, prefix_info.prefix);
+                
+                let (country, as_name) = match query_ipinfo_api_blocking(client, &ip_addr) {
+                    Ok(ipinfo_response) => {
+                        debug!("IPinfo response for {}: as_name={:?}, country={:?}", ip_addr, ipinfo_response.as_name, ipinfo_response.country);
+                        let country = ipinfo_response.country.as_deref().unwrap_or("N/A").to_string();
+                        let as_name = ipinfo_response.as_name.as_deref().unwrap_or("N/A").to_string();
+                        (country, as_name)
+                    }
+                    Err(e) => {
+                        debug!("IPinfo query failed for {}: {}", ip_addr, e);
+                        ("N/A".to_string(), "N/A".to_string())
+                    }
+                };
+                prefix_data.push((prefix_info.prefix.clone(), country, as_name));
+            }
+            
+            // Calculate adaptive column widths
+            let prefix_width = std::cmp::max(
+                6, // Minimum width for "Prefix"
+                prefix_data.iter().map(|(p, _, _)| p.len()).max().unwrap_or(6)
+            );
+            
+            let country_width = std::cmp::max(
+                7, // Minimum width for "Country"
+                prefix_data.iter().map(|(_, c, _)| c.len()).max().unwrap_or(7)
+            );
+            
+            let as_name_width = std::cmp::max(
+                7, // Minimum width for "AS Name"
+                prefix_data.iter().map(|(_, _, a)| a.len()).max().unwrap_or(7)
+            );
+            
+            formatted.push_str("Currently Announced Prefixes\n");
+            formatted.push_str("============================\n\n");
+            
+            // Dynamic header
+            formatted.push_str(&format!(
+                "{:<width1$} | {:<width2$} | {:<width3$}\n",
+                "Prefix", "Country", "AS Name",
+                width1 = prefix_width,
+                width2 = country_width,
+                width3 = as_name_width
+            ));
+            
+            // Dynamic separator
+            formatted.push_str(&format!(
+                "{:-<width1$}-|-{:-<width2$}-|-{:-<width3$}\n",
+                "", "", "",
+                width1 = prefix_width,
+                width2 = country_width,
+                width3 = as_name_width
+            ));
+            
+            // Data rows
+            for (prefix, country, as_name) in prefix_data {
+                formatted.push_str(&format!(
+                    "{:<width1$} | {:<width2$} | {:<width3$}\n",
+                    truncate_string(&prefix, prefix_width),
+                    truncate_string(&country, country_width),
+                    truncate_string(&as_name, as_name_width),
+                    width1 = prefix_width,
+                    width2 = country_width,
+                    width3 = as_name_width
+                ));
+            }
+            
+            formatted.push_str(&format!("\n% Total announced prefixes: {}\n", prefixes.len()));
+        } else {
+            formatted.push_str("% No announced prefixes found\n");
+        }
+    } else {
+        formatted.push_str("% No prefixes data available\n");
+    }
+    
+    // Show messages if any
+    if let Some(messages) = &response.messages {
+        if !messages.is_empty() {
+            formatted.push_str("\n% API Messages:\n");
+            for message in messages {
+                for msg_part in message {
+                    formatted.push_str(&format!("% {}\n", msg_part));
+                }
+            }
+        }
+    }
+    
+    Ok(formatted)
+}
+
+/// Extract IP address from network prefix for IPinfo API queries
+fn extract_ip_from_prefix(prefix: &str) -> String {
+    // Handle IPv6 prefixes like "2a14:67c1:a024::/48"
+    if prefix.contains("::") && prefix.contains("/") {
+        let ip_part = prefix.split("/").next().unwrap_or(prefix);
+        
+        // For IPv6 prefixes ending with "::", append a zero to get a valid address
+        if ip_part.ends_with("::") {
+            return ip_part.to_string();  // IPinfo accepts "::" format
+        } else {
+            return ip_part.to_string();
+        }
+    }
+    
+    // Handle IPv4 prefixes like "192.168.1.0/24"
+    if prefix.contains("/") {
+        if let Some(ip_part) = prefix.split("/").next() {
+            return ip_part.to_string();
+        }
+    }
+    
+    // Return as-is if no special handling needed
+    prefix.to_string()
 }
 
 /// Truncate string to specified length
