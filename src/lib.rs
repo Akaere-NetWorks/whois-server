@@ -2,6 +2,7 @@ pub mod bgptool;
 pub mod config;
 pub mod email;
 pub mod geo;
+pub mod irr;
 pub mod query;
 pub mod server;
 pub mod stats;

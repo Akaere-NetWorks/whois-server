@@ -20,6 +20,7 @@ mod bgptool;
 mod config;
 mod email;
 mod geo;
+mod irr;
 mod query;
 mod server;
 mod stats;

@@ -16,10 +16,17 @@ pub enum QueryType {
     RirGeo(String),      // For queries ending with -RIRGEO
     Prefixes(String),    // For queries ending with -PREFIXES
     Radb(String),        // For queries ending with -RADB
+    Irr(String),         // For queries ending with -IRR
     Unknown(String),
 }
 
 pub fn analyze_query(query: &str) -> QueryType {
+    // Check if it's an IRR Explorer query
+    if query.to_uppercase().ends_with("-IRR") {
+        let base_query = &query[..query.len() - 4]; // Remove "-IRR" suffix
+        return QueryType::Irr(base_query.to_string());
+    }
+    
     // Check if it's a RADB query
     if query.to_uppercase().ends_with("-RADB") {
         let base_query = &query[..query.len() - 5]; // Remove "-RADB" suffix

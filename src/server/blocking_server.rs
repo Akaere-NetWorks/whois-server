@@ -9,6 +9,7 @@ use crate::bgptool::process_bgptool_query_blocking;
 use crate::config::{SERVER_BANNER, DN42_WHOIS_SERVER, DN42_WHOIS_PORT, RADB_WHOIS_SERVER, RADB_WHOIS_PORT};
 use crate::email::process_email_search_blocking;
 use crate::geo::{process_geo_query_blocking, process_rir_geo_query_blocking, process_prefixes_query_blocking};
+use crate::irr::process_irr_query_blocking;
 use crate::query::{analyze_query, is_private_ipv4, is_private_ipv6, QueryType};
 use crate::utils::dump_to_file;
 use crate::whois::{blocking_query_whois, blocking_query_with_iana_referral};
@@ -140,6 +141,10 @@ pub fn run_blocking_server(addr: &str, timeout_secs: u64, dump_traffic: bool, du
                     QueryType::Radb(resource) => {
                         info!("Processing RADB query: {}", resource);
                         blocking_query_whois(resource, RADB_WHOIS_SERVER, RADB_WHOIS_PORT, timeout)
+                    }
+                    QueryType::Irr(resource) => {
+                        info!("Processing IRR Explorer query: {}", resource);
+                        process_irr_query_blocking(resource, timeout)
                     }
                     QueryType::Unknown(q) => {
                         info!("Unknown query type: {}", q);
