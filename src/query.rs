@@ -15,10 +15,17 @@ pub enum QueryType {
     Geo(String),         // For queries ending with -GEO
     RirGeo(String),      // For queries ending with -RIRGEO
     Prefixes(String),    // For queries ending with -PREFIXES
+    Radb(String),        // For queries ending with -RADB
     Unknown(String),
 }
 
 pub fn analyze_query(query: &str) -> QueryType {
+    // Check if it's a RADB query
+    if query.to_uppercase().ends_with("-RADB") {
+        let base_query = &query[..query.len() - 5]; // Remove "-RADB" suffix
+        return QueryType::Radb(base_query.to_string());
+    }
+    
     // Check if it's a BGP Tools query
     if query.to_uppercase().ends_with("-BGPTOOL") {
         let base_query = &query[..query.len() - 8]; // Remove "-BGPTOOL" suffix

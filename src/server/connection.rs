@@ -7,7 +7,7 @@ use tokio::net::TcpStream;
 use tracing::{debug, error, warn};
 
 use crate::bgptool::process_bgptool_query;
-use crate::config::{SERVER_BANNER, DN42_WHOIS_SERVER, DN42_WHOIS_PORT};
+use crate::config::{SERVER_BANNER, DN42_WHOIS_SERVER, DN42_WHOIS_PORT, RADB_WHOIS_SERVER, RADB_WHOIS_PORT};
 use crate::email::process_email_search;
 use crate::geo::{process_geo_query, process_rir_geo_query, process_prefixes_query};
 use crate::query::{analyze_query, is_private_ipv4, is_private_ipv6, QueryType};
@@ -140,6 +140,10 @@ pub async fn handle_connection(
         QueryType::Prefixes(asn) => {
             debug!("Processing ASN prefixes query: {}", asn);
             process_prefixes_query(asn).await
+        }
+        QueryType::Radb(resource) => {
+            debug!("Processing RADB query: {}", resource);
+            query_whois(resource, RADB_WHOIS_SERVER, RADB_WHOIS_PORT).await
         }
         QueryType::Unknown(q) => {
             debug!("Unknown query type: {}", q);

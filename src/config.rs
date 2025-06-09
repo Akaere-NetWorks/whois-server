@@ -7,6 +7,8 @@ pub const DEFAULT_WHOIS_PORT: u16 = 43;
 pub const TIMEOUT_SECONDS: u64 = 10;
 pub const DN42_WHOIS_SERVER: &str = "lantian.pub";
 pub const DN42_WHOIS_PORT: u16 = 43;
+pub const RADB_WHOIS_SERVER: &str = "whois.radb.net";
+pub const RADB_WHOIS_PORT: u16 = 43;
 
 // Server identification banner
 pub const SERVER_BANNER: &str = "% Akaere NetWorks Whois Server";
