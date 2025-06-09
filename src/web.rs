@@ -207,7 +207,33 @@ async fn dashboard() -> impl IntoResponse {
                             <div><code class="bg-base-200 px-2 py-1 rounded">8.8.8.8-GEO</code> - Geo location</div>
                             <div><code class="bg-base-200 px-2 py-1 rounded">8.8.8.8-RIRGEO</code> - RIR geo data</div>
                             <div><code class="bg-base-200 px-2 py-1 rounded">AS213605-PREFIXES</code> - ASN prefixes</div>
-                            <div><code class="bg-base-200 px-2 py-1 rounded">8.8.8.8-BGPTOOL</code> - BGP tools</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded">AS213605-BGPTOOL</code> - BGP tools</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded">AS213605-RADB</code> - RADB query</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded">192.0.2.0/24-IRR</code> - IRR Explorer</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded">AS213605-LG</code> - Looking Glass</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6">
+                    <h3 class="font-semibold text-lg mb-3">Advanced Query Features</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div class="space-y-2">
+                            <h4 class="font-medium text-cute-pink-600">Network Analysis</h4>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-RADB</code> - Routing Assets Database</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-IRR</code> - IRR Explorer with RPKI</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-LG</code> - Looking Glass (BIRD format)</div>
+                        </div>
+                        <div class="space-y-2">
+                            <h4 class="font-medium text-cute-pink-600">Geographic Data</h4>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-GEO</code> - IP geolocation</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-RIRGEO</code> - RIR geographic data</div>
+                        </div>
+                        <div class="space-y-2">
+                            <h4 class="font-medium text-cute-pink-600">Contact & BGP</h4>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-EMAIL</code> - Contact search</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-BGPTOOL</code> - BGP information</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-PREFIXES</code> - ASN prefixes</div>
                         </div>
                     </div>
                 </div>
@@ -220,6 +246,8 @@ async fn dashboard() -> impl IntoResponse {
                 </div>
             </div>
         </div>
+
+
 
         <!-- Statistics Cards -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

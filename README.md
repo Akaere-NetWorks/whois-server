@@ -29,7 +29,11 @@
     - [Standard WHOIS Queries](#standard-whois-queries)
     - [Enhanced Query Types](#enhanced-query-types)
     - [Geo-location Services](#geo-location-services)
-    - [Network Intelligence](#network-intelligence)
+    - [Network Intelligence & Advanced Features](#network-intelligence--advanced-features)
+  - [🛠️ Advanced Query Features](#️-advanced-query-features)
+    - [IRR Explorer Integration](#irr-explorer-integration--irr-suffix)
+    - [Looking Glass Services](#looking-glass-services--lg-suffix)
+    - [RADB Direct Access](#radb-direct-access--radb-suffix)
   - [📊 Statistics and Monitoring](#-statistics-and-monitoring)
   - [🏗️ Architecture](#️-architecture)
   - [📜 License](#-license)
@@ -43,12 +47,16 @@
 - **📍 Geo-location Services** - Built-in IP geolocation using multiple data sources
 - **🔧 BGP Tools Integration** - Network analysis and BGP information queries
 - **📧 Email Search** - Contact information lookup capabilities
+- **🛡️ IRR Explorer Integration** - Comprehensive routing registry analysis with RPKI validation
+- **🔭 Looking Glass Services** - RIPE RIS BGP data in BIRD routing daemon format
+- **📊 RADB Direct Access** - Routing Assets Database queries for AS-SET and route objects
 - **📈 Real-time Statistics** - Comprehensive usage tracking and monitoring
 - **🌐 Web Dashboard** - Modern web interface for statistics and testing
 - **⚡ Dual Operation Modes** - Both async and blocking network operations
 - **🔒 Robust Error Handling** - Graceful handling of network issues and timeouts
 - **📋 Traffic Logging** - Optional query/response dumping for debugging
 - **🌈 IPv4 & IPv6 Support** - Complete dual-stack implementation
+- **🎯 Intelligent Fallback** - Automatic fallback to DN42 for failed public queries
 
 ## 🌍 Public Instance
 
@@ -73,17 +81,29 @@ whois -h whois.akae.re AS213605-BGPTOOL
 
 # Email search
 whois -h whois.akae.re contact@example.com-EMAIL
+
+# RADB queries
+whois -h whois.akae.re AS213605-RADB
+
+# IRR Explorer analysis
+whois -h whois.akae.re 192.0.2.0/24-IRR
+
+# Looking Glass (BIRD-style routing data)
+whois -h whois.akae.re AS213605-LG
 ```
 
 ## 🖥️ Web Dashboard
 
 The server includes a modern web dashboard accessible at `http://your-server:9999` (default port). The dashboard provides:
 
-- **📊 Real-time Statistics** - Query counts, response times, and server metrics
-- **🧪 Query Testing** - Interactive WHOIS query interface
-- **📈 Visual Analytics** - Charts and graphs of server usage
-- **🎨 Theme Support** - Light/dark mode with beautiful UI
-- **📱 Responsive Design** - Works on desktop and mobile devices
+- **📊 Real-time Statistics** - Query counts, response times, and server metrics with auto-refresh
+- **🧪 Query Testing** - Interactive WHOIS query interface for all supported query types
+- **📈 Visual Analytics** - Charts and graphs with 24-hour and 30-day views
+- **🎨 Theme Support** - Light/dark/auto theme with beautiful pink-themed UI
+- **📱 Responsive Design** - Works perfectly on desktop and mobile devices
+- **🔄 Live Updates** - Statistics refresh every 30 seconds automatically
+- **📋 Query Type Distribution** - Visual breakdown of query types and usage patterns
+- **⚡ Performance Metrics** - Connection counts, data transfer, and response times
 
 ## 🚀 Installation
 
@@ -178,6 +198,9 @@ telnet localhost 43
 | **-EMAIL** | `admin@example.com-EMAIL` | Search for contact information |
 | **-BGPTOOL** | `AS213605-BGPTOOL` | BGP routing and peering info |
 | **-PREFIXES** | `AS213605-PREFIXES` | List all prefixes announced by ASN |
+| **-RADB** | `AS213605-RADB` | Query RADB (Routing Assets Database) directly |
+| **-IRR** | `192.0.2.0/24-IRR` | IRR Explorer - comprehensive routing registry analysis |
+| **-LG** | `AS213605-LG` | Looking Glass - RIPE RIS BGP routing data in BIRD format |
 
 ### Geo-location Services
 
@@ -186,14 +209,61 @@ telnet localhost 43
 | **-GEO** | `8.8.8.8-GEO` | IP geolocation information |
 | **-RIRGEO** | `203.0.113.1-RIRGEO` | RIR-specific geographic data |
 
-### Network Intelligence
+### Network Intelligence & Advanced Features
 
-The server provides intelligent query routing:
+The server provides intelligent query routing and advanced networking tools:
 
 - **DN42 Detection** - Automatically routes DN42 queries (AS42424xxx, .dn42 domains, private IPs)
 - **Private IP Handling** - RFC1918 and other private ranges routed to DN42
 - **Smart Referrals** - Uses IANA for initial queries, then follows referrals
 - **Multi-source Data** - Combines information from multiple WHOIS servers
+- **IRR Explorer Integration** - Access to comprehensive Internet Routing Registry data with RPKI validation
+- **Looking Glass Services** - Real-time BGP routing data from RIPE Route Information Service (RIS)
+- **RADB Direct Access** - Query Routing Assets Database for AS-SET expansions and route objects
+- **Intelligent Fallback** - Automatically tries DN42 when public WHOIS returns no results
+- **BIRD-style Output** - Looking Glass queries formatted as BIRD routing daemon configuration
+
+## 🛠️ Advanced Query Features
+
+### IRR Explorer Integration (`-IRR` suffix)
+
+The IRR Explorer integration provides comprehensive routing registry analysis using data from [irrexplorer.nlnog.net](https://irrexplorer.nlnog.net/). This feature analyzes prefixes across multiple Internet Routing Registries (IRRs) and provides RPKI validation information.
+
+**Supported IRR Databases:**
+- RIPE, RADB, ARIN, APNIC, AFRINIC, LACNIC
+- LEVEL3, ALTDB, BELL, JPIRR, NTTCOM
+- RPKI (Resource Public Key Infrastructure) data
+
+**Example:**
+```bash
+whois -h whois.akae.re 192.0.2.0/24-IRR
+```
+
+### Looking Glass Services (`-LG` suffix)
+
+Looking Glass queries provide real-time BGP routing data from RIPE's Route Information Service (RIS). The output is formatted in BIRD routing daemon style, making it useful for network operators and researchers.
+
+**Features:**
+- Real-time BGP routing tables from multiple RRC (Route Collector) locations
+- BIRD-style configuration format output
+- Community and extended community information
+- AS-Path and origin validation data
+
+**Example:**
+```bash
+whois -h whois.akae.re AS213605-LG
+```
+
+### RADB Direct Access (`-RADB` suffix)
+
+Direct queries to the Routing Assets Database (RADB) for AS-SET expansions, route objects, and routing policies. This is particularly useful for network operators managing routing policies and filters.
+
+**Example:**
+```bash
+whois -h whois.akae.re AS-SET:AS-EXAMPLE-RADB
+```
+
+> 📘 **Detailed Documentation**: For comprehensive technical documentation of all advanced features, including API details, implementation specifics, and usage examples, see [ADVANCED_FEATURES.md](ADVANCED_FEATURES.md).
 
 ## 📊 Statistics and Monitoring
 
@@ -217,7 +287,6 @@ The server is built with a modular Rust architecture:
 ```
 src/
 ├── main.rs          # Application entry point and initialization
-├── server.rs        # TCP server implementation (async/blocking)
 ├── config.rs        # Configuration and command-line parsing
 ├── query.rs         # Query type detection and analysis
 ├── whois.rs         # WHOIS protocol client implementations  
@@ -225,24 +294,36 @@ src/
 ├── stats.rs         # Statistics collection and persistence
 ├── email.rs         # Email search functionality
 ├── bgptool.rs       # BGP tools integration
+├── irr.rs           # IRR Explorer integration
+├── looking_glass.rs # RIPE RIS Looking Glass services
 ├── utils.rs         # Utility functions
+├── server/          # Server implementations
+│   ├── mod.rs       # Server module exports
+│   ├── async_server.rs     # Async TCP server
+│   ├── blocking_server.rs  # Blocking TCP server
+│   ├── connection.rs       # Connection handling logic
+│   └── utils.rs     # Server utility functions
 └── geo/             # Geo-location services
     ├── mod.rs       # Main geo module
     ├── services.rs  # Service orchestration
     ├── types.rs     # Data type definitions
     ├── formatters.rs # Output formatting
     ├── ripe_api.rs  # RIPE database integration
-    └── ipinfo_api.rs # IPInfo service integration
+    ├── ipinfo_api.rs # IPInfo service integration
+    ├── constants.rs # Geographic constants
+    └── utils.rs     # Geographic utility functions
 ```
 
 ### Key Components
 
-- **Query Engine** - Intelligent query parsing and type detection
-- **Multi-protocol Support** - RFC 3912 WHOIS + custom extensions
-- **Async Runtime** - Tokio-based concurrent processing
-- **Web Interface** - Axum-based REST API and dashboard
-- **Statistics Engine** - Real-time metrics collection
-- **External Integrations** - RIPE, IPInfo, and other data sources
+- **Query Engine** - Intelligent query parsing and type detection with 11+ query types
+- **Multi-protocol Support** - RFC 3912 WHOIS + custom extensions and advanced features
+- **Dual Server Architecture** - Both async (Tokio) and blocking server implementations
+- **Web Interface** - Axum-based REST API and dashboard with real-time updates
+- **Statistics Engine** - Real-time metrics collection with 24h/30d historical data
+- **Advanced Network Tools** - IRR Explorer, Looking Glass, BGP Tools integration
+- **External Integrations** - RIPE, IPInfo, IRR Explorer, RADB, and DN42 data sources
+- **Intelligent Routing** - Smart query routing with fallback mechanisms
 
 ## 📜 License
 
