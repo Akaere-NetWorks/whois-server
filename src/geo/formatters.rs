@@ -248,26 +248,58 @@ pub async fn format_prefixes_response(
     
     if let Some(prefixes) = &data.prefixes {
         if !prefixes.is_empty() {
-            // Collect prefix information with country and AS name data
-            let mut prefix_data = Vec::new();
+            debug!("Processing {} prefixes with concurrent IPinfo queries", prefixes.len());
+            
+            // Create semaphore to limit concurrent requests to 32
+            let semaphore = std::sync::Arc::new(tokio::sync::Semaphore::new(32));
+            
+            // Collect prefix information with country and AS name data using concurrent queries
+            let mut tasks = Vec::new();
+            
             for prefix_info in prefixes {
-                let ip_addr = extract_ip_from_prefix(&prefix_info.prefix);
-                debug!("Querying IPinfo for IP: {} (from prefix: {})", ip_addr, prefix_info.prefix);
+                let prefix = prefix_info.prefix.clone();
+                let ip_addr = extract_ip_from_prefix(&prefix);
+                let client = client.clone();
+                let permit = semaphore.clone();
                 
-                let (country, as_name) = match query_ipinfo_api(client, &ip_addr).await {
-                    Ok(ipinfo_response) => {
-                        debug!("IPinfo response for {}: as_name={:?}, country={:?}", ip_addr, ipinfo_response.as_name, ipinfo_response.country);
-                        let country = ipinfo_response.country.as_deref().unwrap_or("N/A").to_string();
-                        let as_name = ipinfo_response.as_name.as_deref().unwrap_or("N/A").to_string();
-                        (country, as_name)
-                    }
-                    Err(e) => {
-                        debug!("IPinfo query failed for {}: {}", ip_addr, e);
-                        ("N/A".to_string(), "N/A".to_string())
-                    }
-                };
-                prefix_data.push((prefix_info.prefix.clone(), country, as_name));
+                let task = tokio::spawn(async move {
+                    // Acquire semaphore permit to limit concurrency
+                    let _permit = permit.acquire().await.unwrap();
+                    
+                    debug!("Querying IPinfo for IP: {} (from prefix: {})", ip_addr, prefix);
+                    
+                    let (country, as_name) = match query_ipinfo_api(&client, &ip_addr).await {
+                        Ok(ipinfo_response) => {
+                            debug!("IPinfo response for {}: as_name={:?}, country={:?}", ip_addr, ipinfo_response.as_name, ipinfo_response.country);
+                            let country = ipinfo_response.country.as_deref().unwrap_or("N/A").to_string();
+                            let as_name = ipinfo_response.as_name.as_deref().unwrap_or("N/A").to_string();
+                            (country, as_name)
+                        }
+                        Err(e) => {
+                            debug!("IPinfo query failed for {}: {}", ip_addr, e);
+                            ("N/A".to_string(), "N/A".to_string())
+                        }
+                    };
+                    
+                    (prefix, country, as_name)
+                });
+                
+                tasks.push(task);
             }
+            
+            // Wait for all tasks to complete and collect results
+            let mut prefix_data = Vec::new();
+            for task in tasks {
+                match task.await {
+                    Ok(result) => prefix_data.push(result),
+                    Err(e) => {
+                        debug!("Task join error: {}", e);
+                        // Continue with other results
+                    }
+                }
+            }
+            
+            debug!("Completed IPinfo queries for {} prefixes", prefix_data.len());
             
             // Calculate adaptive column widths
             let prefix_width = std::cmp::max(
@@ -346,7 +378,7 @@ pub async fn format_prefixes_response(
 pub fn format_prefixes_response_blocking(
     asn: &str, 
     response: &PrefixesResponse,
-    client: &reqwest::blocking::Client
+    _client: &reqwest::blocking::Client
 ) -> Result<String> {
     let mut formatted = String::new();
     
@@ -366,26 +398,47 @@ pub fn format_prefixes_response_blocking(
     
     if let Some(prefixes) = &data.prefixes {
         if !prefixes.is_empty() {
-            // Collect prefix information with country and AS name data
-            let mut prefix_data = Vec::new();
-            for prefix_info in prefixes {
-                let ip_addr = extract_ip_from_prefix(&prefix_info.prefix);
-                debug!("Querying IPinfo for IP: {} (from prefix: {})", ip_addr, prefix_info.prefix);
-                
-                let (country, as_name) = match query_ipinfo_api_blocking(client, &ip_addr) {
-                    Ok(ipinfo_response) => {
-                        debug!("IPinfo response for {}: as_name={:?}, country={:?}", ip_addr, ipinfo_response.as_name, ipinfo_response.country);
-                        let country = ipinfo_response.country.as_deref().unwrap_or("N/A").to_string();
-                        let as_name = ipinfo_response.as_name.as_deref().unwrap_or("N/A").to_string();
-                        (country, as_name)
-                    }
-                    Err(e) => {
-                        debug!("IPinfo query failed for {}: {}", ip_addr, e);
-                        ("N/A".to_string(), "N/A".to_string())
-                    }
-                };
-                prefix_data.push((prefix_info.prefix.clone(), country, as_name));
-            }
+            debug!("Processing {} prefixes with concurrent IPinfo queries (blocking)", prefixes.len());
+            
+            // Use rayon for parallel processing with limited parallelism
+            use rayon::prelude::*;
+            
+            // Create a thread pool with 32 threads max
+            let pool = rayon::ThreadPoolBuilder::new()
+                .num_threads(std::cmp::min(32, prefixes.len()))
+                .build()
+                .map_err(|e| anyhow::anyhow!("Failed to create thread pool: {}", e))?;
+            
+            let prefix_data: Vec<(String, String, String)> = pool.install(|| {
+                prefixes.par_iter().map(|prefix_info| {
+                    let prefix = prefix_info.prefix.clone();
+                    let ip_addr = extract_ip_from_prefix(&prefix);
+                    debug!("Querying IPinfo for IP: {} (from prefix: {})", ip_addr, prefix);
+                    
+                    // Create a new client for this thread since reqwest::blocking::Client is not Clone + Send
+                    let thread_client = reqwest::blocking::Client::builder()
+                        .timeout(std::time::Duration::from_secs(10))
+                        .build()
+                        .unwrap_or_else(|_| reqwest::blocking::Client::new());
+                    
+                    let (country, as_name) = match query_ipinfo_api_blocking(&thread_client, &ip_addr) {
+                        Ok(ipinfo_response) => {
+                            debug!("IPinfo response for {}: as_name={:?}, country={:?}", ip_addr, ipinfo_response.as_name, ipinfo_response.country);
+                            let country = ipinfo_response.country.as_deref().unwrap_or("N/A").to_string();
+                            let as_name = ipinfo_response.as_name.as_deref().unwrap_or("N/A").to_string();
+                            (country, as_name)
+                        }
+                        Err(e) => {
+                            debug!("IPinfo query failed for {}: {}", ip_addr, e);
+                            ("N/A".to_string(), "N/A".to_string())
+                        }
+                    };
+                    
+                    (prefix, country, as_name)
+                }).collect()
+            });
+            
+            debug!("Completed IPinfo queries for {} prefixes", prefix_data.len());
             
             // Calculate adaptive column widths
             let prefix_width = std::cmp::max(
