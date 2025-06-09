@@ -21,6 +21,7 @@ mod config;
 mod email;
 mod geo;
 mod irr;
+mod looking_glass;
 mod query;
 mod server;
 mod stats;

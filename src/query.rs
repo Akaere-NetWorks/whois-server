@@ -17,10 +17,17 @@ pub enum QueryType {
     Prefixes(String),    // For queries ending with -PREFIXES
     Radb(String),        // For queries ending with -RADB
     Irr(String),         // For queries ending with -IRR
+    LookingGlass(String), // For queries ending with -LG
     Unknown(String),
 }
 
 pub fn analyze_query(query: &str) -> QueryType {
+    // Check if it's a Looking Glass query
+    if query.to_uppercase().ends_with("-LG") {
+        let base_query = &query[..query.len() - 3]; // Remove "-LG" suffix
+        return QueryType::LookingGlass(base_query.to_string());
+    }
+    
     // Check if it's an IRR Explorer query
     if query.to_uppercase().ends_with("-IRR") {
         let base_query = &query[..query.len() - 4]; // Remove "-IRR" suffix
