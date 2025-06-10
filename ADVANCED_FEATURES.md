@@ -66,7 +66,7 @@ Looking Glass queries provide real-time BGP routing data from RIPE's Route Infor
 ### Examples
 ```bash
 # Get BGP data for an ASN
-whois -h whois.akae.re AS213605-LG
+whois -h whois.akae.re 1.1.1.0-LG
 
 # Get BGP data for a prefix
 whois -h whois.akae.re 192.0.2.0/24-LG
@@ -114,7 +114,7 @@ Direct queries to the Routing Assets Database for AS-SET expansions, route objec
 whois -h whois.akae.re AS-SET:AS-EXAMPLE-RADB
 
 # Query route objects
-whois -h whois.akae.re AS213605-RADB
+whois -h whois.akae.re 1.1.1.0-RADB
 
 # Query maintainer objects
 whois -h whois.akae.re MAINT-EXAMPLE-RADB

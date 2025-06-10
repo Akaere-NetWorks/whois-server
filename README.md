@@ -83,13 +83,13 @@ whois -h whois.akae.re AS213605-BGPTOOL
 whois -h whois.akae.re contact@example.com-EMAIL
 
 # RADB queries
-whois -h whois.akae.re AS213605-RADB
+whois -h whois.akae.re 1.1.1.0-RADB
 
 # IRR Explorer analysis
 whois -h whois.akae.re 192.0.2.0/24-IRR
 
 # Looking Glass (BIRD-style routing data)
-whois -h whois.akae.re AS213605-LG
+whois -h whois.akae.re 1.1.1.0-LG
 ```
 
 ## 🖥️ Web Dashboard
@@ -198,9 +198,9 @@ telnet localhost 43
 | **-EMAIL** | `admin@example.com-EMAIL` | Search for contact information |
 | **-BGPTOOL** | `AS213605-BGPTOOL` | BGP routing and peering info |
 | **-PREFIXES** | `AS213605-PREFIXES` | List all prefixes announced by ASN |
-| **-RADB** | `AS213605-RADB` | Query RADB (Routing Assets Database) directly |
+| **-RADB** | `1.1.1.0-RADB` | Query RADB (Routing Assets Database) directly |
 | **-IRR** | `192.0.2.0/24-IRR` | IRR Explorer - comprehensive routing registry analysis |
-| **-LG** | `AS213605-LG` | Looking Glass - RIPE RIS BGP routing data in BIRD format |
+| **-LG** | `1.1.1.0-LG` | Looking Glass - RIPE RIS BGP routing data in BIRD format |
 
 ### Geo-location Services
 
@@ -251,7 +251,7 @@ Looking Glass queries provide real-time BGP routing data from RIPE's Route Infor
 
 **Example:**
 ```bash
-whois -h whois.akae.re AS213605-LG
+whois -h whois.akae.re 1.1.1.0-LG
 ```
 
 ### RADB Direct Access (`-RADB` suffix)

@@ -208,9 +208,9 @@ async fn dashboard() -> impl IntoResponse {
                             <div><code class="bg-base-200 px-2 py-1 rounded">8.8.8.8-RIRGEO</code> - RIR geo data</div>
                             <div><code class="bg-base-200 px-2 py-1 rounded">AS213605-PREFIXES</code> - ASN prefixes</div>
                             <div><code class="bg-base-200 px-2 py-1 rounded">AS213605-BGPTOOL</code> - BGP tools</div>
-                            <div><code class="bg-base-200 px-2 py-1 rounded">AS213605-RADB</code> - RADB query</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded">1.1.1.0-RADB</code> - RADB query</div>
                             <div><code class="bg-base-200 px-2 py-1 rounded">192.0.2.0/24-IRR</code> - IRR Explorer</div>
-                            <div><code class="bg-base-200 px-2 py-1 rounded">AS213605-LG</code> - Looking Glass</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded">1.1.1.0-LG</code> - Looking Glass</div>
                         </div>
                     </div>
                 </div>
