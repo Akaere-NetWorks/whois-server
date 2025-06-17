@@ -18,10 +18,43 @@ pub enum QueryType {
     Radb(String),        // For queries ending with -RADB
     Irr(String),         // For queries ending with -IRR
     LookingGlass(String), // For queries ending with -LG
+    Rpki(String, String), // For queries in format prefix-asn-RPKI (prefix, asn)
     Unknown(String),
 }
 
 pub fn analyze_query(query: &str) -> QueryType {
+    // Check if it's an RPKI query in format IP段-ASN-RPKI
+    if query.to_uppercase().ends_with("-RPKI") {
+        let base_query = &query[..query.len() - 5]; // Remove "-RPKI" suffix
+        
+        // Try to parse as prefix-asn format
+        if let Some(dash_pos) = base_query.rfind('-') {
+            let prefix_part = &base_query[..dash_pos];
+            let asn_part = &base_query[dash_pos + 1..];
+            
+            // Validate that ASN part is numeric
+            if asn_part.chars().all(|c| c.is_digit(10)) {
+                // Validate prefix part (IP/CIDR format)
+                if let Ok(_) = prefix_part.parse::<Ipv4Cidr>() {
+                    return QueryType::Rpki(prefix_part.to_string(), asn_part.to_string());
+                }
+                if let Ok(_) = prefix_part.parse::<Ipv6Cidr>() {
+                    return QueryType::Rpki(prefix_part.to_string(), asn_part.to_string());
+                }
+                // Also try single IP address
+                if let Ok(ip) = prefix_part.parse::<IpAddr>() {
+                    match ip {
+                        IpAddr::V4(_) => return QueryType::Rpki(format!("{}/32", prefix_part), asn_part.to_string()),
+                        IpAddr::V6(_) => return QueryType::Rpki(format!("{}/128", prefix_part), asn_part.to_string()),
+                    }
+                }
+            }
+        }
+        
+        // If parsing failed, treat as unknown
+        return QueryType::Unknown(query.to_string());
+    }
+    
     // Check if it's a Looking Glass query
     if query.to_uppercase().ends_with("-LG") {
         let base_query = &query[..query.len() - 3]; // Remove "-LG" suffix

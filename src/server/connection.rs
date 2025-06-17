@@ -13,6 +13,7 @@ use crate::geo::{process_geo_query, process_rir_geo_query, process_prefixes_quer
 use crate::irr::process_irr_query;
 use crate::looking_glass::process_looking_glass_query;
 use crate::query::{analyze_query, is_private_ipv4, is_private_ipv6, QueryType};
+use crate::rpki::process_rpki_query;
 use crate::utils::dump_to_file;
 use crate::whois::{query_whois, query_with_iana_referral};
 use crate::stats::StatsState;
@@ -154,6 +155,10 @@ pub async fn handle_connection(
         QueryType::LookingGlass(resource) => {
             debug!("Processing Looking Glass query: {}", resource);
             process_looking_glass_query(resource).await
+        }
+        QueryType::Rpki(prefix, asn) => {
+            debug!("Processing RPKI query: prefix={}, asn={}", prefix, asn);
+            process_rpki_query(prefix, asn).await
         }
         QueryType::Unknown(q) => {
             debug!("Unknown query type: {}", q);

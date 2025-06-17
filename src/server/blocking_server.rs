@@ -12,6 +12,7 @@ use crate::geo::{process_geo_query_blocking, process_rir_geo_query_blocking, pro
 use crate::irr::process_irr_query_blocking;
 use crate::looking_glass::process_looking_glass_query_blocking;
 use crate::query::{analyze_query, is_private_ipv4, is_private_ipv6, QueryType};
+use crate::rpki::process_rpki_query_blocking;
 use crate::utils::dump_to_file;
 use crate::whois::{blocking_query_whois, blocking_query_with_iana_referral};
 
@@ -150,6 +151,10 @@ pub fn run_blocking_server(addr: &str, timeout_secs: u64, dump_traffic: bool, du
                     QueryType::LookingGlass(resource) => {
                         info!("Processing Looking Glass query: {}", resource);
                         process_looking_glass_query_blocking(resource, timeout)
+                    }
+                    QueryType::Rpki(prefix, asn) => {
+                        info!("Processing RPKI query: prefix={}, asn={}", prefix, asn);
+                        process_rpki_query_blocking(prefix, asn, timeout)
                     }
                     QueryType::Unknown(q) => {
                         info!("Unknown query type: {}", q);

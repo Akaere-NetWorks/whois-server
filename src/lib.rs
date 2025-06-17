@@ -5,6 +5,7 @@ pub mod geo;
 pub mod irr;
 pub mod looking_glass;
 pub mod query;
+pub mod rpki;
 pub mod server;
 pub mod stats;
 pub mod utils;

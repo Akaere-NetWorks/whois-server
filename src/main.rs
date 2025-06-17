@@ -23,6 +23,7 @@ mod geo;
 mod irr;
 mod looking_glass;
 mod query;
+mod rpki;
 mod server;
 mod stats;
 mod utils;
