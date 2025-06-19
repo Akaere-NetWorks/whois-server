@@ -5,8 +5,8 @@ pub const IANA_WHOIS_SERVER: &str = "whois.iana.org";
 pub const DEFAULT_WHOIS_SERVER: &str = "whois.ripe.net";
 pub const DEFAULT_WHOIS_PORT: u16 = 43;
 pub const TIMEOUT_SECONDS: u64 = 10;
-pub const DN42_WHOIS_SERVER: &str = "lantian.pub";
-pub const DN42_WHOIS_PORT: u16 = 43;
+// DN42 registry configuration
+pub const DN42_REGISTRY_PATH: &str = "./cache/dn42-registry";
 pub const RADB_WHOIS_SERVER: &str = "whois.radb.net";
 pub const RADB_WHOIS_PORT: u16 = 43;
 

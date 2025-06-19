@@ -1,5 +1,6 @@
 pub mod bgptool;
 pub mod config;
+pub mod dn42;
 pub mod email;
 pub mod geo;
 pub mod irr;

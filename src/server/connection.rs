@@ -7,7 +7,8 @@ use tokio::net::TcpStream;
 use tracing::{debug, error, warn};
 
 use crate::bgptool::process_bgptool_query;
-use crate::config::{SERVER_BANNER, DN42_WHOIS_SERVER, DN42_WHOIS_PORT, RADB_WHOIS_SERVER, RADB_WHOIS_PORT};
+use crate::config::{SERVER_BANNER, RADB_WHOIS_SERVER, RADB_WHOIS_PORT};
+use crate::dn42::process_dn42_query;
 use crate::email::process_email_search;
 use crate::geo::{process_geo_query, process_rir_geo_query, process_prefixes_query};
 use crate::irr::process_irr_query;
@@ -92,7 +93,7 @@ pub async fn handle_connection(
             debug!("Processing domain query: {}", domain);
             if domain.to_lowercase().ends_with(".dn42") {
                 debug!("Detected .dn42 domain, using DN42 query");
-                query_whois(domain, DN42_WHOIS_SERVER, DN42_WHOIS_PORT).await
+                process_dn42_query(domain).await
             } else {
                 query_with_iana_referral(domain).await
             }
@@ -101,7 +102,7 @@ pub async fn handle_connection(
             debug!("Processing IPv4 query: {}", ip);
             if is_private_ipv4(*ip) {
                 debug!("Detected private IPv4 address, using DN42 query");
-                query_whois(&query, DN42_WHOIS_SERVER, DN42_WHOIS_PORT).await
+                process_dn42_query(&query).await
             } else {
                 query_with_iana_referral(&query).await
             }
@@ -110,7 +111,7 @@ pub async fn handle_connection(
             debug!("Processing IPv6 query: {}", ip);
             if is_private_ipv6(*ip) {
                 debug!("Detected private IPv6 address, using DN42 query");
-                query_whois(&query, DN42_WHOIS_SERVER, DN42_WHOIS_PORT).await
+                process_dn42_query(&query).await
             } else {
                 query_with_iana_referral(&query).await
             }
@@ -119,7 +120,7 @@ pub async fn handle_connection(
             debug!("Processing ASN query: {}", asn);
             if asn.to_uppercase().starts_with("AS42424") {
                 debug!("Detected DN42 ASN, using DN42 query");
-                query_whois(asn, DN42_WHOIS_SERVER, DN42_WHOIS_PORT).await
+                process_dn42_query(asn).await
             } else {
                 query_with_iana_referral(asn).await
             }
@@ -164,7 +165,7 @@ pub async fn handle_connection(
             debug!("Unknown query type: {}", q);
             if q.to_uppercase().ends_with("-DN42") || q.to_uppercase().ends_with("-MNT") {
                 debug!("Detected DN42 related query ({}), using DN42 query", q);
-                query_whois(q, DN42_WHOIS_SERVER, DN42_WHOIS_PORT).await
+                process_dn42_query(q).await
             } else {
                 let public_result = query_with_iana_referral(q).await;
                 
@@ -173,11 +174,11 @@ pub async fn handle_connection(
                         || response.contains("No entries found") 
                         || response.contains("Not found") => {
                         debug!("Public query returned no results, trying DN42 for: {}", q);
-                        query_whois(q, DN42_WHOIS_SERVER, DN42_WHOIS_PORT).await
+                        process_dn42_query(q).await
                     },
                     Err(_) => {
                         debug!("Public query failed, trying DN42 for: {}", q);
-                        query_whois(q, DN42_WHOIS_SERVER, DN42_WHOIS_PORT).await
+                        process_dn42_query(q).await
                     },
                     _ => public_result,
                 }

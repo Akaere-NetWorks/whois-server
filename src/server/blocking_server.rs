@@ -6,7 +6,8 @@ use anyhow::Result;
 use tracing::{debug, error, info, warn};
 
 use crate::bgptool::process_bgptool_query_blocking;
-use crate::config::{SERVER_BANNER, DN42_WHOIS_SERVER, DN42_WHOIS_PORT, RADB_WHOIS_SERVER, RADB_WHOIS_PORT};
+use crate::config::{SERVER_BANNER, RADB_WHOIS_SERVER, RADB_WHOIS_PORT};
+use crate::dn42::process_dn42_query_blocking;
 use crate::email::process_email_search_blocking;
 use crate::geo::{process_geo_query_blocking, process_rir_geo_query_blocking, process_prefixes_query_blocking};
 use crate::irr::process_irr_query_blocking;
@@ -88,7 +89,7 @@ pub fn run_blocking_server(addr: &str, timeout_secs: u64, dump_traffic: bool, du
                         info!("Processing domain query: {}", domain);
                         if domain.to_lowercase().ends_with(".dn42") {
                             info!("Detected .dn42 domain, using DN42 query");
-                            blocking_query_whois(domain, DN42_WHOIS_SERVER, DN42_WHOIS_PORT, timeout)
+                            process_dn42_query_blocking(domain)
                         } else {
                             blocking_query_with_iana_referral(domain, timeout)
                         }
@@ -97,7 +98,7 @@ pub fn run_blocking_server(addr: &str, timeout_secs: u64, dump_traffic: bool, du
                         info!("Processing IPv4 query: {}", ip);
                         if is_private_ipv4(*ip) {
                             info!("Detected private IPv4 address, using DN42 query");
-                            blocking_query_whois(&query, DN42_WHOIS_SERVER, DN42_WHOIS_PORT, timeout)
+                            process_dn42_query_blocking(&query)
                         } else {
                             blocking_query_with_iana_referral(&query, timeout)
                         }
@@ -106,7 +107,7 @@ pub fn run_blocking_server(addr: &str, timeout_secs: u64, dump_traffic: bool, du
                         info!("Processing IPv6 query: {}", ip);
                         if is_private_ipv6(*ip) {
                             info!("Detected private IPv6 address, using DN42 query");
-                            blocking_query_whois(&query, DN42_WHOIS_SERVER, DN42_WHOIS_PORT, timeout)
+                            process_dn42_query_blocking(&query)
                         } else {
                             blocking_query_with_iana_referral(&query, timeout)
                         }
@@ -115,7 +116,7 @@ pub fn run_blocking_server(addr: &str, timeout_secs: u64, dump_traffic: bool, du
                         info!("Processing ASN query: {}", asn);
                         if asn.to_uppercase().starts_with("AS42424") {
                             info!("Detected DN42 ASN, using DN42 query");
-                            blocking_query_whois(asn, DN42_WHOIS_SERVER, DN42_WHOIS_PORT, timeout)
+                            process_dn42_query_blocking(asn)
                         } else {
                             blocking_query_with_iana_referral(asn, timeout)
                         }
@@ -160,7 +161,7 @@ pub fn run_blocking_server(addr: &str, timeout_secs: u64, dump_traffic: bool, du
                         info!("Unknown query type: {}", q);
                         if q.to_uppercase().ends_with("-DN42") || q.to_uppercase().ends_with("-MNT") {
                             info!("Detected DN42 related query ({}), using DN42 query", q);
-                            blocking_query_whois(q, DN42_WHOIS_SERVER, DN42_WHOIS_PORT, timeout)
+                            process_dn42_query_blocking(q)
                         } else {
                             let public_result = blocking_query_with_iana_referral(q, timeout);
                             
@@ -169,11 +170,11 @@ pub fn run_blocking_server(addr: &str, timeout_secs: u64, dump_traffic: bool, du
                                     || response.contains("No entries found") 
                                     || response.contains("Not found") => {
                                     info!("Public query returned no results, trying DN42 for: {}", q);
-                                    blocking_query_whois(q, DN42_WHOIS_SERVER, DN42_WHOIS_PORT, timeout)
+                                    process_dn42_query_blocking(q)
                                 },
                                 Err(_) => {
                                     info!("Public query failed, trying DN42 for: {}", q);
-                                    blocking_query_whois(q, DN42_WHOIS_SERVER, DN42_WHOIS_PORT, timeout)
+                                    process_dn42_query_blocking(q)
                                 },
                                 _ => public_result,
                             }

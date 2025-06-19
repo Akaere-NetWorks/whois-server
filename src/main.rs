@@ -18,6 +18,7 @@
 
 mod bgptool;
 mod config;
+mod dn42;
 mod email;
 mod geo;
 mod irr;
@@ -39,6 +40,7 @@ use config::Cli;
 use server::{create_dump_dir_if_needed, run_async_server, run_blocking_server};
 use stats::{create_stats_state, save_stats_on_shutdown};
 use web::run_web_server;
+use dn42::start_periodic_sync;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -63,6 +65,11 @@ async fn main() -> Result<()> {
     
     // Create dump directory if needed
     create_dump_dir_if_needed(args.dump_traffic, &args.dump_dir)?;
+    
+    // Start DN42 registry sync task
+    tokio::spawn(async move {
+        start_periodic_sync().await;
+    });
     
     // Start web server
     let web_stats = stats.clone();
