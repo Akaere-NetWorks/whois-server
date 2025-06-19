@@ -120,6 +120,7 @@ impl DN42Registry {
     }
 
     /// Force full refresh of LMDB data (clear and repopulate)
+    #[allow(dead_code)]
     pub async fn force_full_refresh(&self) -> Result<()> {
         info!("Forcing full DN42 registry refresh");
         
@@ -801,6 +802,7 @@ pub fn process_dn42_query_blocking(query: &str) -> Result<String> {
 }
 
 /// Force full refresh of DN42 registry (clear and repopulate LMDB)
+#[allow(dead_code)]
 pub async fn force_full_refresh_dn42() -> Result<()> {
     let registry = get_dn42_registry().await?;
     registry.force_full_refresh().await

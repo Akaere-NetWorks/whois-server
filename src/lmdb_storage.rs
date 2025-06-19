@@ -149,6 +149,7 @@ impl LmdbStorage {
     }
 
     /// Clear all data from the database
+    #[allow(dead_code)]
     pub fn clear(&self) -> Result<()> {
         let mut txn = self.env.begin_rw_txn()?;
         txn.clear_db(self.db)?;
@@ -158,6 +159,7 @@ impl LmdbStorage {
     }
 
     /// Get database statistics (simplified)
+    #[allow(dead_code)]
     pub fn stats(&self) -> Result<()> {
         let _txn = self.env.begin_ro_txn()?;
         info!("LMDB database connection verified");
@@ -315,6 +317,7 @@ impl LmdbStorage {
     }
 
     /// Batch update - more efficient for bulk operations
+    #[allow(dead_code)]
     pub fn batch_update<F>(&self, mut operation: F) -> Result<()>
     where
         F: FnMut(&mut lmdb::RwTransaction) -> Result<()>,
@@ -326,6 +329,7 @@ impl LmdbStorage {
     }
 
     /// Get all keys with a specific prefix
+    #[allow(dead_code)]
     pub fn get_keys_with_prefix(&self, prefix: &str) -> Result<Vec<String>> {
         let txn = self.env.begin_ro_txn()?;
         let mut cursor = txn.open_ro_cursor(self.db)?;
@@ -342,6 +346,7 @@ impl LmdbStorage {
     }
 
     /// Force full refresh (clear and repopulate)
+    #[allow(dead_code)]
     pub fn force_full_refresh(&self, registry_path: &str) -> Result<()> {
         info!("Performing full LMDB refresh");
         self.clear()?;
