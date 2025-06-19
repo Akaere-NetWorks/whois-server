@@ -22,6 +22,7 @@ mod dn42;
 mod email;
 mod geo;
 mod irr;
+mod lmdb_storage;
 mod looking_glass;
 mod query;
 mod rpki;

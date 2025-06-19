@@ -4,6 +4,7 @@ pub mod dn42;
 pub mod email;
 pub mod geo;
 pub mod irr;
+pub mod lmdb_storage;
 pub mod looking_glass;
 pub mod query;
 pub mod rpki;
