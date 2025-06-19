@@ -1,7 +1,6 @@
 use std::path::Path;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::process::Command;
-use std::fs;
 use anyhow::Result;
 use tracing::{debug, info, warn, error};
 use tokio::time::{interval, Duration};
@@ -106,39 +105,56 @@ impl DN42Registry {
             .map_err(|e| anyhow::anyhow!("Failed to populate LMDB from registry: {}", e))
     }
 
-    /// Update the registry and refresh LMDB data
+    /// Update the registry and refresh LMDB data (incremental)
     pub async fn update(&self) -> Result<()> {
-        info!("Updating DN42 registry and LMDB data");
+        info!("Updating DN42 registry and LMDB data (incremental)");
         
         // Sync from git
         self.sync_registry().await?;
         
-        // Clear existing LMDB data and repopulate
-        tokio::task::spawn_blocking({
-            let storage = self.storage.clone();
-            move || storage.clear()
-        }).await??;
-        
-        // Repopulate with fresh data
+        // Perform incremental update (no need to clear everything)
         self.populate_lmdb().await?;
         
-        info!("DN42 registry update completed");
+        info!("DN42 registry incremental update completed");
+        Ok(())
+    }
+
+    /// Force full refresh of LMDB data (clear and repopulate)
+    pub async fn force_full_refresh(&self) -> Result<()> {
+        info!("Forcing full DN42 registry refresh");
+        
+        // Sync from git
+        self.sync_registry().await?;
+        
+        // Force full refresh
+        let storage = self.storage.clone();
+        let registry_path_str = DN42_REGISTRY_PATH.to_string();
+        
+        tokio::task::spawn_blocking(move || {
+            storage.force_full_refresh(&registry_path_str)
+        }).await?
+            .map_err(|e| anyhow::anyhow!("Failed to force full LMDB refresh: {}", e))?;
+        
+        info!("DN42 registry full refresh completed");
         Ok(())
     }
 
     /// Query DN42 registry data and return formatted response
     pub async fn query(&self, query: &str) -> Result<String> {
-        debug!("Processing DN42 query: {}", query);
+        debug!("DN42: Processing query: {}", query);
         
         let mut response = String::new();
         response.push_str(&format!("% Query: {}\n", query));
         
         // Handle different query types
         if let Some(result) = self.handle_ip_query(query).await? {
+            debug!("DN42: Query '{}' matched as IP query, response length: {} bytes", query, result.len());
             response.push_str(&result);
         } else if let Some(result) = self.handle_object_query(query).await? {
+            debug!("DN42: Query '{}' matched as object query, response length: {} bytes", query, result.len());
             response.push_str(&result);
         } else {
+            debug!("DN42: Query '{}' did not match any data", query);
             response.push_str("% 404 Not Found\n");
         }
         
@@ -453,6 +469,7 @@ impl DN42Registry {
 
     /// Find the best matching IPv4 network in LMDB storage
     async fn find_ipv4_network(&self, subdir: &str, ip: Ipv4Addr, query_mask: u8) -> Result<Option<String>> {
+        debug!("DN42: Searching for IPv4 network in '{}' for IP {} with mask /{}", subdir, ip, query_mask);
         let ip_int = u32::from(ip);
         
         // Search from the query mask down to /0
@@ -465,17 +482,22 @@ impl DN42Registry {
             
             let network_ip = Ipv4Addr::from(network_int);
             let network_str = format!("{}/{}", network_ip, mask);
+            let key = format!("{}/{}", subdir, network_str);
             
-            if self.key_exists(&format!("{}/{}", subdir, network_str)).await? {
+            debug!("DN42: Checking IPv4 network: {}", network_str);
+            if self.key_exists(&key).await? {
+                debug!("DN42: Found matching IPv4 network: {}", network_str);
                 return Ok(Some(network_str));
             }
         }
         
+        debug!("DN42: No matching IPv4 network found in '{}' for IP {}", subdir, ip);
         Ok(None)
     }
 
     /// Find the best matching IPv6 network in LMDB storage
     async fn find_ipv6_network(&self, subdir: &str, ip: Ipv6Addr, query_mask: u8) -> Result<Option<String>> {
+        debug!("DN42: Searching for IPv6 network in '{}' for IP {} with mask /{}", subdir, ip, query_mask);
         let ip_int = u128::from(ip);
         
         // Search from the query mask down to /0
@@ -488,33 +510,57 @@ impl DN42Registry {
             
             let network_ip = Ipv6Addr::from(network_int);
             let network_str = format!("{}/{}", network_ip, mask);
+            let key = format!("{}/{}", subdir, network_str);
             
-            if self.key_exists(&format!("{}/{}", subdir, network_str)).await? {
+            debug!("DN42: Checking IPv6 network: {}", network_str);
+            if self.key_exists(&key).await? {
+                debug!("DN42: Found matching IPv6 network: {}", network_str);
                 return Ok(Some(network_str));
             }
         }
         
+        debug!("DN42: No matching IPv6 network found in '{}' for IP {}", subdir, ip);
         Ok(None)
     }
 
     /// Get data from LMDB storage
     async fn get_from_storage(&self, key: &str) -> Result<Option<String>> {
+        debug!("DN42: Requesting data from LMDB for key: {}", key);
         let storage = self.storage.clone();
-        let key = key.to_string();
+        let key_copy = key.to_string();
+        let key_for_log = key.to_string();
         
-        tokio::task::spawn_blocking(move || {
-            storage.get(&key)
-        }).await?
+        let result = tokio::task::spawn_blocking(move || {
+            storage.get(&key_copy)
+        }).await?;
+        
+        match &result {
+            Ok(Some(data)) => debug!("DN42: Retrieved data from LMDB for key '{}', length: {} bytes", key_for_log, data.len()),
+            Ok(None) => debug!("DN42: No data found in LMDB for key: {}", key_for_log),
+            Err(e) => warn!("DN42: Failed to retrieve data from LMDB for key '{}': {}", key_for_log, e),
+        }
+        
+        result
     }
 
     /// Check if key exists in LMDB storage
     async fn key_exists(&self, key: &str) -> Result<bool> {
+        debug!("DN42: Checking if key exists in LMDB: {}", key);
         let storage = self.storage.clone();
-        let key = key.to_string();
+        let key_copy = key.to_string();
+        let key_for_log = key.to_string();
         
-        tokio::task::spawn_blocking(move || {
-            storage.exists(&key)
-        }).await?
+        let result = tokio::task::spawn_blocking(move || {
+            storage.exists(&key_copy)
+        }).await?;
+        
+        match &result {
+            Ok(true) => debug!("DN42: Key exists in LMDB: {}", key_for_log),
+            Ok(false) => debug!("DN42: Key does not exist in LMDB: {}", key_for_log),
+            Err(e) => warn!("DN42: Error checking key existence in LMDB for '{}': {}", key_for_log, e),
+        }
+        
+        result
     }
 }
 
@@ -752,4 +798,10 @@ pub fn process_dn42_query_blocking(query: &str) -> Result<String> {
     tokio::task::block_in_place(|| {
         tokio::runtime::Handle::current().block_on(process_dn42_query(query))
     })
+}
+
+/// Force full refresh of DN42 registry (clear and repopulate LMDB)
+pub async fn force_full_refresh_dn42() -> Result<()> {
+    let registry = get_dn42_registry().await?;
+    registry.force_full_refresh().await
 } 
