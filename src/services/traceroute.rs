@@ -8,6 +8,7 @@ use tokio::process::Command;
 use tokio::fs;
 use tokio::sync::Mutex;
 use reqwest;
+use regex::Regex;
 
 /// NextTrace binary URLs for different platforms
 const NEXTTRACE_WINDOWS_URL: &str = "https://github.com/nxtrace/NTrace-core/releases/download/v1.4.0/nexttrace_windows_amd64.exe";
@@ -20,7 +21,20 @@ const CACHE_DIR: &str = "./cache";
 const WINDOWS_BINARY: &str = "nexttrace_windows_amd64.exe";
 const LINUX_BINARY: &str = "nexttrace_linux_amd64";
 
+/// Strip ANSI color codes from text
+fn strip_ansi_codes(text: &str) -> String {
+    // Regex pattern to match ANSI escape sequences
+    // Matches sequences like \x1b[...m (color codes) and \x1b[...J (clear screen)
+    static ANSI_REGEX: std::sync::OnceLock<Regex> = std::sync::OnceLock::new();
+    let regex = ANSI_REGEX.get_or_init(|| {
+        Regex::new(r"\x1b\[[0-9;]*[mJKH]").unwrap()
+    });
+    
+    regex.replace_all(text, "").to_string()
+}
+
 /// NextTrace binary manager
+#[derive(Default)]
 pub struct NextTraceManager {
     binary_path: String,
     initialized: bool,
@@ -29,10 +43,7 @@ pub struct NextTraceManager {
 impl NextTraceManager {
     /// Create a new NextTrace manager
     pub fn new() -> Self {
-        Self {
-            binary_path: String::new(),
-            initialized: false,
-        }
+        Self::default()
     }
 
     /// Setup Linux capabilities for nexttrace binary
@@ -227,6 +238,9 @@ impl NextTraceManager {
         let stdout = String::from_utf8_lossy(&output.stdout);
         debug!("NextTrace completed for {}", target_ip);
         
+        // Strip ANSI color codes from output
+        let clean_output = strip_ansi_codes(&stdout);
+        
         // Add privilege status to output for transparency
         let privilege_note = if !has_privileges {
             "\n\nNote: Running in UDP mode without CAP_NET_RAW capability.\nFor ICMP traceroute, consider running with elevated privileges or setting capabilities:\n  sudo setcap cap_net_raw+ep nexttrace\n"
@@ -234,7 +248,7 @@ impl NextTraceManager {
             ""
         };
         
-        Ok(format!("{}{}", stdout, privilege_note))
+        Ok(format!("{}{}", clean_output, privilege_note))
     }
 }
 
@@ -287,7 +301,9 @@ pub async fn process_traceroute_query(query: &str) -> Result<String> {
             match manager.trace_route(&target).await {
                 Ok(output) => {
                     debug!("NextTrace traceroute completed successfully");
-                    Ok(format!("Traceroute to {} using NextTrace:\n\n{}", target, output))
+                    let final_output = format!("Traceroute to {} using NextTrace:\n\n{}", target, output);
+                    // Strip any remaining ANSI codes from the final output
+                    Ok(strip_ansi_codes(&final_output))
                 }
                 Err(e) => {
                     error!("NextTrace execution failed: {}", e);
