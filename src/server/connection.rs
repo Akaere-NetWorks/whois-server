@@ -10,7 +10,7 @@ use crate::services::{
     process_bgptool_query, process_email_search, process_geo_query, 
     process_rir_geo_query, process_prefixes_query, process_irr_query,
     process_looking_glass_query, process_manrs_query, process_rpki_query,
-    query_whois, query_with_iana_referral
+    process_dns_query, query_whois, query_with_iana_referral
 };
 use crate::config::{SERVER_BANNER, RADB_WHOIS_SERVER, RADB_WHOIS_PORT};
 use crate::dn42::process_dn42_query_managed;
@@ -161,6 +161,10 @@ pub async fn handle_connection(
         QueryType::Manrs(base_query) => {
             debug!("Processing MANRS query: {}", base_query);
             process_manrs_query(&format!("{}-MANRS", base_query)).await
+        }
+        QueryType::Dns(base_query) => {
+            debug!("Processing DNS query: {}", base_query);
+            process_dns_query(base_query).await
         }
         QueryType::Unknown(q) => {
             debug!("Unknown query type: {}", q);

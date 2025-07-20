@@ -20,6 +20,7 @@ pub enum QueryType {
     LookingGlass(String), // For queries ending with -LG
     Rpki(String, String), // For queries in format prefix-asn-RPKI (prefix, asn)
     Manrs(String),       // For queries ending with -MANRS
+    Dns(String),         // For queries ending with -DNS
     Unknown(String),
 }
 
@@ -78,6 +79,12 @@ pub fn analyze_query(query: &str) -> QueryType {
     if query.to_uppercase().ends_with("-MANRS") {
         let base_query = &query[..query.len() - 6]; // Remove "-MANRS" suffix
         return QueryType::Manrs(base_query.to_string());
+    }
+    
+    // Check if it's a DNS query
+    if query.to_uppercase().ends_with("-DNS") {
+        let base_query = &query[..query.len() - 4]; // Remove "-DNS" suffix
+        return QueryType::Dns(base_query.to_string());
     }
     
     // Check if it's a BGP Tools query

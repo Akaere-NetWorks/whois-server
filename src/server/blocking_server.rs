@@ -159,6 +159,12 @@ pub fn run_blocking_server(addr: &str, timeout_secs: u64, dump_traffic: bool, du
                         info!("Processing MANRS query: {}", base_query);
                         process_manrs_query_blocking(&format!("{}-MANRS", base_query))
                     }
+                    QueryType::Dns(base_query) => {
+                        info!("Processing DNS query: {}", base_query);
+                        // For blocking server, we need to use a blocking implementation
+                        // For now, return a notice that DNS queries require async server
+                        Ok(format!("DNS queries are only supported on the async server.\nPlease use the main server (port 43) for DNS lookups.\nQuery: {}\n", base_query))
+                    }
                     QueryType::Unknown(q) => {
                         info!("Unknown query type: {}", q);
                         if q.to_uppercase().ends_with("-DN42") || q.to_uppercase().ends_with("-MNT") {

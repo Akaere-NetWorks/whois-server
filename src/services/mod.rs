@@ -7,6 +7,7 @@ pub mod rpki;
 pub mod manrs;
 pub mod geo;
 pub mod iana_cache;
+pub mod dns;
 
 pub use whois::*;
 pub use email::*;
@@ -17,3 +18,4 @@ pub use rpki::*;
 pub use manrs::*;
 pub use geo::*;
 pub use iana_cache::*;
+pub use dns::*;

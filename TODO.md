@@ -2,14 +2,6 @@
 
 ## Feature Roadmap
 
-### 2. DNS Resolution within WHOIS
-- [ ] Integrate DNS resolver functionality into WHOIS queries
-- [ ] Add DNS record type detection (A, AAAA, MX, NS, etc.)
-- [ ] Implement reverse DNS lookup capabilities
-- [ ] Add DNS query results to WHOIS response formatting
-- [ ] Support for DNS-over-HTTPS (DoH) and DNS-over-TLS (DoT)
-- [ ] Add DNS resolution statistics and monitoring
-
 ### 3. Traceroute Integration within WHOIS
 - [ ] Implement traceroute functionality for IP addresses
 - [ ] Add cross-platform traceroute support (Windows/Unix)
