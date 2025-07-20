@@ -77,7 +77,8 @@ Both servers share:
 - **looking_glass.rs**: RIPE RIS Looking Glass services with BIRD-style output
 - **email.rs**: Email search functionality
 - **dn42.rs**: DN42 network integration with periodic data synchronization
-- **rpki.rs**: RPKI validation services
+- **rpki.rs**: RPKI validation services for prefix-ASN validation
+- **manrs.rs**: MANRS (Mutually Agreed Norms for Routing Security) integration
 - **lmdb_storage.rs**: LMDB-based storage for DN42 data caching
 
 ### Query Types Supported
@@ -85,7 +86,8 @@ Both servers share:
 2. Enhanced queries: -EMAIL, -BGPTOOL, -PREFIXES suffixes
 3. Geo-location: -GEO, -RIRGEO suffixes
 4. Advanced routing: -IRR, -LG, -RADB suffixes
-5. DN42-specific queries (auto-detected)
+5. Security validation: -RPKI (prefix-ASN-RPKI format), -MANRS suffixes
+6. DN42-specific queries (auto-detected)
 
 ### Intelligent Query Routing
 - Automatic DN42 detection for AS4242420000-AS4242423999, .dn42 domains, private IPs

@@ -28,6 +28,7 @@ impl FileMetadata {
 }
 
 /// LMDB storage manager for DN42 registry data
+#[derive(Debug)]
 pub struct LmdbStorage {
     env: Environment,
     db: Database,
@@ -314,6 +315,33 @@ impl LmdbStorage {
         }
 
         Ok(deleted_count)
+    }
+
+    /// Iterate over keys that start with a specific prefix
+    pub fn iterate_keys<F>(&self, prefix: &str, mut callback: F) -> Result<()>
+    where
+        F: FnMut(&str) -> bool, // Return false to stop iteration
+    {
+        let txn = self.env.begin_ro_txn()?;
+        let mut cursor = txn.open_ro_cursor(self.db)?;
+
+        for (key_bytes, _) in cursor.iter() {
+            let key_str = std::str::from_utf8(key_bytes)?;
+            
+            // Skip metadata keys
+            if key_str.starts_with("__meta__") {
+                continue;
+            }
+            
+            // Check if key starts with prefix
+            if key_str.starts_with(prefix) {
+                if !callback(key_str) {
+                    break;
+                }
+            }
+        }
+
+        Ok(())
     }
 
     /// Batch update - more efficient for bulk operations

@@ -19,6 +19,9 @@
 mod bgptool;
 mod config;
 mod dn42;
+mod dn42_manager;
+mod dn42_online;
+mod dn42_query;
 mod email;
 mod geo;
 mod irr;
@@ -43,6 +46,8 @@ use server::{create_dump_dir_if_needed, run_async_server, run_blocking_server};
 use stats::{create_stats_state, save_stats_on_shutdown};
 use web::run_web_server;
 use dn42::start_periodic_sync;
+use dn42_manager::{initialize_dn42_manager, get_dn42_platform_info, is_dn42_online_mode, dn42_manager_maintenance};
+use tokio::time::{interval, Duration};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -68,9 +73,40 @@ async fn main() -> Result<()> {
     // Create dump directory if needed
     create_dump_dir_if_needed(args.dump_traffic, &args.dump_dir)?;
     
-    // Start DN42 registry sync task
+    // Initialize DN42 manager (platform-aware)
+    info!("Initializing DN42 system...");
+    if let Err(e) = initialize_dn42_manager().await {
+        tracing::error!("Failed to initialize DN42 manager: {}", e);
+    } else {
+        let platform_info = get_dn42_platform_info().await.unwrap_or("Unknown");
+        let is_online = is_dn42_online_mode().await.unwrap_or(false);
+        info!("DN42 system initialized successfully - Platform: {}, Mode: {}", 
+              platform_info, if is_online { "Online" } else { "Git" });
+    }
+    
+    // Start DN42 sync task (Git mode) or maintenance task (Online mode)
     tokio::spawn(async move {
-        start_periodic_sync().await;
+        if let Ok(is_online) = is_dn42_online_mode().await {
+            if is_online {
+                info!("Starting DN42 online mode maintenance task (every hour)");
+                let mut maintenance_interval = interval(Duration::from_secs(3600)); // 1 hour
+                maintenance_interval.tick().await; // Skip the first tick
+                
+                loop {
+                    maintenance_interval.tick().await;
+                    info!("Running scheduled DN42 online maintenance");
+                    if let Err(e) = dn42_manager_maintenance().await {
+                        tracing::error!("DN42 online maintenance failed: {}", e);
+                    }
+                }
+            } else {
+                info!("Starting DN42 git mode periodic sync");
+                start_periodic_sync().await;
+            }
+        } else {
+            tracing::error!("Failed to determine DN42 mode, falling back to git sync");
+            start_periodic_sync().await;
+        }
     });
     
     // Start web server

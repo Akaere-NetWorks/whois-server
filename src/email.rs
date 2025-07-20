@@ -2,14 +2,15 @@ use std::collections::HashSet;
 use anyhow::Result;
 use tracing::debug;
 
-use crate::dn42::{query_dn42_raw, query_dn42_raw_blocking};
+// Removed unused import
+use crate::dn42_manager::{query_dn42_raw_managed, query_dn42_raw_managed_blocking};
 
 /// Process email search queries ending with -EMAIL
 pub async fn process_email_search(base_query: &str) -> Result<String> {
     debug!("Processing email search for: {}", base_query);
     
     // First, query the base object to get references
-    let base_response = query_dn42_raw(base_query).await?;
+    let base_response = query_dn42_raw_managed(base_query).await?;
     debug!("Base response length: {} chars", base_response.len());
     
     // Start with emails from the base object itself
@@ -38,7 +39,7 @@ pub async fn process_email_search(base_query: &str) -> Result<String> {
         
         for related_query in related_queries {
             debug!("Trying related query: {}", related_query);
-            match query_dn42_raw(&related_query).await {
+            match query_dn42_raw_managed(&related_query).await {
                 Ok(related_response) => {
                     let related_emails = extract_emails(&related_response);
                     debug!("Found {} emails in related query {}: {:?}", related_emails.len(), related_query, related_emails);
@@ -49,7 +50,7 @@ pub async fn process_email_search(base_query: &str) -> Result<String> {
                     for ref_name in related_refs {
                         if !references.contains(&ref_name) {
                             debug!("Querying additional reference from {}: {}", related_query, ref_name);
-                            match query_dn42_raw(&ref_name).await {
+                            match query_dn42_raw_managed(&ref_name).await {
                                 Ok(ref_response) => {
                                     let ref_emails = extract_emails(&ref_response);
                                     debug!("Found {} emails in additional reference {}: {:?}", ref_emails.len(), ref_name, ref_emails);
@@ -72,7 +73,7 @@ pub async fn process_email_search(base_query: &str) -> Result<String> {
     // Query each reference to find email addresses
     for reference in references {
         debug!("Querying reference: {}", reference);
-        match query_dn42_raw(&reference).await {
+        match query_dn42_raw_managed(&reference).await {
             Ok(ref_response) => {
                 let ref_emails = extract_emails(&ref_response);
                 debug!("Found {} emails in {}: {:?}", ref_emails.len(), reference, ref_emails);
@@ -95,7 +96,7 @@ pub fn process_email_search_blocking(base_query: &str, _timeout: std::time::Dura
     debug!("Processing email search (blocking) for: {}", base_query);
     
     // First, query the base object to get references
-    let base_response = query_dn42_raw_blocking(base_query)?;
+    let base_response = query_dn42_raw_managed_blocking(base_query)?;
     debug!("Base response length: {} chars", base_response.len());
     
     // Start with emails from the base object itself
@@ -124,7 +125,7 @@ pub fn process_email_search_blocking(base_query: &str, _timeout: std::time::Dura
         
         for related_query in related_queries {
             debug!("Trying related query: {}", related_query);
-            match query_dn42_raw_blocking(&related_query) {
+            match query_dn42_raw_managed_blocking(&related_query) {
                 Ok(related_response) => {
                     let related_emails = extract_emails(&related_response);
                     debug!("Found {} emails in related query {}: {:?}", related_emails.len(), related_query, related_emails);
@@ -135,7 +136,7 @@ pub fn process_email_search_blocking(base_query: &str, _timeout: std::time::Dura
                     for ref_name in related_refs {
                         if !references.contains(&ref_name) {
                             debug!("Querying additional reference from {}: {}", related_query, ref_name);
-                            match query_dn42_raw_blocking(&ref_name) {
+                            match query_dn42_raw_managed_blocking(&ref_name) {
                                 Ok(ref_response) => {
                                     let ref_emails = extract_emails(&ref_response);
                                     debug!("Found {} emails in additional reference {}: {:?}", ref_emails.len(), ref_name, ref_emails);
@@ -158,7 +159,7 @@ pub fn process_email_search_blocking(base_query: &str, _timeout: std::time::Dura
     // Query each reference to find email addresses
     for reference in references {
         debug!("Querying reference: {}", reference);
-        match query_dn42_raw_blocking(&reference) {
+        match query_dn42_raw_managed_blocking(&reference) {
             Ok(ref_response) => {
                 let ref_emails = extract_emails(&ref_response);
                 debug!("Found {} emails in {}: {:?}", ref_emails.len(), reference, ref_emails);
