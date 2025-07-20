@@ -18,7 +18,7 @@ use chrono::DateTime;
 use crate::lmdb_storage::{SharedLmdbStorage, create_shared_storage};
 
 const MANRS_API_URL: &str = "https://api.manrs.org/asns";
-const MANRS_LMDB_PATH: &str = "manrs_lmdb";
+const MANRS_LMDB_PATH: &str = "./cache/manrs_lmdb";
 const CACHE_KEY: &str = "manrs_asns";
 const CACHE_TIMESTAMP_KEY: &str = "manrs_last_updated";
 const CACHE_DURATION_DAYS: u64 = 14;
