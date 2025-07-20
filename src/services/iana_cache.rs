@@ -508,6 +508,7 @@ impl IanaCache {
         }
     }
 
+    #[allow(dead_code)]
     pub fn clear_expired_entries(&self) -> Result<usize> {
         let mut removed_count = 0;
         let keys = self.storage.list_keys()?;

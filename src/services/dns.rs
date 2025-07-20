@@ -18,6 +18,7 @@ struct DnsHeader {
 
 /// DNS question
 #[derive(Debug)]
+#[allow(dead_code)]
 struct DnsQuestion {
     name: String,
     qtype: u16,
@@ -26,6 +27,7 @@ struct DnsQuestion {
 
 /// DNS resource record
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct DnsRecord {
     name: String,
     rtype: u16,

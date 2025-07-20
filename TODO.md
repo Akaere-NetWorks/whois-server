@@ -1,34 +1,4 @@
 # TODO
 
-## Feature Roadmap
-
-### 3. Traceroute Integration within WHOIS
-- [ ] Implement traceroute functionality for IP addresses
-- [ ] Add cross-platform traceroute support (Windows/Unix)
-- [ ] Integrate traceroute results into WHOIS responses
-- [ ] Add hop-by-hop analysis with ASN information
-- [ ] Implement timeout and retry logic for traceroute
-- [ ] Add traceroute visualization in web dashboard
-- [ ] Support for both IPv4 and IPv6 traceroute
-
-## Implementation Notes
-
-### Caching Architecture
-- Utilize existing LMDB storage infrastructure
-- Implement cache layers for different data types
-- Add cache warming strategies for frequently queried data
-
-### DNS Integration
-- Leverage existing async infrastructure for non-blocking DNS queries
-- Consider integration with existing geo-location services
-- Add DNS query type detection to core query processing
-
-### Traceroute Implementation
-- Use platform-specific implementations (similar to DN42 backend strategy)
-- Integrate with BGP tools for enhanced path analysis
-- Consider rate limiting to prevent abuse
-
-## Priority
-1. **High**: IANA WHOIS caching (improves performance significantly)
-2. **Medium**: DNS resolution (enhances query capabilities)
-3. **Medium**: Traceroute integration (adds network diagnostic value)
+DN42 RPKI
+SSL 证书

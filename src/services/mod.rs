@@ -8,6 +8,7 @@ pub mod manrs;
 pub mod geo;
 pub mod iana_cache;
 pub mod dns;
+pub mod traceroute;
 
 pub use whois::*;
 pub use email::*;
@@ -17,5 +18,6 @@ pub use looking_glass::*;
 pub use rpki::*;
 pub use manrs::*;
 pub use geo::*;
-pub use iana_cache::*;
+// pub use iana_cache::*; // Used via explicit imports in modules
 pub use dns::*;
+pub use traceroute::*;

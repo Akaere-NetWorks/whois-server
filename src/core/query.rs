@@ -21,6 +21,7 @@ pub enum QueryType {
     Rpki(String, String), // For queries in format prefix-asn-RPKI (prefix, asn)
     Manrs(String),       // For queries ending with -MANRS
     Dns(String),         // For queries ending with -DNS
+    Trace(String),       // For queries ending with -TRACE
     Unknown(String),
 }
 
@@ -85,6 +86,12 @@ pub fn analyze_query(query: &str) -> QueryType {
     if query.to_uppercase().ends_with("-DNS") {
         let base_query = &query[..query.len() - 4]; // Remove "-DNS" suffix
         return QueryType::Dns(base_query.to_string());
+    }
+    
+    // Check if it's a traceroute query
+    if query.to_uppercase().ends_with("-TRACE") {
+        let base_query = &query[..query.len() - 6]; // Remove "-TRACE" suffix
+        return QueryType::Trace(base_query.to_string());
     }
     
     // Check if it's a BGP Tools query

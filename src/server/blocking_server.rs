@@ -165,6 +165,12 @@ pub fn run_blocking_server(addr: &str, timeout_secs: u64, dump_traffic: bool, du
                         // For now, return a notice that DNS queries require async server
                         Ok(format!("DNS queries are only supported on the async server.\nPlease use the main server (port 43) for DNS lookups.\nQuery: {}\n", base_query))
                     }
+                    QueryType::Trace(base_query) => {
+                        info!("Processing traceroute query: {}", base_query);
+                        // Traceroute requires async socket operations for proper timeout handling
+                        // Return a notice that traceroute queries require async server
+                        Ok(format!("Traceroute queries are only supported on the async server.\nPlease use the main server (port 43) for traceroute.\nQuery: {}\n", base_query))
+                    }
                     QueryType::Unknown(q) => {
                         info!("Unknown query type: {}", q);
                         if q.to_uppercase().ends_with("-DN42") || q.to_uppercase().ends_with("-MNT") {
