@@ -786,6 +786,7 @@ pub async fn query_dn42_raw(query: &str) -> Result<String> {
 }
 
 /// Blocking version of raw query (for email processing)
+#[allow(dead_code)]
 pub fn query_dn42_raw_blocking(query: &str) -> Result<String> {
     // For compatibility, we'll use a blocking approach
     tokio::task::block_in_place(|| {
@@ -794,6 +795,7 @@ pub fn query_dn42_raw_blocking(query: &str) -> Result<String> {
 }
 
 /// Blocking version for compatibility
+#[allow(dead_code)]
 pub fn process_dn42_query_blocking(query: &str) -> Result<String> {
     // For compatibility, we'll use a blocking approach
     tokio::task::block_in_place(|| {

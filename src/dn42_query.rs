@@ -49,6 +49,7 @@ pub enum DN42QueryType {
     AsBlock { handle: String },
     AsSet { handle: String },
     DNS { domain: String },
+    #[allow(dead_code)]
     Unknown,
 }
 

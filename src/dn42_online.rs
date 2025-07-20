@@ -232,6 +232,7 @@ impl DN42OnlineFetcher {
     }
 
     /// Get cache statistics
+    #[allow(dead_code)]
     pub async fn get_cache_stats(&self) -> Result<(usize, usize)> {
         let storage = self.storage.clone();
         
