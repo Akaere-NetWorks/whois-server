@@ -24,6 +24,7 @@ mod geo;
 mod irr;
 mod lmdb_storage;
 mod looking_glass;
+mod manrs;
 mod query;
 mod rpki;
 mod server;

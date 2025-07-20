@@ -13,6 +13,7 @@ use crate::email::process_email_search;
 use crate::geo::{process_geo_query, process_rir_geo_query, process_prefixes_query};
 use crate::irr::process_irr_query;
 use crate::looking_glass::process_looking_glass_query;
+use crate::manrs::process_manrs_query;
 use crate::query::{analyze_query, is_private_ipv4, is_private_ipv6, QueryType};
 use crate::rpki::process_rpki_query;
 use crate::utils::dump_to_file;
@@ -160,6 +161,10 @@ pub async fn handle_connection(
         QueryType::Rpki(prefix, asn) => {
             debug!("Processing RPKI query: prefix={}, asn={}", prefix, asn);
             process_rpki_query(prefix, asn).await
+        }
+        QueryType::Manrs(base_query) => {
+            debug!("Processing MANRS query: {}", base_query);
+            process_manrs_query(&format!("{}-MANRS", base_query)).await
         }
         QueryType::Unknown(q) => {
             debug!("Unknown query type: {}", q);

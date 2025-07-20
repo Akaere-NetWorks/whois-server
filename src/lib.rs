@@ -6,6 +6,7 @@ pub mod geo;
 pub mod irr;
 pub mod lmdb_storage;
 pub mod looking_glass;
+pub mod manrs;
 pub mod query;
 pub mod rpki;
 pub mod server;

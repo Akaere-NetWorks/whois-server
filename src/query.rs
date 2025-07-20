@@ -19,6 +19,7 @@ pub enum QueryType {
     Irr(String),         // For queries ending with -IRR
     LookingGlass(String), // For queries ending with -LG
     Rpki(String, String), // For queries in format prefix-asn-RPKI (prefix, asn)
+    Manrs(String),       // For queries ending with -MANRS
     Unknown(String),
 }
 
@@ -71,6 +72,12 @@ pub fn analyze_query(query: &str) -> QueryType {
     if query.to_uppercase().ends_with("-RADB") {
         let base_query = &query[..query.len() - 5]; // Remove "-RADB" suffix
         return QueryType::Radb(base_query.to_string());
+    }
+    
+    // Check if it's a MANRS query
+    if query.to_uppercase().ends_with("-MANRS") {
+        let base_query = &query[..query.len() - 6]; // Remove "-MANRS" suffix
+        return QueryType::Manrs(base_query.to_string());
     }
     
     // Check if it's a BGP Tools query
