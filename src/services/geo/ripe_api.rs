@@ -1,8 +1,8 @@
 use anyhow::{Result, anyhow};
 use tracing::debug;
 
-use crate::geo::constants::{RIPE_STAT_API_BASE, RIPE_RIR_GEO_API_BASE, RIPE_PREFIXES_API_BASE};
-use crate::geo::types::{RipeStatResponse, RirGeoResponse, PrefixesResponse};
+use super::constants::{RIPE_STAT_API_BASE, RIPE_RIR_GEO_API_BASE, RIPE_PREFIXES_API_BASE};
+use super::types::{RipeStatResponse, RirGeoResponse, PrefixesResponse};
 
 /// Query RIPE NCC STAT API
 pub async fn query_ripe_api(client: &reqwest::Client, resource: &str) -> Result<RipeStatResponse> {

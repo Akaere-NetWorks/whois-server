@@ -4,7 +4,7 @@ use reqwest::Client;
 use tracing::{debug, info, warn, error};
 
 use crate::config::DN42_LMDB_PATH;
-use crate::lmdb_storage::{SharedLmdbStorage, create_shared_storage};
+use crate::storage::{SharedLmdbStorage, create_shared_storage};
 
 const DN42_RAW_BASE_URL: &str = "https://git.pysio.online/pysio/mirrors-dn42/-/raw/master/data";
 const CACHE_EXPIRATION_SECONDS: u64 = 86400; // 1 day

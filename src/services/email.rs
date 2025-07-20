@@ -3,7 +3,7 @@ use anyhow::Result;
 use tracing::debug;
 
 // Removed unused import
-use crate::dn42_manager::{query_dn42_raw_managed, query_dn42_raw_managed_blocking};
+use crate::dn42::{query_dn42_raw_managed, query_dn42_raw_managed_blocking};
 
 /// Process email search queries ending with -EMAIL
 pub async fn process_email_search(base_query: &str) -> Result<String> {

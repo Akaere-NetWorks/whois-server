@@ -2,9 +2,9 @@ use anyhow::Result;
 use tracing::debug;
 use std::time::Duration;
 
-use crate::geo::ripe_api::{query_ripe_api, query_ripe_api_blocking, query_rir_geo_api, query_rir_geo_api_blocking, query_prefixes_api, query_prefixes_api_blocking};
-use crate::geo::ipinfo_api::{query_ipinfo_api, query_ipinfo_api_blocking};
-use crate::geo::formatters::{format_combined_geo_response, format_rir_geo_response, format_prefixes_response, format_prefixes_response_blocking};
+use super::ripe_api::{query_ripe_api, query_ripe_api_blocking, query_rir_geo_api, query_rir_geo_api_blocking, query_prefixes_api, query_prefixes_api_blocking};
+use super::ipinfo_api::{query_ipinfo_api, query_ipinfo_api_blocking};
+use super::formatters::{format_combined_geo_response, format_rir_geo_response, format_prefixes_response, format_prefixes_response_blocking};
 
 /// Process geo location queries ending with -GEO
 pub async fn process_geo_query(resource: &str) -> Result<String> {

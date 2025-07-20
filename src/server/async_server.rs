@@ -4,7 +4,7 @@ use tokio::net::TcpListener;
 use tokio::sync::mpsc;
 use tracing::{error, info};
 
-use crate::stats::StatsState;
+use crate::core::StatsState;
 use super::connection::handle_connection;
 
 pub async fn run_async_server(

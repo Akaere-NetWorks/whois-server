@@ -6,7 +6,7 @@ use tracing::{debug, info, warn, error};
 use tokio::time::{interval, Duration};
 
 use crate::config::{DN42_REGISTRY_PATH, DN42_LMDB_PATH};
-use crate::lmdb_storage::{SharedLmdbStorage, create_shared_storage};
+use crate::storage::{SharedLmdbStorage, create_shared_storage};
 
 const DN42_REGISTRY_URL: &str = "https://git.pysio.online/pysio/mirrors-dn42.git";
 

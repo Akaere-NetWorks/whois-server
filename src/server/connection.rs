@@ -6,19 +6,15 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tracing::{debug, error, warn};
 
-use crate::bgptool::process_bgptool_query;
+use crate::services::{
+    process_bgptool_query, process_email_search, process_geo_query, 
+    process_rir_geo_query, process_prefixes_query, process_irr_query,
+    process_looking_glass_query, process_manrs_query, process_rpki_query,
+    query_whois, query_with_iana_referral
+};
 use crate::config::{SERVER_BANNER, RADB_WHOIS_SERVER, RADB_WHOIS_PORT};
-use crate::dn42_manager::process_dn42_query_managed;
-use crate::email::process_email_search;
-use crate::geo::{process_geo_query, process_rir_geo_query, process_prefixes_query};
-use crate::irr::process_irr_query;
-use crate::looking_glass::process_looking_glass_query;
-use crate::manrs::process_manrs_query;
-use crate::query::{analyze_query, is_private_ipv4, is_private_ipv6, QueryType};
-use crate::rpki::process_rpki_query;
-use crate::utils::dump_to_file;
-use crate::whois::{query_whois, query_with_iana_referral};
-use crate::stats::StatsState;
+use crate::dn42::process_dn42_query_managed;
+use crate::core::{analyze_query, is_private_ipv4, is_private_ipv6, QueryType, dump_to_file, StatsState};
 
 pub async fn handle_connection(
     mut stream: TcpStream,
@@ -243,7 +239,7 @@ pub async fn handle_connection(
             debug!("Query response sent: {}", query);
             
             // Record statistics
-            crate::stats::record_request(&stats, formatted_response.len()).await;
+            crate::core::record_request(&stats, formatted_response.len()).await;
         },
         Err(e) => {
             error!("Failed to send response for {}: {}", query, e);

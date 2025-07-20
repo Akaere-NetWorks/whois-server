@@ -1,8 +1,8 @@
 use anyhow::{Result, anyhow};
 use tracing::debug;
 
-use crate::geo::constants::{IPINFO_API_BASE, IPINFO_TOKEN};
-use crate::geo::types::IpinfoResponse;
+use super::constants::{IPINFO_API_BASE, IPINFO_TOKEN};
+use super::types::IpinfoResponse;
 
 /// Query IPinfo API
 pub async fn query_ipinfo_api(client: &reqwest::Client, resource: &str) -> Result<IpinfoResponse> {

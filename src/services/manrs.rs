@@ -15,7 +15,7 @@ use std::collections::HashSet;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tracing::{debug, info, warn, error};
 use chrono::DateTime;
-use crate::lmdb_storage::{SharedLmdbStorage, create_shared_storage};
+use crate::storage::{SharedLmdbStorage, create_shared_storage};
 
 const MANRS_API_URL: &str = "https://api.manrs.org/asns";
 const MANRS_LMDB_PATH: &str = "./cache/manrs_lmdb";

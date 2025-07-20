@@ -5,18 +5,15 @@ use std::time::Duration;
 use anyhow::Result;
 use tracing::{debug, error, info, warn};
 
-use crate::bgptool::process_bgptool_query_blocking;
+use crate::services::{
+    process_bgptool_query_blocking, process_email_search_blocking, 
+    process_geo_query_blocking, process_rir_geo_query_blocking, process_prefixes_query_blocking,
+    process_irr_query_blocking, process_looking_glass_query_blocking, process_manrs_query_blocking,
+    process_rpki_query_blocking, blocking_query_whois, blocking_query_with_iana_referral
+};
 use crate::config::{SERVER_BANNER, RADB_WHOIS_SERVER, RADB_WHOIS_PORT};
-use crate::dn42_manager::process_dn42_query_managed_blocking;
-use crate::email::process_email_search_blocking;
-use crate::geo::{process_geo_query_blocking, process_rir_geo_query_blocking, process_prefixes_query_blocking};
-use crate::irr::process_irr_query_blocking;
-use crate::looking_glass::process_looking_glass_query_blocking;
-use crate::manrs::process_manrs_query_blocking;
-use crate::query::{analyze_query, is_private_ipv4, is_private_ipv6, QueryType};
-use crate::rpki::process_rpki_query_blocking;
-use crate::utils::dump_to_file;
-use crate::whois::{blocking_query_whois, blocking_query_with_iana_referral};
+use crate::dn42::process_dn42_query_managed_blocking;
+use crate::core::{analyze_query, is_private_ipv4, is_private_ipv6, QueryType, dump_to_file};
 
 // Blocking TCP server implementation for testing
 pub fn run_blocking_server(addr: &str, timeout_secs: u64, dump_traffic: bool, dump_dir: &str) -> Result<()> {

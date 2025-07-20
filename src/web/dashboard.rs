@@ -23,7 +23,7 @@ use axum::{
     Router,
 };
 use tower_http::cors::CorsLayer;
-use crate::stats::{StatsState, get_stats_response};
+use crate::core::{StatsState, get_stats_response};
 
 pub async fn run_web_server(stats: StatsState, port: u16) -> Result<(), Box<dyn std::error::Error>> {
     let app = Router::new()

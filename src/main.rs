@@ -16,25 +16,13 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-mod bgptool;
 mod config;
-mod dn42;
-mod dn42_manager;
-mod dn42_online;
-mod dn42_query;
-mod email;
-mod geo;
-mod irr;
-mod lmdb_storage;
-mod looking_glass;
-mod manrs;
-mod query;
-mod rpki;
+mod core;
 mod server;
-mod stats;
-mod utils;
+mod storage;
+mod services;
 mod web;
-mod whois;
+mod dn42;
 
 use anyhow::Result;
 use clap::Parser;
@@ -43,10 +31,9 @@ use tracing_subscriber::fmt::format::FmtSpan;
 
 use config::Cli;
 use server::{create_dump_dir_if_needed, run_async_server, run_blocking_server};
-use stats::{create_stats_state, save_stats_on_shutdown};
+use core::{create_stats_state, save_stats_on_shutdown};
 use web::run_web_server;
-use dn42::start_periodic_sync;
-use dn42_manager::{initialize_dn42_manager, get_dn42_platform_info, is_dn42_online_mode, dn42_manager_maintenance};
+use dn42::{start_periodic_sync, initialize_dn42_manager, get_dn42_platform_info, is_dn42_online_mode, dn42_manager_maintenance};
 use tokio::time::{interval, Duration};
 
 #[tokio::main]

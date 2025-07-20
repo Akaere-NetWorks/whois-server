@@ -1,9 +1,9 @@
 use anyhow::Result;
 use tracing::{debug, info, warn};
 
-use crate::dn42_online::{DN42OnlineFetcher, is_windows, get_platform_info};
-use crate::dn42_query::{DN42QueryType, format_query_response, format_ipv4_network_response, format_ipv6_network_response};
-use crate::lmdb_storage::{SharedLmdbStorage, create_shared_storage};
+use crate::dn42::online_backend::{DN42OnlineFetcher, is_windows, get_platform_info};
+use crate::dn42::query::{DN42QueryType, format_query_response, format_ipv4_network_response, format_ipv6_network_response};
+use crate::storage::{SharedLmdbStorage, create_shared_storage};
 use crate::config::DN42_LMDB_PATH;
 
 /// DN42 platform-aware manager that automatically selects Git or online mode
@@ -178,7 +178,7 @@ impl DN42Manager {
         warn!("DN42 Manager: Git mode query delegation not implemented - falling back to existing system");
         
         // This should call the existing DN42 system
-        crate::dn42::process_dn42_query(query).await
+        crate::dn42::git_backend::process_dn42_query(query).await
     }
 
     /// Query raw data using git-based LMDB storage
@@ -187,7 +187,7 @@ impl DN42Manager {
         warn!("DN42 Manager: Git mode raw query delegation not implemented - falling back to existing system");
         
         // This should call the existing DN42 system
-        crate::dn42::query_dn42_raw(query).await
+        crate::dn42::git_backend::query_dn42_raw(query).await
     }
 }
 

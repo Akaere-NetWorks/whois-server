@@ -19,8 +19,8 @@ pub use services::{
 
 #[cfg(test)]
 mod tests {
-    use crate::geo::formatters::format_rir_geo_response;
-    use crate::geo::types::{RirGeoResponse, RirGeoData, RirGeoResource, RirGeoParameters};
+    use super::formatters::format_rir_geo_response;
+    use super::types::{RirGeoResponse, RirGeoData, RirGeoResource, RirGeoParameters};
 
     #[test]
     fn test_format_rir_geo_response_empty() {

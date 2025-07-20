@@ -2,7 +2,7 @@ use anyhow::Result;
 use tracing::debug;
 
 use crate::config::DEFAULT_WHOIS_PORT;
-use crate::whois::{query_whois, blocking_query_whois};
+use super::whois::{query_whois, blocking_query_whois};
 
 // BGP Tools WHOIS server
 const BGPTOOLS_WHOIS_SERVER: &str = "bgp.tools";

@@ -1,9 +1,9 @@
 use anyhow::Result;
 use tracing::debug;
 
-use crate::geo::types::{RipeStatResponse, RirGeoResponse, PrefixesResponse, IpinfoResponse};
-use crate::geo::utils::{truncate_string, extract_ip_from_prefix};
-use crate::geo::ipinfo_api::{query_ipinfo_api, query_ipinfo_api_blocking};
+use super::types::{RipeStatResponse, RirGeoResponse, PrefixesResponse, IpinfoResponse};
+use super::utils::{truncate_string, extract_ip_from_prefix};
+use super::ipinfo_api::{query_ipinfo_api, query_ipinfo_api_blocking};
 
 /// Format RIR geo location response
 pub fn format_rir_geo_response(resource: &str, response: &RirGeoResponse) -> Result<String> {
