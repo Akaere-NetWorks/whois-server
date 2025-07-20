@@ -14,8 +14,12 @@ whois.akae.re is the official deployment instance of this project, providing the
 
 - WHOIS service compliant with RFC 3912 standard
 - Support for regular domain names, IP addresses, and AS number queries
-- DN42 network query support (automatic detection and forwarding)
+- Platform-aware DN42 network query support (automatic detection and forwarding)
+- Advanced query types: IRR Explorer, Looking Glass, BGP Tools, RPKI, MANRS
+- Geo-location services with multiple data sources
+- Email search and contact information lookup
 - IPv4 and IPv6 dual-stack support
+- Real-time web dashboard and statistics
 - High availability and low latency
 
 ## Usage Examples
@@ -78,6 +82,25 @@ descr:              DN42 Free (reserved for future use)
 ...
 ```
 
+### Advanced Query Examples
+
+```bash
+# RPKI Validation
+$ whois -h whois.akae.re 192.0.2.0/24-AS213605-RPKI
+
+# MANRS Compliance Check
+$ whois -h whois.akae.re AS213605-MANRS
+
+# IRR Explorer Analysis
+$ whois -h whois.akae.re 203.0.113.0/24-IRR
+
+# Looking Glass (BIRD-style)
+$ whois -h whois.akae.re 1.1.1.0-LG
+
+# Geo-location
+$ whois -h whois.akae.re 8.8.8.8-GEO
+```
+
 ## Technical Specifications
 
 whois.akae.re is deployed in the following environment:
@@ -102,4 +125,4 @@ whois.akae.re is deployed in the following environment:
 
 ---
 
-*Last updated: May 21, 2025* 
+*Last updated: July 20, 2025* 

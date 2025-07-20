@@ -23,6 +23,12 @@ cargo run --release -- --use-blocking
 
 # Enable traffic dumping for debugging
 cargo run --release -- --dump-traffic --dump-dir ./logs
+
+# Check for compilation errors and warnings
+cargo check
+
+# Build with detailed error messages
+cargo build --message-format=short
 ```
 
 ### Available Command-Line Options
@@ -53,33 +59,69 @@ curl http://localhost:9999/api/stats
 
 ## Architecture Overview
 
-### Core Modules
-- **main.rs**: Application entry point, initializes logging, stats, and starts servers
-- **config.rs**: Command-line argument parsing using clap
-- **query.rs**: Query type detection and analysis (11+ query types supported)
-- **whois.rs**: WHOIS protocol client implementations for external servers
-- **web.rs**: Axum-based web dashboard and REST API endpoints
-- **stats.rs**: Real-time statistics collection and persistence
+The codebase is organized into logical modules for maintainability and clarity:
 
-### Server Implementations
-Two server architectures are available:
-- **async_server.rs**: Tokio-based async server (default, high performance)
-- **blocking_server.rs**: Blocking server (fallback for compatibility)
+### Module Structure
+- **`core/`**: Core application logic (query processing, statistics, utilities)
+- **`server/`**: TCP server implementations (async and blocking)
+- **`services/`**: External service integrations (WHOIS, BGP, geo-location, etc.)
+- **`storage/`**: Data persistence layer (LMDB storage)
+- **`web/`**: Web dashboard and HTTP API
+- **`dn42/`**: DN42 network support with platform-aware backends
+- **`config.rs`**: Configuration and command-line parsing
+- **`main.rs`**: Application entry point
 
-Both servers share:
-- **connection.rs**: Connection handling logic and query processing
-- **utils.rs**: Server utility functions
+### Core Components
 
-### Specialized Services
-- **geo/**: Complete geo-location service module with RIPE and IPInfo integrations
-- **bgptool.rs**: BGP tools integration for network analysis
-- **irr.rs**: IRR Explorer integration for routing registry analysis
-- **looking_glass.rs**: RIPE RIS Looking Glass services with BIRD-style output
-- **email.rs**: Email search functionality
-- **dn42.rs**: DN42 network integration with periodic data synchronization
-- **rpki.rs**: RPKI validation services for prefix-ASN validation
-- **manrs.rs**: MANRS (Mutually Agreed Norms for Routing Security) integration
-- **lmdb_storage.rs**: LMDB-based storage for DN42 data caching
+**Core Module (`core/`)**:
+- `query.rs`: Query type detection and routing (11+ query types)
+- `stats.rs`: Real-time statistics collection and persistence
+- `utils.rs`: Shared utility functions
+
+**Server Module (`server/`)**:
+Two server architectures available:
+- `async_server.rs`: Tokio-based async server (default, high performance)
+- `blocking_server.rs`: Blocking server (fallback for compatibility)
+- `connection.rs`: Connection handling and query processing pipeline
+
+**Services Module (`services/`)**:
+- `whois.rs`: Standard WHOIS protocol client implementations
+- `geo/`: Complete geo-location service with RIPE and IPInfo integrations
+- `bgptool.rs`: BGP tools integration for network analysis
+- `irr.rs`: IRR Explorer integration for routing registry analysis
+- `looking_glass.rs`: RIPE RIS Looking Glass services with BIRD-style output
+- `email.rs`: Email search functionality across registry data
+- `rpki.rs`: RPKI validation services for prefix-ASN validation
+- `manrs.rs`: MANRS (Mutually Agreed Norms for Routing Security) integration
+
+**DN42 Module (`dn42/`)**:
+Platform-aware DN42 implementation with automatic backend selection:
+- `manager.rs`: Platform detection and backend orchestration
+- `git_backend.rs`: Git repository-based backend (Unix-like systems)
+- `online_backend.rs`: HTTP API-based backend (Windows systems)
+- `query.rs`: DN42-specific query processing and formatting
+
+**Storage Module (`storage/`)**:
+- `lmdb.rs`: LMDB-based storage for caching and persistence
+
+**Web Module (`web/`)**:
+- `dashboard.rs`: Axum-based web dashboard and REST API endpoints
+
+### Platform-Aware DN42 Implementation
+
+The DN42 module automatically detects the operating system and uses the appropriate backend:
+
+**Windows Systems**: Uses online file access via `https://git.pysio.online/pysio/mirrors-dn42/-/raw/master/data`
+- Direct HTTP fetching of DN42 registry files
+- LMDB-based caching with 1-day expiration
+- No Git dependency required
+
+**Unix-like Systems**: Uses Git repository cloning and synchronization
+- Local Git repository with periodic updates
+- LMDB caching for fast access
+- Full offline operation capability
+
+The `DN42Manager` in `dn42/manager.rs` handles this platform detection and provides a unified interface regardless of the underlying implementation.
 
 ### Query Types Supported
 1. Standard WHOIS: domains, IPv4/IPv6, ASNs, CIDR blocks
@@ -101,7 +143,7 @@ Both servers share:
 - **IRR Explorer (irrexplorer.nlnog.net)**: Routing registry analysis with RPKI validation
 - **RIPE RIS**: Real-time BGP routing data for Looking Glass services
 - **RADB**: Direct access to Routing Assets Database
-- **DN42 Registry**: Comprehensive DN42 network support with local caching
+- **DN42 Registry**: Comprehensive DN42 network support with platform-aware caching
 
 ### Statistics and Monitoring
 The stats module provides comprehensive metrics:
@@ -119,7 +161,7 @@ Configuration is handled through:
 
 ### Data Persistence
 - Statistics: JSON-based persistence on shutdown/startup
-- DN42 data: LMDB-based caching with periodic sync
+- DN42 data: LMDB-based caching with different strategies per platform
 - Traffic dumps: Optional raw query/response logging for debugging
 
 ## Key Dependencies
@@ -128,24 +170,26 @@ Configuration is handled through:
 - **reqwest**: HTTP client with rustls-tls
 - **clap**: Command-line parsing with derive features
 - **tracing**: Structured logging
-- **lmdb**: Lightning Memory-Mapped Database for DN42 caching
+- **lmdb**: Lightning Memory-Mapped Database for caching
 - **cidr**: CIDR block handling
 - **regex**: Pattern matching for query analysis
 
 ## Performance Characteristics
 - Dual server architecture (async/blocking)
+- Platform-aware DN42 backend selection
 - Configurable connection limits and timeouts
 - Non-blocking external API calls
 - Efficient connection pooling
 - Real-time statistics with minimal overhead
-- LMDB-based caching for DN42 data reduces external calls
+- LMDB-based caching reduces external API calls
 
 ## Development Notes
 - Rust 2024 edition
 - AGPL-3.0-or-later license
 - No traditional test suite - integration testing via live queries
 - Extensive logging with configurable verbosity levels
-- Production deployment at whois.akae.re
+- Modular architecture for easy maintenance and extension
+- Cross-platform compatibility with automatic feature detection
 
 ## Web Dashboard Features
 - Real-time statistics with auto-refresh
@@ -154,3 +198,32 @@ Configuration is handled through:
 - Responsive design for desktop and mobile
 - Charts and visual analytics with 24h/30d views
 - Query type distribution and performance metrics
+
+## Important Implementation Details
+
+### Adding New Services
+When adding new external service integrations:
+1. Create new module in `services/`
+2. Export functions in `services/mod.rs`
+3. Add query detection logic in `core/query.rs`
+4. Update connection handling in `server/connection.rs`
+
+### DN42 Backend Development
+The DN42 system supports dual backends:
+- Modify `dn42/manager.rs` for cross-platform logic
+- Update `dn42/git_backend.rs` for Git-based features
+- Update `dn42/online_backend.rs` for HTTP-based features
+- Common query processing in `dn42/query.rs`
+
+### LMDB Storage
+All persistent data uses LMDB for performance:
+- Storage interface in `storage/lmdb.rs`
+- Shared storage instances via `create_shared_storage()`
+- Thread-safe operations with proper error handling
+
+### Module Dependencies
+Key dependency relationships:
+- `server/connection.rs` orchestrates all service modules
+- `dn42/manager.rs` provides platform-aware DN42 access
+- `core/query.rs` handles query routing to appropriate services
+- `core/stats.rs` collects metrics from all operations

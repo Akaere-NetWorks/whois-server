@@ -4,12 +4,57 @@ This document provides detailed technical information about the advanced feature
 
 ## 📋 Table of Contents
 
+- [Platform-Aware DN42 Integration](#platform-aware-dn42-integration)
 - [IRR Explorer Integration](#irr-explorer-integration)
 - [Looking Glass Services](#looking-glass-services)
 - [RADB Direct Access](#radb-direct-access)
+- [RPKI Validation](#rpki-validation)
+- [MANRS Integration](#manrs-integration)
 - [Intelligent Query Routing](#intelligent-query-routing)
 - [Web Dashboard API](#web-dashboard-api)
 - [Statistics and Monitoring](#statistics-and-monitoring)
+
+## 🌐 Platform-Aware DN42 Integration
+
+### Overview
+The DN42 module implements automatic platform detection and uses the most appropriate backend for the operating system. This ensures optimal performance and compatibility across different environments.
+
+### Platform Detection
+The system automatically detects the operating system and selects the appropriate backend:
+
+**Windows Systems**:
+- Uses online file access via `https://git.pysio.online/pysio/mirrors-dn42/-/raw/master/data`
+- Direct HTTP fetching of DN42 registry files
+- LMDB-based caching with 1-day expiration
+- No Git dependency required
+
+**Unix-like Systems**:
+- Uses Git repository cloning and synchronization
+- Local Git repository with periodic updates
+- LMDB caching for fast access
+- Full offline operation capability
+
+### Architecture
+```
+dn42/
+├── manager.rs         # Platform detection and backend orchestration
+├── git_backend.rs     # Git repository backend (Unix-like)
+├── online_backend.rs  # HTTP API backend (Windows)
+└── query.rs          # DN42-specific query processing
+```
+
+### Implementation Details
+- `DN42Manager` handles platform detection automatically
+- Unified interface regardless of underlying implementation
+- LMDB storage used for caching in both modes
+- Seamless fallback and error handling
+- Configurable cache expiration and cleanup
+
+### Supported Query Types
+- ASN queries (AS4242420000-AS4242423999)
+- .dn42 domain queries
+- Private IP address ranges (RFC1918, etc.)
+- DN42-specific object types (person, maintainer, etc.)
 
 ## 🛡️ IRR Explorer Integration
 
@@ -124,6 +169,76 @@ whois -h whois.akae.re MAINT-EXAMPLE-RADB
 - **AS-SET Expansion**: Get all ASNs in an AS-SET
 - **Route Objects**: Find registered route objects for an ASN
 - **Policy Information**: Routing policies and contact information
+
+## 🔐 RPKI Validation
+
+### Overview
+RPKI (Resource Public Key Infrastructure) validation provides cryptographic verification of IP address and ASN bindings to prevent route hijacking and improve routing security.
+
+### Supported Query Format
+```
+<prefix>-<asn>-RPKI
+```
+
+### Examples
+```bash
+# Validate prefix-ASN binding
+whois -h whois.akae.re 192.0.2.0/24-AS213605-RPKI
+
+# Check RPKI status for a larger prefix
+whois -h whois.akae.re 203.0.113.0/24-AS64496-RPKI
+```
+
+### Response Information
+- **RPKI Status**: Valid, Invalid, or Not Found
+- **ROA Details**: Route Origin Authorization information
+- **Validity Period**: Certificate validity dates
+- **Trust Anchor**: Issuing authority information
+- **Cryptographic Validation**: Digital signature verification
+
+### Use Cases
+- **Route Validation**: Verify legitimate route announcements
+- **Security Monitoring**: Detect potential route hijacks
+- **Policy Enforcement**: Implement RPKI-based filtering
+- **Compliance Checking**: Ensure RPKI best practices
+
+## 🛡️ MANRS Integration
+
+### Overview
+MANRS (Mutually Agreed Norms for Routing Security) integration provides compliance checking and routing security assessment for network operators.
+
+### Supported Query Format
+```
+<asn>-MANRS
+```
+
+### Examples
+```bash
+# Check MANRS compliance for an ASN
+whois -h whois.akae.re AS213605-MANRS
+
+# Verify routing security practices
+whois -h whois.akae.re AS64496-MANRS
+```
+
+### Response Information
+- **MANRS Participation**: Whether the ASN participates in MANRS
+- **Implementation Status**: Which MANRS actions are implemented
+- **Action Compliance**: Detailed breakdown of MANRS actions 1-4
+- **Contact Information**: Network operator contact details
+- **Certification Status**: MANRS observatory data
+
+### MANRS Actions Checked
+1. **Filtering**: Prevent propagation of incorrect routing information
+2. **Anti-spoofing**: Prevent traffic with spoofed source IP addresses
+3. **Coordination**: Facilitate global operational communication and coordination
+4. **Global Validation**: Facilitate validation of routing information on a global scale
+
+### Use Cases
+- **Security Assessment**: Evaluate network security practices
+- **Partner Evaluation**: Assess potential peering partners
+- **Compliance Monitoring**: Track MANRS implementation progress
+- **Industry Standards**: Align with routing security best practices
 
 ## 🎯 Intelligent Query Routing
 

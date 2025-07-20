@@ -43,13 +43,15 @@
 - **🚀 High Performance** - Asynchronous Rust implementation with configurable connection limits
 - **🌐 RFC 3912 Compliant** - Full WHOIS protocol support
 - **🔍 Smart Query Detection** - Automatic identification of domains, IP addresses, ASNs, and special query types
-- **🌟 DN42 Integration** - Seamless support for DN42 networks and .dn42 domains
+- **🌟 Platform-Aware DN42 Integration** - Cross-platform DN42 support with automatic backend selection
 - **📍 Geo-location Services** - Built-in IP geolocation using multiple data sources
 - **🔧 BGP Tools Integration** - Network analysis and BGP information queries
 - **📧 Email Search** - Contact information lookup capabilities
 - **🛡️ IRR Explorer Integration** - Comprehensive routing registry analysis with RPKI validation
 - **🔭 Looking Glass Services** - RIPE RIS BGP data in BIRD routing daemon format
 - **📊 RADB Direct Access** - Routing Assets Database queries for AS-SET and route objects
+- **🔐 RPKI Validation** - Resource Public Key Infrastructure validation for prefix-ASN pairs
+- **🛡️ MANRS Integration** - Mutually Agreed Norms for Routing Security compliance checking
 - **📈 Real-time Statistics** - Comprehensive usage tracking and monitoring
 - **🌐 Web Dashboard** - Modern web interface for statistics and testing
 - **⚡ Dual Operation Modes** - Both async and blocking network operations
@@ -90,6 +92,12 @@ whois -h whois.akae.re 192.0.2.0/24-IRR
 
 # Looking Glass (BIRD-style routing data)
 whois -h whois.akae.re 1.1.1.0-LG
+
+# RPKI validation
+whois -h whois.akae.re 192.0.2.0/24-AS213605-RPKI
+
+# MANRS compliance check
+whois -h whois.akae.re AS213605-MANRS
 ```
 
 ## 🖥️ Web Dashboard
@@ -201,6 +209,8 @@ telnet localhost 43
 | **-RADB** | `1.1.1.0-RADB` | Query RADB (Routing Assets Database) directly |
 | **-IRR** | `192.0.2.0/24-IRR` | IRR Explorer - comprehensive routing registry analysis |
 | **-LG** | `1.1.1.0-LG` | Looking Glass - RIPE RIS BGP routing data in BIRD format |
+| **-RPKI** | `192.0.2.0/24-AS213605-RPKI` | RPKI validation for prefix-ASN combinations |
+| **-MANRS** | `AS213605-MANRS` | MANRS compliance and routing security status |
 
 ### Geo-location Services
 
@@ -282,47 +292,58 @@ Statistics are available through:
 
 ## 🏗️ Architecture
 
-The server is built with a modular Rust architecture:
+The server is built with a modular Rust architecture organized into logical components:
 
 ```
 src/
 ├── main.rs          # Application entry point and initialization
 ├── config.rs        # Configuration and command-line parsing
-├── query.rs         # Query type detection and analysis
-├── whois.rs         # WHOIS protocol client implementations  
-├── web.rs           # Web dashboard and API endpoints
-├── stats.rs         # Statistics collection and persistence
-├── email.rs         # Email search functionality
-├── bgptool.rs       # BGP tools integration
-├── irr.rs           # IRR Explorer integration
-├── looking_glass.rs # RIPE RIS Looking Glass services
-├── utils.rs         # Utility functions
-├── server/          # Server implementations
-│   ├── mod.rs       # Server module exports
-│   ├── async_server.rs     # Async TCP server
-│   ├── blocking_server.rs  # Blocking TCP server
-│   ├── connection.rs       # Connection handling logic
+├── core/            # Core application logic
+│   ├── query.rs     # Query type detection and routing (11+ query types)
+│   ├── stats.rs     # Real-time statistics collection and persistence  
+│   └── utils.rs     # Shared utility functions
+├── server/          # TCP server implementations
+│   ├── async_server.rs     # Tokio-based async server (default)
+│   ├── blocking_server.rs  # Blocking server (compatibility)
+│   ├── connection.rs       # Connection handling and query processing
 │   └── utils.rs     # Server utility functions
-└── geo/             # Geo-location services
-    ├── mod.rs       # Main geo module
-    ├── services.rs  # Service orchestration
-    ├── types.rs     # Data type definitions
-    ├── formatters.rs # Output formatting
-    ├── ripe_api.rs  # RIPE database integration
-    ├── ipinfo_api.rs # IPInfo service integration
-    ├── constants.rs # Geographic constants
-    └── utils.rs     # Geographic utility functions
+├── services/        # External service integrations
+│   ├── whois.rs     # Standard WHOIS protocol clients
+│   ├── email.rs     # Email search functionality
+│   ├── bgptool.rs   # BGP tools integration
+│   ├── irr.rs       # IRR Explorer integration
+│   ├── looking_glass.rs # RIPE RIS Looking Glass services
+│   ├── rpki.rs      # RPKI validation services
+│   ├── manrs.rs     # MANRS integration
+│   └── geo/         # Geo-location services
+│       ├── services.rs     # Service orchestration
+│       ├── types.rs        # Data type definitions
+│       ├── formatters.rs   # Output formatting
+│       ├── ripe_api.rs     # RIPE database integration
+│       ├── ipinfo_api.rs   # IPInfo service integration
+│       ├── constants.rs    # Geographic constants
+│       └── utils.rs        # Geographic utility functions
+├── dn42/            # DN42 network support (platform-aware)
+│   ├── manager.rs   # Platform detection and backend orchestration
+│   ├── git_backend.rs      # Git repository backend (Unix-like)
+│   ├── online_backend.rs   # HTTP API backend (Windows)
+│   └── query.rs     # DN42-specific query processing
+├── storage/         # Data persistence layer
+│   └── lmdb.rs      # LMDB storage for caching and persistence
+└── web/             # Web dashboard and HTTP API
+    └── dashboard.rs # Axum-based web interface and REST endpoints
 ```
 
 ### Key Components
 
 - **Query Engine** - Intelligent query parsing and type detection with 11+ query types
-- **Multi-protocol Support** - RFC 3912 WHOIS + custom extensions and advanced features
+- **Platform-Aware DN42** - Automatic Windows/Unix backend selection with LMDB caching
 - **Dual Server Architecture** - Both async (Tokio) and blocking server implementations
+- **Modular Services** - Clean separation of external service integrations
 - **Web Interface** - Axum-based REST API and dashboard with real-time updates
 - **Statistics Engine** - Real-time metrics collection with 24h/30d historical data
-- **Advanced Network Tools** - IRR Explorer, Looking Glass, BGP Tools integration
-- **External Integrations** - RIPE, IPInfo, IRR Explorer, RADB, and DN42 data sources
+- **Advanced Network Tools** - IRR Explorer, Looking Glass, BGP Tools, RPKI validation
+- **Cross-platform Storage** - LMDB-based caching for performance and persistence
 - **Intelligent Routing** - Smart query routing with fallback mechanisms
 
 ## 📜 License
