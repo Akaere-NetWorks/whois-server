@@ -9,23 +9,40 @@ use tracing::{debug, warn};
 use crate::config::{
     IANA_WHOIS_SERVER, DEFAULT_WHOIS_SERVER, DEFAULT_WHOIS_PORT, TIMEOUT_SECONDS
 };
+use crate::services::iana_cache::IanaCache;
 
 pub async fn query_with_iana_referral(query: &str) -> Result<String> {
-    debug!("First querying IANA: {}", query);
+    debug!("Querying with IANA referral: {}", query);
     
-    // First query IANA
-    let iana_response = query_whois(query, IANA_WHOIS_SERVER, DEFAULT_WHOIS_PORT).await?;
+    // Try to get WHOIS server from cache
+    let iana_cache = IanaCache::new()?;
+    let whois_server = match iana_cache.get_whois_server(query).await {
+        Some(server) => server,
+        None => {
+            debug!("No IANA referral found for {}, using default server", query);
+            DEFAULT_WHOIS_SERVER.to_string()
+        }
+    };
     
-    // Extract WHOIS server from IANA response
-    let whois_server = extract_whois_server(&iana_response)
-        .unwrap_or_else(|| DEFAULT_WHOIS_SERVER.to_string());
+    debug!("Using WHOIS server: {}", whois_server);
     
-    debug!("IANA referred server: {}", whois_server);
-    
-    // Query the actual WHOIS server
-    let response = query_whois(query, &whois_server, DEFAULT_WHOIS_PORT).await?;
-    
-    Ok(response)
+    // Query the WHOIS server
+    match query_whois(query, &whois_server, DEFAULT_WHOIS_PORT).await {
+        Ok(response) => Ok(response),
+        Err(e) => {
+            warn!("Query failed on {}, attempting to refresh IANA cache: {}", whois_server, e);
+            
+            // Query failed, try to refresh IANA cache
+            if let Some(refreshed_server) = iana_cache.refresh_cache_on_failure(query).await {
+                debug!("Retrying with refreshed server: {}", refreshed_server);
+                query_whois(query, &refreshed_server, DEFAULT_WHOIS_PORT).await
+            } else {
+                // If refresh also fails, try default server as last resort
+                debug!("IANA refresh failed, trying default server as fallback");
+                query_whois(query, DEFAULT_WHOIS_SERVER, DEFAULT_WHOIS_PORT).await
+            }
+        }
+    }
 }
 
 pub async fn query_whois(query: &str, server: &str, port: u16) -> Result<String> {
@@ -106,7 +123,11 @@ pub async fn query_whois(query: &str, server: &str, port: u16) -> Result<String>
 }
 
 pub fn blocking_query_with_iana_referral(query: &str, timeout: Duration) -> Result<String> {
-    debug!("First querying IANA: {}", query);
+    debug!("Blocking query with IANA referral: {}", query);
+    
+    // Note: This is a blocking function, so we can't use async IANA cache directly
+    // For blocking operations, we'll query IANA directly as fallback
+    // In a future improvement, we could implement a blocking cache interface
     
     // First query IANA
     let iana_response = blocking_query_whois(query, IANA_WHOIS_SERVER, DEFAULT_WHOIS_PORT, timeout)?;

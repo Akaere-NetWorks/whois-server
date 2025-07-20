@@ -373,6 +373,39 @@ impl LmdbStorage {
         Ok(keys)
     }
 
+    /// List all keys (excluding metadata keys)
+    pub fn list_keys(&self) -> Result<Vec<String>> {
+        let txn = self.env.begin_ro_txn()?;
+        let mut cursor = txn.open_ro_cursor(self.db)?;
+        let mut keys = Vec::new();
+
+        for (key, _) in cursor.iter() {
+            let key_str = std::str::from_utf8(key)?;
+            if !key_str.starts_with("__meta__") {
+                keys.push(key_str.to_string());
+            }
+        }
+
+        Ok(keys)
+    }
+
+    /// Generic put method for serializable types
+    pub fn put_json<T: serde::Serialize>(&self, key: &str, value: &T) -> Result<()> {
+        let json_str = serde_json::to_string(value)?;
+        self.put(key, &json_str)
+    }
+
+    /// Generic get method for deserializable types
+    pub fn get_json<T: serde::de::DeserializeOwned>(&self, key: &str) -> Result<Option<T>> {
+        match self.get(key)? {
+            Some(json_str) => {
+                let value: T = serde_json::from_str(&json_str)?;
+                Ok(Some(value))
+            }
+            None => Ok(None)
+        }
+    }
+
     /// Force full refresh (clear and repopulate)
     #[allow(dead_code)]
     pub fn force_full_refresh(&self, registry_path: &str) -> Result<()> {

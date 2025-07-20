@@ -6,6 +6,7 @@ pub mod looking_glass;
 pub mod rpki;
 pub mod manrs;
 pub mod geo;
+pub mod iana_cache;
 
 pub use whois::*;
 pub use email::*;
@@ -15,3 +16,4 @@ pub use looking_glass::*;
 pub use rpki::*;
 pub use manrs::*;
 pub use geo::*;
+pub use iana_cache::*;

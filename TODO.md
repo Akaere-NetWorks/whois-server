@@ -2,14 +2,6 @@
 
 ## Feature Roadmap
 
-### 1. IANA WHOIS Result Caching Server
-- [ ] Implement caching mechanism for IANA WHOIS responses
-- [ ] Add configurable cache TTL (Time To Live) settings
-- [ ] Store cached results in LMDB storage for persistence
-- [ ] Add cache invalidation strategies
-- [ ] Implement cache hit/miss statistics tracking
-- [ ] Add cache management endpoints to web dashboard
-
 ### 2. DNS Resolution within WHOIS
 - [ ] Integrate DNS resolver functionality into WHOIS queries
 - [ ] Add DNS record type detection (A, AAAA, MX, NS, etc.)
