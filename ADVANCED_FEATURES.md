@@ -10,6 +10,11 @@ This document provides detailed technical information about the advanced feature
 - [RADB Direct Access](#radb-direct-access)
 - [RPKI Validation](#rpki-validation)
 - [MANRS Integration](#manrs-integration)
+- [DNS Resolution Service](#dns-resolution-service)
+- [Traceroute Network Analysis](#traceroute-network-analysis)
+- [SSL/TLS Certificate Analysis](#ssltls-certificate-analysis)
+- [Certificate Transparency Search](#certificate-transparency-search)
+- [Minecraft Server Status](#minecraft-server-status)
 - [Intelligent Query Routing](#intelligent-query-routing)
 - [Web Dashboard API](#web-dashboard-api)
 - [Statistics and Monitoring](#statistics-and-monitoring)
@@ -239,6 +244,194 @@ whois -h whois.akae.re AS64496-MANRS
 - **Partner Evaluation**: Assess potential peering partners
 - **Compliance Monitoring**: Track MANRS implementation progress
 - **Industry Standards**: Align with routing security best practices
+
+## 🌐 DNS Resolution Service
+
+### Overview
+The DNS resolution service provides comprehensive DNS record lookups using Cloudflare's 1.1.1.1 DNS server for enhanced reliability and performance.
+
+### Supported Query Format
+```
+<domain>-DNS
+```
+
+### Examples
+```bash
+# DNS record lookup for a domain
+whois -h whois.akae.re example.com-DNS
+
+# Multiple record types returned
+whois -h whois.akae.re google.com-DNS
+```
+
+### Response Information
+- **A Records**: IPv4 addresses
+- **AAAA Records**: IPv6 addresses
+- **MX Records**: Mail exchange servers
+- **NS Records**: Authoritative name servers
+- **TXT Records**: Text records including SPF, DKIM
+- **CNAME Records**: Canonical name aliases
+
+### Features
+- **Fixed DNS Server**: Uses Cloudflare 1.1.1.1 for consistent results
+- **Multiple Record Types**: Comprehensive DNS record enumeration
+- **Enhanced Reliability**: Optimized for performance and accuracy
+- **Security Focus**: Uses secure DNS resolution methods
+
+## 🔍 Traceroute Network Analysis
+
+### Overview
+Network traceroute functionality provides path analysis to show the route packets take to reach a destination.
+
+### Supported Query Format
+```
+<destination>-TRACEROUTE
+```
+Or use the shorter alias:
+```
+<destination>-TRACE
+```
+
+### Examples
+```bash
+# Traceroute to an IP address
+whois -h whois.akae.re 8.8.8.8-TRACEROUTE
+
+# Traceroute to a domain
+whois -h whois.akae.re google.com-TRACE
+```
+
+### Response Information
+- **Hop-by-hop Analysis**: Each router in the path
+- **Round-trip Times**: Latency measurements
+- **IP Addresses**: Router IP addresses along the path
+- **Hostname Resolution**: Reverse DNS lookups where available
+
+### Use Cases
+- **Network Troubleshooting**: Identify routing issues
+- **Performance Analysis**: Measure network latency
+- **Path Discovery**: Understand network topology
+- **Connectivity Diagnosis**: Isolate network problems
+
+## 🔐 SSL/TLS Certificate Analysis
+
+### Overview
+SSL/TLS certificate analysis service provides comprehensive certificate information for domains using rustls-based certificate analysis.
+
+### Supported Query Format
+```
+<domain>-SSL
+```
+
+### Examples
+```bash
+# SSL certificate analysis for a domain
+whois -h whois.akae.re example.com-SSL
+
+# HTTPS certificate chain analysis
+whois -h whois.akae.re google.com-SSL
+```
+
+### Response Information
+- **Certificate Details**: Subject, issuer, serial number
+- **Validity Period**: Not before/after dates
+- **Public Key Information**: Algorithm and key size
+- **Certificate Chain**: Full chain of trust
+- **Extensions**: Subject Alternative Names, key usage
+- **Signature Algorithm**: Cryptographic signature details
+
+### Features
+- **rustls Integration**: Modern TLS implementation
+- **Certificate Chain Parsing**: Complete chain analysis
+- **Security Assessment**: Certificate validation status
+- **Comprehensive Details**: Full certificate information
+
+### Use Cases
+- **Security Auditing**: Verify certificate configuration
+- **Compliance Checking**: Ensure proper TLS setup
+- **Troubleshooting**: Diagnose SSL/TLS issues
+- **Monitoring**: Track certificate expiration
+
+## 🔍 Certificate Transparency Search
+
+### Overview
+Certificate Transparency logs service provides access to public certificate transparency logs via crt.sh API integration.
+
+### Supported Query Format
+```
+<domain>-CRT
+```
+
+### Examples
+```bash
+# Search CT logs for a domain
+whois -h whois.akae.re example.com-CRT
+
+# Find all certificates for a domain
+whois -h whois.akae.re *.google.com-CRT
+```
+
+### Response Information
+- **Certificate Entries**: All CT log entries for the domain
+- **Log Sources**: Which CT logs contain the certificates
+- **Issue Dates**: When certificates were issued
+- **Issuing CAs**: Certificate authorities that issued certificates
+- **Subject Names**: All subject and SAN entries
+
+### Features
+- **crt.sh Integration**: Access to comprehensive CT log database
+- **Wildcard Support**: Search for wildcard certificates
+- **Historical Data**: Access to historical certificate data
+- **Robust Error Handling**: Reliable API integration
+
+### Use Cases
+- **Security Research**: Monitor certificate issuance
+- **Phishing Detection**: Find suspicious certificates
+- **Certificate Inventory**: Catalog all certificates for a domain
+- **Compliance Monitoring**: Track certificate transparency compliance
+
+## 🎮 Minecraft Server Status
+
+### Overview
+Minecraft server status service provides server information using the Server List Ping protocol.
+
+### Supported Query Format
+```
+<server>-MINECRAFT
+```
+Or use the shorter alias:
+```
+<server>-MC
+```
+
+### Examples
+```bash
+# Check Minecraft server status
+whois -h whois.akae.re play.hypixel.net-MINECRAFT
+
+# Quick server check with short alias
+whois -h whois.akae.re mc.server.com-MC
+```
+
+### Response Information
+- **Server Status**: Online/offline status
+- **Player Count**: Current and maximum players
+- **Server Version**: Minecraft version information
+- **Message of the Day**: Server MOTD
+- **Protocol Version**: Server protocol details
+- **Latency**: Connection response time
+
+### Features
+- **Server List Ping**: Native Minecraft protocol implementation
+- **Real-time Status**: Current server information
+- **Performance Metrics**: Connection latency measurement
+- **Version Compatibility**: Support for multiple Minecraft versions
+
+### Use Cases
+- **Server Monitoring**: Check server availability
+- **Player Tracking**: Monitor player counts
+- **Version Checking**: Verify server compatibility
+- **Network Testing**: Test Minecraft server connectivity
 
 ## 🎯 Intelligent Query Routing
 

@@ -16,6 +16,9 @@ whois.akae.re is the official deployment instance of this project, providing the
 - Support for regular domain names, IP addresses, and AS number queries
 - Platform-aware DN42 network query support (automatic detection and forwarding)
 - Advanced query types: IRR Explorer, Looking Glass, BGP Tools, RPKI, MANRS
+- Network services: DNS resolution, traceroute analysis, SSL certificate analysis
+- Security services: Certificate Transparency search, RPKI validation
+- Gaming services: Minecraft server status queries
 - Geo-location services with multiple data sources
 - Email search and contact information lookup
 - IPv4 and IPv6 dual-stack support
@@ -99,6 +102,21 @@ $ whois -h whois.akae.re 1.1.1.0-LG
 
 # Geo-location
 $ whois -h whois.akae.re 8.8.8.8-GEO
+
+# DNS Resolution
+$ whois -h whois.akae.re example.com-DNS
+
+# Traceroute Analysis
+$ whois -h whois.akae.re 8.8.8.8-TRACEROUTE
+
+# SSL Certificate Analysis
+$ whois -h whois.akae.re example.com-SSL
+
+# Certificate Transparency Search
+$ whois -h whois.akae.re example.com-CRT
+
+# Minecraft Server Status
+$ whois -h whois.akae.re play.hypixel.net-MC
 ```
 
 ## Technical Specifications

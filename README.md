@@ -52,6 +52,11 @@
 - **📊 RADB Direct Access** - Routing Assets Database queries for AS-SET and route objects
 - **🔐 RPKI Validation** - Resource Public Key Infrastructure validation for prefix-ASN pairs
 - **🛡️ MANRS Integration** - Mutually Agreed Norms for Routing Security compliance checking
+- **🌐 DNS Resolution** - Comprehensive DNS record lookups using Cloudflare 1.1.1.1
+- **🔍 Network Analysis** - Traceroute functionality for network path analysis
+- **🔐 SSL/TLS Analysis** - Certificate analysis and validation using rustls
+- **🔍 Certificate Transparency** - CT logs search via crt.sh API integration
+- **🎮 Minecraft Status** - Server status queries using Server List Ping protocol
 - **📈 Real-time Statistics** - Comprehensive usage tracking and monitoring
 - **🌐 Web Dashboard** - Modern web interface for statistics and testing
 - **⚡ Dual Operation Modes** - Both async and blocking network operations
@@ -98,6 +103,21 @@ whois -h whois.akae.re 192.0.2.0/24-AS213605-RPKI
 
 # MANRS compliance check
 whois -h whois.akae.re AS213605-MANRS
+
+# DNS resolution
+whois -h whois.akae.re example.com-DNS
+
+# Network traceroute
+whois -h whois.akae.re 8.8.8.8-TRACEROUTE
+
+# SSL certificate analysis
+whois -h whois.akae.re example.com-SSL
+
+# Certificate Transparency search
+whois -h whois.akae.re example.com-CRT
+
+# Minecraft server status
+whois -h whois.akae.re play.hypixel.net-MC
 ```
 
 ## 🖥️ Web Dashboard
@@ -211,6 +231,11 @@ telnet localhost 43
 | **-LG** | `1.1.1.0-LG` | Looking Glass - RIPE RIS BGP routing data in BIRD format |
 | **-RPKI** | `192.0.2.0/24-AS213605-RPKI` | RPKI validation for prefix-ASN combinations |
 | **-MANRS** | `AS213605-MANRS` | MANRS compliance and routing security status |
+| **-DNS** | `example.com-DNS` | DNS resolution with multiple record types |
+| **-TRACEROUTE** | `8.8.8.8-TRACEROUTE` | Network traceroute analysis (alias: -TRACE) |
+| **-SSL** | `example.com-SSL` | SSL/TLS certificate analysis and validation |
+| **-CRT** | `example.com-CRT` | Certificate Transparency logs search |
+| **-MINECRAFT** | `mc.hypixel.net-MINECRAFT` | Minecraft server status (alias: -MC) |
 
 ### Geo-location Services
 
@@ -315,6 +340,12 @@ src/
 │   ├── looking_glass.rs # RIPE RIS Looking Glass services
 │   ├── rpki.rs      # RPKI validation services
 │   ├── manrs.rs     # MANRS integration
+│   ├── dns.rs       # DNS resolution service
+│   ├── traceroute.rs # Network traceroute functionality
+│   ├── ssl.rs       # SSL/TLS certificate analysis
+│   ├── crt.rs       # Certificate Transparency logs
+│   ├── minecraft.rs # Minecraft server status
+│   ├── iana_cache.rs # IANA registry data caching
 │   └── geo/         # Geo-location services
 │       ├── services.rs     # Service orchestration
 │       ├── types.rs        # Data type definitions

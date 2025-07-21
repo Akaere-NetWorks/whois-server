@@ -27,6 +27,12 @@ cargo run --release -- --dump-traffic --dump-dir ./logs
 # Check for compilation errors and warnings
 cargo check
 
+# Check with clippy for additional linting
+cargo clippy
+
+# Format code according to Rust standards
+cargo fmt
+
 # Build with detailed error messages
 cargo build --message-format=short
 ```
@@ -75,11 +81,12 @@ The codebase is organized into logical modules for maintainability and clarity:
 - **`dn42/`**: DN42 network support with platform-aware backends
 - **`config.rs`**: Configuration and command-line parsing
 - **`main.rs`**: Application entry point
+- **`lib.rs`**: Library interface for the whois-server crate
 
 ### Core Components
 
 **Core Module (`core/`)**:
-- `query.rs`: Query type detection and routing (11+ query types)
+- `query.rs`: Query type detection and routing (15+ query types)
 - `stats.rs`: Real-time statistics collection and persistence
 - `utils.rs`: Shared utility functions
 
@@ -140,11 +147,12 @@ The `DN42Manager` in `dn42/manager.rs` handles this platform detection and provi
 3. Geo-location: -GEO, -RIRGEO suffixes
 4. Advanced routing: -IRR, -LG, -RADB suffixes
 5. Security validation: -RPKI (prefix-ASN-RPKI format), -MANRS suffixes
-6. Network diagnostics: -DNS, -TRACEROUTE suffixes
+6. Network diagnostics: -DNS, -TRACEROUTE/-TRACE suffixes
 7. SSL/TLS certificates: -SSL suffix for domain certificate analysis
 8. Certificate Transparency: -CRT suffix for CT log searches
 9. Minecraft servers: -MINECRAFT or -MC suffix for server status
 10. DN42-specific queries (auto-detected)
+11. IANA registry caching for efficient resource lookups
 
 ### Intelligent Query Routing
 - Automatic DN42 detection for AS4242420000-AS4242423999, .dn42 domains, private IPs
@@ -210,6 +218,7 @@ Configuration is handled through:
 - Extensive logging with configurable verbosity levels
 - Modular architecture for easy maintenance and extension
 - Cross-platform compatibility with automatic feature detection
+- All source files include AGPL-3.0-or-later copyright headers
 
 ## Web Dashboard Features
 - Real-time statistics with auto-refresh
