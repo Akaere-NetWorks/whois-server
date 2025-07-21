@@ -55,6 +55,11 @@ echo "example.com" | nc localhost 43
 
 # Test web dashboard
 curl http://localhost:9999/api/stats
+
+# Test against the public deployment instance
+whois -h whois.akae.re example.com
+whois -h whois.akae.re AS213605-MANRS
+whois -h whois.akae.re 8.8.8.8-GEO
 ```
 
 ## Architecture Overview
@@ -93,6 +98,9 @@ Two server architectures available:
 - `email.rs`: Email search functionality across registry data
 - `rpki.rs`: RPKI validation services for prefix-ASN validation
 - `manrs.rs`: MANRS (Mutually Agreed Norms for Routing Security) integration
+- `dns.rs`: DNS resolution service with fixed 1.1.1.1 DNS server for enhanced queries
+- `traceroute.rs`: Network traceroute functionality for path analysis
+- `iana_cache.rs`: IANA registry data caching for efficient lookups
 
 **DN42 Module (`dn42/`)**:
 Platform-aware DN42 implementation with automatic backend selection:
@@ -129,7 +137,8 @@ The `DN42Manager` in `dn42/manager.rs` handles this platform detection and provi
 3. Geo-location: -GEO, -RIRGEO suffixes
 4. Advanced routing: -IRR, -LG, -RADB suffixes
 5. Security validation: -RPKI (prefix-ASN-RPKI format), -MANRS suffixes
-6. DN42-specific queries (auto-detected)
+6. Network diagnostics: -DNS, -TRACEROUTE suffixes
+7. DN42-specific queries (auto-detected)
 
 ### Intelligent Query Routing
 - Automatic DN42 detection for AS4242420000-AS4242423999, .dn42 domains, private IPs
@@ -144,6 +153,8 @@ The `DN42Manager` in `dn42/manager.rs` handles this platform detection and provi
 - **RIPE RIS**: Real-time BGP routing data for Looking Glass services
 - **RADB**: Direct access to Routing Assets Database
 - **DN42 Registry**: Comprehensive DN42 network support with platform-aware caching
+- **Cloudflare DNS (1.1.1.1)**: Fixed DNS server for DNS resolution queries
+- **IANA Registry**: Cached registry data for efficient resource allocation lookups
 
 ### Statistics and Monitoring
 The stats module provides comprehensive metrics:
@@ -200,6 +211,11 @@ Configuration is handled through:
 - Query type distribution and performance metrics
 
 ## Important Implementation Details
+
+### Recent Updates
+- **DNS Service Optimization**: The DNS service has been optimized to use Cloudflare's 1.1.1.1 as a fixed DNS server instead of multiple root servers for improved reliability and performance
+- **Enhanced Network Services**: Added traceroute and IANA cache services for comprehensive network analysis
+- **Platform-Aware Caching**: Improved LMDB caching strategies for cross-platform compatibility
 
 ### Adding New Services
 When adding new external service integrations:
