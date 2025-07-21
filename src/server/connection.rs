@@ -11,7 +11,7 @@ use crate::services::{
     process_rir_geo_query, process_prefixes_query, process_irr_query,
     process_looking_glass_query, process_manrs_query, process_rpki_query,
     process_dns_query, process_traceroute_query, process_ssl_query, 
-    process_crt_query, query_whois, query_with_iana_referral
+    process_crt_query, process_minecraft_query, query_whois, query_with_iana_referral
 };
 use crate::config::{SERVER_BANNER, RADB_WHOIS_SERVER, RADB_WHOIS_PORT};
 use crate::dn42::process_dn42_query_managed;
@@ -178,6 +178,10 @@ pub async fn handle_connection(
         QueryType::Crt(base_query) => {
             debug!("Processing Certificate Transparency query: {}", base_query);
             process_crt_query(&format!("{}-CRT", base_query)).await
+        }
+        QueryType::Minecraft(base_query) => {
+            debug!("Processing Minecraft server query: {}", base_query);
+            process_minecraft_query(&format!("{}-MC", base_query)).await
         }
         QueryType::Unknown(q) => {
             debug!("Unknown query type: {}", q);

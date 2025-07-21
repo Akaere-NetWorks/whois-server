@@ -183,6 +183,12 @@ pub fn run_blocking_server(addr: &str, timeout_secs: u64, dump_traffic: bool, du
                         // Return a notice that CRT queries require async server
                         Ok(format!("Certificate Transparency queries are only supported on the async server.\nPlease use the main server (port 43) for CRT queries.\nQuery: {}\n", base_query))
                     }
+                    QueryType::Minecraft(base_query) => {
+                        info!("Processing Minecraft server query: {}", base_query);
+                        // Minecraft queries require async TCP operations
+                        // Return a notice that Minecraft queries require async server
+                        Ok(format!("Minecraft server queries are only supported on the async server.\nPlease use the main server (port 43) for Minecraft queries.\nQuery: {}\n", base_query))
+                    }
                     QueryType::Unknown(q) => {
                         info!("Unknown query type: {}", q);
                         if q.to_uppercase().ends_with("-DN42") || q.to_uppercase().ends_with("-MNT") {
