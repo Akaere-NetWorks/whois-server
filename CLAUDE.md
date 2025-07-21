@@ -101,6 +101,8 @@ Two server architectures available:
 - `dns.rs`: DNS resolution service with fixed 1.1.1.1 DNS server for enhanced queries
 - `traceroute.rs`: Network traceroute functionality for path analysis
 - `iana_cache.rs`: IANA registry data caching for efficient lookups
+- `ssl.rs`: SSL/TLS certificate analysis service for domain certificate information
+- `crt.rs`: Certificate Transparency logs service via crt.sh API integration
 
 **DN42 Module (`dn42/`)**:
 Platform-aware DN42 implementation with automatic backend selection:
@@ -138,7 +140,9 @@ The `DN42Manager` in `dn42/manager.rs` handles this platform detection and provi
 4. Advanced routing: -IRR, -LG, -RADB suffixes
 5. Security validation: -RPKI (prefix-ASN-RPKI format), -MANRS suffixes
 6. Network diagnostics: -DNS, -TRACEROUTE suffixes
-7. DN42-specific queries (auto-detected)
+7. SSL/TLS certificates: -SSL suffix for domain certificate analysis
+8. Certificate Transparency: -CRT suffix for CT log searches
+9. DN42-specific queries (auto-detected)
 
 ### Intelligent Query Routing
 - Automatic DN42 detection for AS4242420000-AS4242423999, .dn42 domains, private IPs
@@ -155,6 +159,8 @@ The `DN42Manager` in `dn42/manager.rs` handles this platform detection and provi
 - **DN42 Registry**: Comprehensive DN42 network support with platform-aware caching
 - **Cloudflare DNS (1.1.1.1)**: Fixed DNS server for DNS resolution queries
 - **IANA Registry**: Cached registry data for efficient resource allocation lookups
+- **SSL/TLS Certificates**: rustls-based certificate analysis with comprehensive certificate chain parsing
+- **Certificate Transparency**: crt.sh API integration for CT log searches with robust error handling
 
 ### Statistics and Monitoring
 The stats module provides comprehensive metrics:

@@ -171,6 +171,18 @@ pub fn run_blocking_server(addr: &str, timeout_secs: u64, dump_traffic: bool, du
                         // Return a notice that traceroute queries require async server
                         Ok(format!("Traceroute queries are only supported on the async server.\nPlease use the main server (port 43) for traceroute.\nQuery: {}\n", base_query))
                     }
+                    QueryType::Ssl(base_query) => {
+                        info!("Processing SSL certificate query: {}", base_query);
+                        // SSL queries require async socket operations
+                        // Return a notice that SSL queries require async server
+                        Ok(format!("SSL certificate queries are only supported on the async server.\nPlease use the main server (port 43) for SSL queries.\nQuery: {}\n", base_query))
+                    }
+                    QueryType::Crt(base_query) => {
+                        info!("Processing Certificate Transparency query: {}", base_query);
+                        // CRT queries require async HTTP operations
+                        // Return a notice that CRT queries require async server
+                        Ok(format!("Certificate Transparency queries are only supported on the async server.\nPlease use the main server (port 43) for CRT queries.\nQuery: {}\n", base_query))
+                    }
                     QueryType::Unknown(q) => {
                         info!("Unknown query type: {}", q);
                         if q.to_uppercase().ends_with("-DN42") || q.to_uppercase().ends_with("-MNT") {

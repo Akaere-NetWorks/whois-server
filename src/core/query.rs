@@ -22,6 +22,8 @@ pub enum QueryType {
     Manrs(String),       // For queries ending with -MANRS
     Dns(String),         // For queries ending with -DNS
     Trace(String),       // For queries ending with -TRACE
+    Ssl(String),         // For queries ending with -SSL
+    Crt(String),         // For queries ending with -CRT (Certificate Transparency)
     Unknown(String),
 }
 
@@ -92,6 +94,18 @@ pub fn analyze_query(query: &str) -> QueryType {
     if query.to_uppercase().ends_with("-TRACE") {
         let base_query = &query[..query.len() - 6]; // Remove "-TRACE" suffix
         return QueryType::Trace(base_query.to_string());
+    }
+    
+    // Check if it's an SSL certificate query
+    if query.to_uppercase().ends_with("-SSL") {
+        let base_query = &query[..query.len() - 4]; // Remove "-SSL" suffix
+        return QueryType::Ssl(base_query.to_string());
+    }
+    
+    // Check if it's a Certificate Transparency query
+    if query.to_uppercase().ends_with("-CRT") {
+        let base_query = &query[..query.len() - 4]; // Remove "-CRT" suffix
+        return QueryType::Crt(base_query.to_string());
     }
     
     // Check if it's a BGP Tools query
