@@ -89,17 +89,14 @@ impl DnsHeader {
 }
 
 impl DnsService {
-    /// Create a new DNS service with recursive resolution
+    /// Create a new DNS service with fixed 1.1.1.1 DNS server
     pub async fn new() -> Result<Self> {
-        // Root DNS servers (a few of them)
+        // Use Cloudflare DNS (1.1.1.1) as fixed DNS server
         let root_servers = vec![
-            "198.41.0.4:53".parse()?,      // a.root-servers.net
-            "199.9.14.201:53".parse()?,    // b.root-servers.net  
-            "192.33.4.12:53".parse()?,     // c.root-servers.net
-            "199.7.91.13:53".parse()?,     // d.root-servers.net
+            "1.1.1.1:53".parse()?,
         ];
         
-        debug!("DNS recursive resolver initialized with {} root servers", root_servers.len());
+        debug!("DNS resolver initialized with fixed 1.1.1.1 DNS server");
         Ok(Self { root_servers })
     }
 
@@ -469,13 +466,10 @@ impl DnsService {
             }
         }
 
-        // If no A records found, try to resolve NS names (simplified)
+        // If no A records found, use 1.1.1.1 as fallback
         if nameservers.is_empty() {
-            // For simplicity, use some well-known DNS servers as fallback
-            nameservers.extend_from_slice(&[
-                "8.8.8.8:53".parse().unwrap(),
-                "1.1.1.1:53".parse().unwrap(),
-            ]);
+            // Use fixed 1.1.1.1 DNS server as fallback
+            nameservers.push("1.1.1.1:53".parse().unwrap());
         }
 
         Ok(nameservers)
