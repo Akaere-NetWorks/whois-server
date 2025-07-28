@@ -29,7 +29,7 @@ pub enum QueryType {
 }
 
 pub fn analyze_query(query: &str) -> QueryType {
-    // Check if it's an RPKI query in format IP段-ASN-RPKI
+    // Check if it's an RPKI query in format PREFIX-ASN-RPKI
     if query.to_uppercase().ends_with("-RPKI") {
         let base_query = &query[..query.len() - 5]; // Remove "-RPKI" suffix
         
@@ -91,7 +91,13 @@ pub fn analyze_query(query: &str) -> QueryType {
         return QueryType::Dns(base_query.to_string());
     }
     
-    // Check if it's a traceroute query
+    // Check if it's a traceroute query (long form)
+    if query.to_uppercase().ends_with("-TRACEROUTE") {
+        let base_query = &query[..query.len() - 11]; // Remove "-TRACEROUTE" suffix
+        return QueryType::Trace(base_query.to_string());
+    }
+    
+    // Check if it's a traceroute query (short form)
     if query.to_uppercase().ends_with("-TRACE") {
         let base_query = &query[..query.len() - 6]; // Remove "-TRACE" suffix
         return QueryType::Trace(base_query.to_string());

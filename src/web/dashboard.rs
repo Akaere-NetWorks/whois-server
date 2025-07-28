@@ -190,59 +190,106 @@ async fn dashboard() -> impl IntoResponse {
                     <code class="font-mono font-semibold">whois -h whois.akae.re [query]</code>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div class="space-y-3">
                         <h3 class="font-semibold text-lg">Standard Queries</h3>
                         <div class="space-y-2 text-sm">
                             <div><code class="bg-base-200 px-2 py-1 rounded">google.com</code> - Domain lookup</div>
-                            <div><code class="bg-base-200 px-2 py-1 rounded">8.8.8.8</code> - IPv4 address</div>
-                            <div><code class="bg-base-200 px-2 py-1 rounded">AS213605</code> - ASN lookup</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded">8.8.8.8</code> - IPv4 address info</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded">AS213605</code> - ASN information</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded">192.0.2.0/24</code> - CIDR block query</div>
                         </div>
                     </div>
                     
                     <div class="space-y-3">
-                        <h3 class="font-semibold text-lg">Special Parameters</h3>
+                        <h3 class="font-semibold text-lg">Network Analysis</h3>
                         <div class="space-y-2 text-sm">
-                            <div><code class="bg-base-200 px-2 py-1 rounded">AS213605-EMAIL</code> - Email search</div>
-                            <div><code class="bg-base-200 px-2 py-1 rounded">8.8.8.8-GEO</code> - Geo location</div>
-                            <div><code class="bg-base-200 px-2 py-1 rounded">8.8.8.8-RIRGEO</code> - RIR geo data</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded">AS213605-BGPTOOL</code> - BGP analysis</div>
                             <div><code class="bg-base-200 px-2 py-1 rounded">AS213605-PREFIXES</code> - ASN prefixes</div>
-                            <div><code class="bg-base-200 px-2 py-1 rounded">AS213605-BGPTOOL</code> - BGP tools</div>
                             <div><code class="bg-base-200 px-2 py-1 rounded">1.1.1.0-RADB</code> - RADB query</div>
                             <div><code class="bg-base-200 px-2 py-1 rounded">192.0.2.0/24-IRR</code> - IRR Explorer</div>
                             <div><code class="bg-base-200 px-2 py-1 rounded">1.1.1.0-LG</code> - Looking Glass</div>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-3">
+                        <h3 class="font-semibold text-lg">Geographic & Contact</h3>
+                        <div class="space-y-2 text-sm">
+                            <div><code class="bg-base-200 px-2 py-1 rounded">8.8.8.8-GEO</code> - IP geolocation</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded">8.8.8.8-RIRGEO</code> - RIR geo data</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded">AS213605-EMAIL</code> - Contact search</div>
                         </div>
                     </div>
                 </div>
 
                 <div class="mt-6">
                     <h3 class="font-semibold text-lg mb-3">Advanced Query Features</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
                         <div class="space-y-2">
-                            <h4 class="font-medium text-cute-pink-600">Network Analysis</h4>
-                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-RADB</code> - Routing Assets Database</div>
-                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-IRR</code> - IRR Explorer with RPKI</div>
-                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-LG</code> - Looking Glass (BIRD format)</div>
+                            <h4 class="font-medium text-cute-pink-600">Security & Validation</h4>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">PREFIX-ASN-RPKI</code> - RPKI validation</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-MANRS</code> - MANRS compliance</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-SSL</code> - SSL certificate info</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-CRT</code> - Certificate Transparency</div>
                         </div>
                         <div class="space-y-2">
-                            <h4 class="font-medium text-cute-pink-600">Geographic Data</h4>
-                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-GEO</code> - IP geolocation</div>
-                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-RIRGEO</code> - RIR geographic data</div>
+                            <h4 class="font-medium text-cute-pink-600">Network Diagnostics</h4>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-DNS</code> - DNS resolution</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-TRACE</code> - Network traceroute</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-TRACEROUTE</code> - Full traceroute</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-MINECRAFT</code> - Minecraft server</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-MC</code> - Minecraft (short)</div>
                         </div>
                         <div class="space-y-2">
-                            <h4 class="font-medium text-cute-pink-600">Contact & BGP</h4>
-                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-EMAIL</code> - Contact search</div>
+                            <h4 class="font-medium text-cute-pink-600">Routing Analysis</h4>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-RADB</code> - Routing Assets DB</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-IRR</code> - IRR Explorer + RPKI</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-LG</code> - Looking Glass (BIRD)</div>
                             <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-BGPTOOL</code> - BGP information</div>
                             <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-PREFIXES</code> - ASN prefixes</div>
+                        </div>
+                        <div class="space-y-2">
+                            <h4 class="font-medium text-cute-pink-600">Geographic & Contact</h4>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-GEO</code> - IP geolocation</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-RIRGEO</code> - RIR geographic data</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-EMAIL</code> - Contact search</div>
                         </div>
                     </div>
                 </div>
 
-                <div class="alert alert-info mt-4">
+                <div class="mt-6">
+                    <h3 class="font-semibold text-lg mb-3">Example Queries</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div class="space-y-2">
+                            <h4 class="font-medium text-cute-pink-600">Real-world Examples</h4>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">google.com-SSL</code> - Google's SSL certificate</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">8.8.8.8-TRACEROUTE</code> - Trace to Google DNS</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">1.1.1.0/24-13335-RPKI</code> - RPKI validation</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">minecraft.net-MC</code> - Minecraft server status</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">cloudflare.com-CRT</code> - Certificate transparency</div>
+                        </div>
+                        <div class="space-y-2">
+                            <h4 class="font-medium text-cute-pink-600">DN42 Network Examples</h4>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">AS4242420000</code> - DN42 ASN lookup</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">example.dn42</code> - DN42 domain</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">172.20.0.1</code> - Private IP (DN42)</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">fd42::/64</code> - DN42 IPv6 range</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert alert-info mt-6">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
-                    <span>DN42 networks are automatically detected and routed to appropriate servers</span>
+                    <span><strong>Smart Routing:</strong> DN42 networks are automatically detected and routed. Private IPs, .dn42 domains, and AS4242420000+ ASNs use DN42 backend.</span>
+                </div>
+                
+                <div class="alert alert-success mt-4">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span><strong>High Performance:</strong> Cross-platform LMDB caching, intelligent query routing, and comprehensive external service integrations.</span>
                 </div>
             </div>
         </div>
