@@ -6,6 +6,7 @@
 [![Rust](https://img.shields.io/badge/Rust-1.75+-orange.svg)](https://www.rust-lang.org/)
 [![RFC 3912](https://img.shields.io/badge/RFC-3912-green.svg)](https://datatracker.ietf.org/doc/html/rfc3912)
 [![DN42](https://img.shields.io/badge/DN42-Compatible-blueviolet)](https://dn42.eu/)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/Akaere-NetWorks/whois-server)
 
 **A high-performance WHOIS server with DN42 support, geo-location services, and comprehensive query capabilities.**
 
@@ -29,13 +30,14 @@
     - [Standard WHOIS Queries](#standard-whois-queries)
     - [Enhanced Query Types](#enhanced-query-types)
     - [Geo-location Services](#geo-location-services)
-    - [Network Intelligence & Advanced Features](#network-intelligence--advanced-features)
+    - [Network Intelligence \& Advanced Features](#network-intelligence--advanced-features)
   - [🛠️ Advanced Query Features](#️-advanced-query-features)
-    - [IRR Explorer Integration](#irr-explorer-integration--irr-suffix)
-    - [Looking Glass Services](#looking-glass-services--lg-suffix)
-    - [RADB Direct Access](#radb-direct-access--radb-suffix)
+    - [IRR Explorer Integration (`-IRR` suffix)](#irr-explorer-integration--irr-suffix)
+    - [Looking Glass Services (`-LG` suffix)](#looking-glass-services--lg-suffix)
+    - [RADB Direct Access (`-RADB` suffix)](#radb-direct-access--radb-suffix)
   - [📊 Statistics and Monitoring](#-statistics-and-monitoring)
   - [🏗️ Architecture](#️-architecture)
+    - [Key Components](#key-components)
   - [📜 License](#-license)
 
 ## ✨ Features
