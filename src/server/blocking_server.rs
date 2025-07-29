@@ -237,6 +237,12 @@ pub fn run_blocking_server(addr: &str, timeout_secs: u64, dump_traffic: bool, du
                         // Return a notice that Debian queries require async server
                         Ok(format!("Debian package queries are only supported on the async server.\nPlease use the main server (port 43) for Debian queries.\nQuery: {}\n", base_query))
                     }
+                    QueryType::Wikipedia(base_query) => {
+                        info!("Processing Wikipedia article query: {}", base_query);
+                        // Wikipedia queries require async HTTP operations
+                        // Return a notice that Wikipedia queries require async server
+                        Ok(format!("Wikipedia article queries are only supported on the async server.\nPlease use the main server (port 43) for Wikipedia queries.\nQuery: {}\n", base_query))
+                    }
                     QueryType::Unknown(q) => {
                         info!("Unknown query type: {}", q);
                         if q.to_uppercase().ends_with("-DN42") || q.to_uppercase().ends_with("-MNT") {

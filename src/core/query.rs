@@ -33,6 +33,7 @@ pub enum QueryType {
     Acgc(String),        // For queries ending with -ACGC (Anime/Comic/Game Characters)
     Aur(String),         // For queries ending with -AUR (Arch User Repository)
     Debian(String),      // For queries ending with -DEBIAN (Debian packages)
+    Wikipedia(String),   // For queries ending with -WIKIPEDIA (Wikipedia articles)
     Unknown(String),
 }
 
@@ -181,6 +182,12 @@ pub fn analyze_query(query: &str) -> QueryType {
     if query.to_uppercase().ends_with("-DEBIAN") {
         let base_query = &query[..query.len() - 7]; // Remove "-DEBIAN" suffix
         return QueryType::Debian(base_query.to_string());
+    }
+    
+    // Check if it's a Wikipedia article query
+    if query.to_uppercase().ends_with("-WIKIPEDIA") {
+        let base_query = &query[..query.len() - 10]; // Remove "-WIKIPEDIA" suffix
+        return QueryType::Wikipedia(base_query.to_string());
     }
     
     // Check if it's a BGP Tools query

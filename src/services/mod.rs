@@ -16,6 +16,7 @@ pub mod steam;
 pub mod imdb;
 pub mod acgc;
 pub mod packages;
+pub mod wikipedia;
 
 pub use whois::*;
 pub use email::*;
@@ -35,3 +36,4 @@ pub use steam::*;
 pub use imdb::*;
 pub use acgc::*;
 pub use packages::*;
+pub use wikipedia::*;

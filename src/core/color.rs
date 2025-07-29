@@ -545,6 +545,37 @@ impl Colorizer {
                             line.to_string()
                         }
                     },
+                    QueryType::Wikipedia(_) => {
+                        // Wikipedia - article information coloring
+                        if line.contains("Wikipedia Article Information:") {
+                            format!("\x1b[1;96m{}\x1b[0m", line) // Bold cyan for headers
+                        } else if line.contains("page-id:") {
+                            let id_regex = Regex::new(r"(\d+)").unwrap();
+                            id_regex.replace_all(line, "\x1b[1;93m$1\x1b[0m").to_string()
+                        } else if line.contains("title:") {
+                            format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for article titles
+                        } else if line.contains("source:") {
+                            format!("\x1b[96m{}\x1b[0m", line) // Cyan for source (Wikipedia)
+                        } else if line.contains("article-length:") {
+                            let size_regex = Regex::new(r"(\d+)\s*bytes").unwrap();
+                            size_regex.replace_all(line, "\x1b[1;93m$1 bytes\x1b[0m").to_string()
+                        } else if line.contains("last-modified:") {
+                            format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for dates
+                        } else if line.contains("categories:") {
+                            format!("\x1b[92m{}\x1b[0m", line) // Green for categories
+                        } else if line.contains("languages:") {
+                            format!("\x1b[94m{}\x1b[0m", line) // Blue for language links
+                        } else if line.contains("summary:") {
+                            format!("\x1b[1;37m{}\x1b[0m", line) // Bold white for article summary
+                        } else if line.contains("wikipedia-url:") || line.contains("edit-url:") {
+                            let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
+                            url_regex.replace_all(line, "\x1b[4;94m$1\x1b[0m").to_string()
+                        } else if line.starts_with("%") {
+                            format!("\x1b[90m{}\x1b[0m", line) // Gray for comments
+                        } else {
+                            line.to_string()
+                        }
+                    },
                     QueryType::Acgc(_) => {
                         // ACGC - Anime/Comic/Game character information coloring
                         if line.contains("ACGC Character Information:") {
@@ -1099,6 +1130,38 @@ impl Colorizer {
                             format!("\x1b[90m{}\x1b[0m", line) // Gray for comments
                         } else if line.contains("---") {
                             format!("\x1b[90m{}\x1b[0m", line) // Gray for separators
+                        } else {
+                            line.to_string()
+                        }
+                    },
+                    QueryType::Wikipedia(_) => {
+                        // Wikipedia - article information coloring (BGPTools style)
+                        if line.contains("Wikipedia Article Information:") {
+                            format!("\x1b[1;96m{}\x1b[0m", line) // Bold cyan for headers
+                        } else if line.contains("page-id:") {
+                            let id_regex = Regex::new(r"(\d+)").unwrap();
+                            let colored = id_regex.replace_all(line, "\x1b[1;93m$1\x1b[0m").to_string();
+                            format!("\x1b[94m{}\x1b[0m", colored)
+                        } else if line.contains("title:") {
+                            format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for article titles
+                        } else if line.contains("source:") {
+                            format!("\x1b[96m{}\x1b[0m", line) // Cyan for source (Wikipedia)
+                        } else if line.contains("article-length:") {
+                            let size_regex = Regex::new(r"(\d+)\s*bytes").unwrap();
+                            let colored = size_regex.replace_all(line, "\x1b[1;93m$1 bytes\x1b[0m").to_string();
+                            format!("\x1b[95m{}\x1b[0m", colored)
+                        } else if line.contains("last-modified:") {
+                            format!("\x1b[90m{}\x1b[0m", line) // Gray for timestamps
+                        } else if line.contains("categories:") {
+                            format!("\x1b[92m{}\x1b[0m", line) // Green for categories
+                        } else if line.contains("languages:") {
+                            format!("\x1b[94m{}\x1b[0m", line) // Blue for language links
+                        } else if line.contains("summary:") {
+                            format!("\x1b[1;37m{}\x1b[0m", line) // Bold white for article summary
+                        } else if line.contains("wikipedia-url:") || line.contains("edit-url:") {
+                            let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
+                            let colored = url_regex.replace_all(line, "\x1b[4;94m$1\x1b[0m").to_string();
+                            format!("\x1b[94m{}\x1b[0m", colored)
                         } else {
                             line.to_string()
                         }
