@@ -7,7 +7,8 @@ use tokio::net::TcpStream as AsyncTcpStream;
 use tracing::{debug, warn};
 
 use crate::config::{
-    IANA_WHOIS_SERVER, DEFAULT_WHOIS_SERVER, DEFAULT_WHOIS_PORT, TIMEOUT_SECONDS
+    IANA_WHOIS_SERVER, DEFAULT_WHOIS_SERVER, DEFAULT_WHOIS_PORT, TIMEOUT_SECONDS,
+    RADB_WHOIS_SERVER, RADB_WHOIS_PORT
 };
 use crate::services::iana_cache::IanaCache;
 
@@ -28,18 +29,55 @@ pub async fn query_with_iana_referral(query: &str) -> Result<String> {
     
     // Query the WHOIS server
     match query_whois(query, &whois_server, DEFAULT_WHOIS_PORT).await {
-        Ok(response) => Ok(response),
+        Ok(response) => {
+            // Check if response indicates transferred/no data and try RADB fallback
+            if should_try_radb_fallback(&response) {
+                debug!("Primary response suggests transferred resource, trying RADB fallback for: {}", query);
+                match query_whois(query, RADB_WHOIS_SERVER, RADB_WHOIS_PORT).await {
+                    Ok(radb_response) => {
+                        if is_meaningful_response(&radb_response) {
+                            debug!("RADB provided meaningful data for: {}", query);
+                            Ok(radb_response)
+                        } else {
+                            Ok(response) // Return original response if RADB doesn't help
+                        }
+                    }
+                    Err(e) => {
+                        debug!("RADB query failed for {}: {}", query, e);
+                        Ok(response) // Return original response if RADB fails
+                    }
+                }
+            } else {
+                Ok(response)
+            }
+        }
         Err(e) => {
             warn!("Query failed on {}, attempting to refresh IANA cache: {}", whois_server, e);
             
             // Query failed, try to refresh IANA cache
             if let Some(refreshed_server) = iana_cache.refresh_cache_on_failure(query).await {
                 debug!("Retrying with refreshed server: {}", refreshed_server);
-                query_whois(query, &refreshed_server, DEFAULT_WHOIS_PORT).await
+                match query_whois(query, &refreshed_server, DEFAULT_WHOIS_PORT).await {
+                    Ok(response) => Ok(response),
+                    Err(_) => {
+                        // If refreshed server also fails, try RADB as final fallback
+                        debug!("Refreshed server failed, trying RADB as final fallback for: {}", query);
+                        match query_whois(query, RADB_WHOIS_SERVER, RADB_WHOIS_PORT).await {
+                            Ok(radb_resp) => Ok(radb_resp),
+                            Err(_) => query_whois(query, DEFAULT_WHOIS_SERVER, DEFAULT_WHOIS_PORT).await,
+                        }
+                    }
+                }
             } else {
-                // If refresh also fails, try default server as last resort
-                debug!("IANA refresh failed, trying default server as fallback");
-                query_whois(query, DEFAULT_WHOIS_SERVER, DEFAULT_WHOIS_PORT).await
+                // If refresh also fails, try RADB then default server as last resort
+                debug!("IANA refresh failed, trying RADB fallback for: {}", query);
+                match query_whois(query, RADB_WHOIS_SERVER, RADB_WHOIS_PORT).await {
+                    Ok(radb_resp) => Ok(radb_resp),
+                    Err(_) => {
+                        debug!("RADB failed, trying default server as final fallback");
+                        query_whois(query, DEFAULT_WHOIS_SERVER, DEFAULT_WHOIS_PORT).await
+                    }
+                }
             }
         }
     }
@@ -200,4 +238,68 @@ pub fn extract_whois_server(response: &str) -> Option<String> {
         }
     }
     None
+}
+
+fn should_try_radb_fallback(response: &str) -> bool {
+    let response_lower = response.to_lowercase();
+    
+    // Check for indicators that suggest transferred resources or empty responses
+    let transfer_indicators = [
+        "not managed by the ripe ncc",
+        "not managed by ripe ncc", 
+        "managed by arin",
+        "managed by apnic",
+        "managed by lacnic",
+        "managed by afrinic",
+        "transferred",
+        "no entries found",
+        "not found",
+        "no match found",
+        "no data found",
+        "% no entries found",
+        "% not found",
+        "asn block not managed",
+        "ip block not managed",
+        "for registration information",
+        "you can find the whois server to query",
+    ];
+    
+    // Check if the response is very short (likely just headers)
+    let meaningful_lines: Vec<&str> = response.lines()
+        .filter(|line| !line.trim().is_empty() && !line.starts_with('%'))
+        .collect();
+    
+    if meaningful_lines.len() < 3 {
+        debug!("Response has very few meaningful lines ({}), suggesting RADB fallback", meaningful_lines.len());
+        return true;
+    }
+    
+    // Check for transfer indicators
+    for indicator in &transfer_indicators {
+        if response_lower.contains(indicator) {
+            debug!("Found transfer indicator '{}', suggesting RADB fallback", indicator);
+            return true;
+        }
+    }
+    
+    false
+}
+
+fn is_meaningful_response(response: &str) -> bool {
+    let meaningful_lines: Vec<&str> = response.lines()
+        .filter(|line| {
+            let line = line.trim();
+            // Skip comments, empty lines, and generic headers
+            !line.is_empty() && 
+            !line.starts_with('%') && 
+            !line.starts_with('#') &&
+            !line.contains("Please report any issues") &&
+            !line.contains("The objects are in RPSL format")
+        })
+        .collect();
+    
+    // Consider response meaningful if it has substantive content
+    meaningful_lines.len() >= 5 && 
+    response.len() > 200 && // At least 200 characters of content
+    !should_try_radb_fallback(response) // And doesn't look like a transfer notice
 } 
