@@ -334,6 +334,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore] // This test requires network access and can hang
     async fn test_traceroute_query_parsing() {
         let result = process_traceroute_query("8.8.8.8-TRACE").await;
         assert!(result.is_ok());
