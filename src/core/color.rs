@@ -133,8 +133,8 @@ impl Colorizer {
         
         for line in response.lines() {
             let colored_line = if line.starts_with('%') {
-                // Comments in cyan
-                format!("\x1b[36m{}\x1b[0m", line)
+                // Comments in bright black (gray) - matches reference implementation
+                format!("\x1b[90m{}\x1b[0m", line)
             } else if line.contains(':') && !line.starts_with(' ') {
                 // Attribute-value pairs with specific colors based on query type and attribute
                 let parts: Vec<&str> = line.splitn(2, ':').collect();
@@ -143,25 +143,41 @@ impl Colorizer {
                     let value = parts[1];
                     
                     match attr {
-                        // Network resources - bright green
+                        // Network resources - bright cyan (matches reference)
                         "inetnum" | "inet6num" | "route" | "route6" | "network" | "prefix" => {
-                            format!("\x1b[1;92m{}:\x1b[0m \x1b[92m{}\x1b[0m", attr, value)
+                            format!("\x1b[1;96m{}:\x1b[0m \x1b[96m{}\x1b[0m", attr, value)
                         },
-                        // ASN info - golden yellow
+                        // Domain related - bright cyan bold (matches reference)  
+                        "domain" | "nserver" | "dns" => {
+                            format!("\x1b[1;96m{}:\x1b[0m \x1b[1;96m{}\x1b[0m", attr, value)
+                        },
+                        // ASN info - bright yellow (matches reference)
                         "origin" | "aut-num" | "as-name" | "asn" => {
                             format!("\x1b[1;93m{}:\x1b[0m \x1b[93m{}\x1b[0m", attr, value)
                         },
-                        // Contact info - bright blue
+                        // Contact info - green (matches reference)
                         "person" | "admin-c" | "tech-c" | "mnt-by" | "contact" | "email" => {
-                            format!("\x1b[1;94m{}:\x1b[0m \x1b[94m{}\x1b[0m", attr, value)
+                            format!("\x1b[32m{}:\x1b[0m \x1b[32m{}\x1b[0m", attr, value)
                         },
-                        // Description/names - bright cyan
-                        "descr" | "netname" | "orgname" | "org-name" | "description" => {
-                            format!("\x1b[1;96m{}:\x1b[0m \x1b[96m{}\x1b[0m", attr, value)
+                        // Name fields - bright green bold (matches reference)
+                        "netname" | "name" => {
+                            format!("\x1b[1;92m{}:\x1b[0m \x1b[1;92m{}\x1b[0m", attr, value)
                         },
-                        // Geographic info - bright magenta
+                        // Organization - yellow (matches reference)
+                        "org" | "orgname" | "org-name" | "organisation" => {
+                            format!("\x1b[33m{}:\x1b[0m \x1b[33m{}\x1b[0m", attr, value)
+                        },
+                        // Description - bright cyan
+                        "descr" | "description" => {
+                            format!("\x1b[96m{}:\x1b[0m \x1b[96m{}\x1b[0m", attr, value)
+                        },
+                        // Geographic info - bright magenta (date fields in reference)
                         "country" | "address" | "city" | "region" | "geoloc" => {
                             format!("\x1b[1;95m{}:\x1b[0m \x1b[95m{}\x1b[0m", attr, value)
+                        },
+                        // Registrar info - bright blue (matches reference)
+                        "registrar" | "sponsoring-registrar" | "registrant" => {
+                            format!("\x1b[1;94m{}:\x1b[0m \x1b[94m{}\x1b[0m", attr, value)
                         },
                         // Status/state - conditional colors
                         "status" | "state" | "rpki-status" | "validation" => {
@@ -173,9 +189,9 @@ impl Colorizer {
                                 format!("\x1b[1;93m{}:\x1b[0m \x1b[93m{}\x1b[0m", attr, value) // Bright yellow for unknown
                             }
                         },
-                        // Dates - gray
+                        // Dates - bright magenta (matches reference)
                         "created" | "changed" | "last-modified" | "expires" | "updated" => {
-                            format!("\x1b[1;90m{}:\x1b[0m \x1b[90m{}\x1b[0m", attr, value)
+                            format!("\x1b[1;95m{}:\x1b[0m \x1b[95m{}\x1b[0m", attr, value)
                         },
                         // Package specific - bright magenta
                         "version" | "package" | "package-base" => {
@@ -352,8 +368,8 @@ impl Colorizer {
         
         for line in response.lines() {
             let colored_line = if line.starts_with('%') {
-                // Comments in bright cyan
-                format!("\x1b[96m{}\x1b[0m", line)
+                // Comments in bright black (gray) - matches reference implementation
+                format!("\x1b[90m{}\x1b[0m", line)
             } else if line.contains(':') && !line.starts_with(' ') {
                 // Attribute-value pairs with BGP Tools styling
                 let parts: Vec<&str> = line.splitn(2, ':').collect();
@@ -372,13 +388,13 @@ impl Colorizer {
                     styled_value = domain_regex.replace_all(&styled_value, "\x1b[94m$1\x1b[0m").to_string();
                     
                     match attr {
-                        // Critical network info - bright green
-                        "route" | "route6" | "inetnum" | "inet6num" | "prefix" => {
-                            format!("\x1b[1;92m{}:\x1b[0m \x1b[92m{}\x1b[0m", attr, styled_value)
+                        // AS related - bright red (AS column in reference)
+                        "origin" | "aut-num" | "as-name" | "asn" => {
+                            format!("\x1b[91m{}:\x1b[0m \x1b[91m{}\x1b[0m", attr, styled_value)
                         },
-                        // ASN related - golden yellow
-                        "origin" | "aut-num" | "as-name" => {
-                            format!("\x1b[1;93m{}:\x1b[0m \x1b[93m{}\x1b[0m", attr, styled_value)
+                        // Network/IP info - bright cyan (IP/Prefix column in reference)
+                        "route" | "route6" | "inetnum" | "inet6num" | "prefix" | "network" => {
+                            format!("\x1b[96m{}:\x1b[0m \x1b[96m{}\x1b[0m", attr, styled_value)
                         },
                         // Status/validation - conditional colors
                         "status" | "rpki-status" | "validation" => {
@@ -390,13 +406,29 @@ impl Colorizer {
                                 format!("\x1b[1;93m{}:\x1b[0m \x1b[93m{}\x1b[0m", attr, value) // Bright yellow for unknown
                             }
                         },
-                        // Geo info - bright magenta
-                        "country" | "city" | "region" | "geoloc" => {
-                            format!("\x1b[1;95m{}:\x1b[0m \x1b[95m{}\x1b[0m", attr, styled_value)
+                        // Country info - bright yellow (Country Code column in reference)
+                        "country" | "country-code" => {
+                            format!("\x1b[93m{}:\x1b[0m \x1b[93m{}\x1b[0m", attr, styled_value)
                         },
-                        // Contact info - bright blue
+                        // Registry info - bright blue (Registry column in reference)
+                        "registry" | "rir" | "source" => {
+                            format!("\x1b[94m{}:\x1b[0m \x1b[94m{}\x1b[0m", attr, styled_value)
+                        },
+                        // Allocation info - bright magenta (Allocated column in reference)
+                        "allocated" | "assigned" | "created" | "changed" => {
+                            format!("\x1b[95m{}:\x1b[0m \x1b[95m{}\x1b[0m", attr, styled_value)
+                        },
+                        // AS Names and org names - bright white bold (AS Name column in reference)
+                        "netname" | "orgname" | "org-name" => {
+                            format!("\x1b[1;97m{}:\x1b[0m \x1b[1;97m{}\x1b[0m", attr, styled_value)
+                        },
+                        // Geographic/location info - default magenta
+                        "city" | "region" | "geoloc" | "address" => {
+                            format!("\x1b[35m{}:\x1b[0m \x1b[35m{}\x1b[0m", attr, styled_value)
+                        },
+                        // Contact info - default blue
                         "person" | "admin-c" | "tech-c" | "mnt-by" | "contact" => {
-                            format!("\x1b[1;94m{}:\x1b[0m \x1b[94m{}\x1b[0m", attr, styled_value)
+                            format!("\x1b[34m{}:\x1b[0m \x1b[34m{}\x1b[0m", attr, styled_value)
                         },
                         // Package info - bright cyan
                         "package" | "version" | "depends" | "makedepends" => {
@@ -406,9 +438,9 @@ impl Colorizer {
                         "aur-url" | "upstream-url" | "url" | "homepage" => {
                             format!("\x1b[1;94m{}:\x1b[0m \x1b[4;94m{}\x1b[0m", attr, styled_value)
                         },
-                        // Dates - gray
-                        "created" | "changed" | "last-modified" | "expires" | "updated" | "first-submitted" => {
-                            format!("\x1b[1;90m{}:\x1b[0m \x1b[90m{}\x1b[0m", attr, styled_value)
+                        // Dates - gray (non-allocation dates)
+                        "last-modified" | "expires" | "updated" | "first-submitted" => {
+                            format!("\x1b[90m{}:\x1b[0m \x1b[90m{}\x1b[0m", attr, styled_value)
                         },
                         // Security/crypto - bright red
                         "fingerprint" | "signature" | "certificate" | "ssl" => {
