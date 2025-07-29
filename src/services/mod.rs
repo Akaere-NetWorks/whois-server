@@ -14,6 +14,7 @@ pub mod crt;
 pub mod minecraft;
 pub mod steam;
 pub mod imdb;
+pub mod acgc;
 pub mod packages;
 
 pub use whois::*;
@@ -32,4 +33,5 @@ pub use crt::*;
 pub use minecraft::*;
 pub use steam::*;
 pub use imdb::*;
+pub use acgc::*;
 pub use packages::*;

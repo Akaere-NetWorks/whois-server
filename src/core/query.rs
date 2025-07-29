@@ -29,6 +29,7 @@ pub enum QueryType {
     SteamSearch(String), // For queries ending with -STEAMSEARCH (Steam game search)
     Imdb(String),        // For queries ending with -IMDB (IMDb movies/TV shows)
     ImdbSearch(String),  // For queries ending with -IMDBSEARCH (IMDb title search)
+    Acgc(String),        // For queries ending with -ACGC (Anime/Comic/Game Characters)
     Aur(String),         // For queries ending with -AUR (Arch User Repository)
     Debian(String),      // For queries ending with -DEBIAN (Debian packages)
     Unknown(String),
@@ -155,6 +156,12 @@ pub fn analyze_query(query: &str) -> QueryType {
     if query.to_uppercase().ends_with("-IMDB") {
         let base_query = &query[..query.len() - 5]; // Remove "-IMDB" suffix
         return QueryType::Imdb(base_query.to_string());
+    }
+    
+    // Check if it's an ACGC character query
+    if query.to_uppercase().ends_with("-ACGC") {
+        let base_query = &query[..query.len() - 5]; // Remove "-ACGC" suffix
+        return QueryType::Acgc(base_query.to_string());
     }
     
     // Check if it's an AUR package query

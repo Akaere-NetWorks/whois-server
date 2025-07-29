@@ -545,6 +545,64 @@ impl Colorizer {
                             line.to_string()
                         }
                     },
+                    QueryType::Acgc(_) => {
+                        // ACGC - Anime/Comic/Game character information coloring
+                        if line.contains("ACGC Character Information:") {
+                            format!("\x1b[1;96m{}\x1b[0m", line) // Bold cyan for headers
+                        } else if line.contains("page-id:") {
+                            let id_regex = Regex::new(r"(\d+)").unwrap();
+                            id_regex.replace_all(line, "\x1b[1;93m$1\x1b[0m").to_string()
+                        } else if line.contains("character-name:") {
+                            format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for character names
+                        } else if line.contains("source:") {
+                            format!("\x1b[96m{}\x1b[0m", line) // Cyan for source (Moegirl Wiki)
+                        } else if line.contains("description:") {
+                            format!("\x1b[1;37m{}\x1b[0m", line) // Bold white for character description
+                        } else if line.contains("voice-actor:") || line.contains("cv:") || line.contains("voice-actor-jp:") || line.contains("voice-actor-cn:") {
+                            format!("\x1b[94m{}\x1b[0m", line) // Blue for voice actors
+                        } else if line.contains("source-work:") || line.contains("series:") || line.contains("character-template:") {
+                            format!("\x1b[95m{}\x1b[0m", line) // Magenta for series/work origin
+                        } else if line.contains("personality:") || line.contains("moe-points:") || line.contains("attributes:") || line.contains("traits:") {
+                            format!("\x1b[96m{}\x1b[0m", line) // Cyan for personality traits
+                        } else if line.contains("species:") || line.contains("identity:") || line.contains("class:") || line.contains("level:") {
+                            format!("\x1b[1;92m{}\x1b[0m", line) // Bright green for species/identity
+                        } else if line.contains("ability:") || line.contains("skill:") || line.contains("special-skill:") || line.contains("weapon:") || line.contains("equipment:") {
+                            format!("\x1b[1;91m{}\x1b[0m", line) // Bright red for abilities/weapons
+                        } else if line.contains("title:") || line.contains("alias:") || line.contains("nickname:") {
+                            format!("\x1b[1;93m{}\x1b[0m", line) // Bright yellow for titles/aliases
+                        } else if line.contains("family:") || line.contains("friends:") || line.contains("lover:") || line.contains("master:") || line.contains("subordinate:") {
+                            format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for relationships
+                        } else if line.contains("categories:") {
+                            format!("\x1b[90m{}\x1b[0m", line) // Gray for categories
+                        } else if line.contains("clothing:") || line.contains("appearance:") {
+                            format!("\x1b[93m{}\x1b[0m", line) // Yellow for appearance/clothing
+                        } else if line.contains("age:") || line.contains("birthday:") {
+                            let number_regex = Regex::new(r"(\d+)").unwrap();
+                            number_regex.replace_all(line, "\x1b[1;93m$1\x1b[0m").to_string()
+                        } else if line.contains("height:") || line.contains("weight:") {
+                            let measurement_regex = Regex::new(r"(\d+[\.\d]*\s*[cm|kg|m])").unwrap();
+                            measurement_regex.replace_all(line, "\x1b[1;92m$1\x1b[0m").to_string()
+                        } else if line.contains("hair-color:") || line.contains("eye-color:") {
+                            format!("\x1b[93m{}\x1b[0m", line) // Yellow for physical appearance
+                        } else if line.contains("gender:") {
+                            if line.contains("女") || line.contains("Female") {
+                                format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for female
+                            } else if line.contains("男") || line.contains("Male") {
+                                format!("\x1b[1;94m{}\x1b[0m", line) // Bright blue for male
+                            } else {
+                                format!("\x1b[1;96m{}\x1b[0m", line) // Bright cyan for other
+                            }
+                        } else if line.contains("occupation:") || line.contains("职业:") || line.contains("position:") {
+                            format!("\x1b[92m{}\x1b[0m", line) // Green for occupation
+                        } else if line.contains("origin:") || line.contains("出身:") || line.contains("hobby:") {
+                            format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for origin/hobby
+                        } else if line.contains("moegirl-url:") {
+                            let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
+                            url_regex.replace_all(line, "\x1b[4;94m$1\x1b[0m").to_string()
+                        } else {
+                            line.to_string()
+                        }
+                    },
                     _ => line.to_string()
                 }
             };
@@ -1009,6 +1067,68 @@ impl Colorizer {
                             format!("\x1b[90m{}\x1b[0m", line) // Gray for comments
                         } else if line.contains("---") {
                             format!("\x1b[90m{}\x1b[0m", line) // Gray for separators
+                        } else {
+                            line.to_string()
+                        }
+                    },
+                    QueryType::Acgc(_) => {
+                        // ACGC - Anime/Comic/Game character information coloring (BGPTools style)
+                        if line.contains("ACGC Character Information:") {
+                            format!("\x1b[1;96m{}\x1b[0m", line) // Bold cyan for headers
+                        } else if line.contains("page-id:") {
+                            let id_regex = Regex::new(r"(\d+)").unwrap();
+                            let colored = id_regex.replace_all(line, "\x1b[1;93m$1\x1b[0m").to_string();
+                            format!("\x1b[94m{}\x1b[0m", colored)
+                        } else if line.contains("character-name:") {
+                            format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for character names
+                        } else if line.contains("source:") {
+                            format!("\x1b[96m{}\x1b[0m", line) // Cyan for source (Moegirl Wiki)
+                        } else if line.contains("description:") {
+                            format!("\x1b[1;37m{}\x1b[0m", line) // Bold white for character description
+                        } else if line.contains("voice-actor:") || line.contains("cv:") || line.contains("voice-actor-jp:") || line.contains("voice-actor-cn:") {
+                            format!("\x1b[94m{}\x1b[0m", line) // Blue for voice actors
+                        } else if line.contains("source-work:") || line.contains("series:") || line.contains("character-template:") {
+                            format!("\x1b[95m{}\x1b[0m", line) // Magenta for series/work origin
+                        } else if line.contains("personality:") || line.contains("moe-points:") || line.contains("attributes:") || line.contains("traits:") {
+                            format!("\x1b[96m{}\x1b[0m", line) // Cyan for personality traits
+                        } else if line.contains("species:") || line.contains("identity:") || line.contains("class:") || line.contains("level:") {
+                            format!("\x1b[1;92m{}\x1b[0m", line) // Bright green for species/identity
+                        } else if line.contains("ability:") || line.contains("skill:") || line.contains("special-skill:") || line.contains("weapon:") || line.contains("equipment:") {
+                            format!("\x1b[1;91m{}\x1b[0m", line) // Bright red for abilities/weapons
+                        } else if line.contains("title:") || line.contains("alias:") || line.contains("nickname:") {
+                            format!("\x1b[1;93m{}\x1b[0m", line) // Bright yellow for titles/aliases
+                        } else if line.contains("family:") || line.contains("friends:") || line.contains("lover:") || line.contains("master:") || line.contains("subordinate:") {
+                            format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for relationships
+                        } else if line.contains("categories:") {
+                            format!("\x1b[90m{}\x1b[0m", line) // Gray for categories
+                        } else if line.contains("clothing:") || line.contains("appearance:") {
+                            format!("\x1b[93m{}\x1b[0m", line) // Yellow for appearance/clothing
+                        } else if line.contains("age:") || line.contains("birthday:") {
+                            let number_regex = Regex::new(r"(\d+)").unwrap();
+                            let colored = number_regex.replace_all(line, "\x1b[1;93m$1\x1b[0m").to_string();
+                            format!("\x1b[95m{}\x1b[0m", colored)
+                        } else if line.contains("height:") || line.contains("weight:") {
+                            let measurement_regex = Regex::new(r"(\d+[\.\d]*\s*[cm|kg|m])").unwrap();
+                            let colored = measurement_regex.replace_all(line, "\x1b[1;92m$1\x1b[0m").to_string();
+                            format!("\x1b[95m{}\x1b[0m", colored)
+                        } else if line.contains("hair-color:") || line.contains("eye-color:") {
+                            format!("\x1b[93m{}\x1b[0m", line) // Yellow for physical appearance
+                        } else if line.contains("gender:") {
+                            if line.contains("女") || line.contains("Female") {
+                                format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for female
+                            } else if line.contains("男") || line.contains("Male") {
+                                format!("\x1b[1;94m{}\x1b[0m", line) // Bright blue for male
+                            } else {
+                                format!("\x1b[1;96m{}\x1b[0m", line) // Bright cyan for other
+                            }
+                        } else if line.contains("occupation:") || line.contains("职业:") || line.contains("position:") {
+                            format!("\x1b[92m{}\x1b[0m", line) // Green for occupation
+                        } else if line.contains("origin:") || line.contains("出身:") || line.contains("hobby:") {
+                            format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for origin/hobby
+                        } else if line.contains("moegirl-url:") {
+                            let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
+                            let colored = url_regex.replace_all(line, "\x1b[4;94m$1\x1b[0m").to_string();
+                            format!("\x1b[94m{}\x1b[0m", colored)
                         } else {
                             line.to_string()
                         }
