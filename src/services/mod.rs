@@ -12,6 +12,7 @@ pub mod traceroute;
 pub mod ssl;
 pub mod crt;
 pub mod minecraft;
+pub mod aur;
 
 pub use whois::*;
 pub use email::*;
@@ -27,3 +28,4 @@ pub use traceroute::*;
 pub use ssl::*;
 pub use crt::*;
 pub use minecraft::*;
+pub use aur::*;
