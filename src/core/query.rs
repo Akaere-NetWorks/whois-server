@@ -26,6 +26,7 @@ pub enum QueryType {
     Crt(String),         // For queries ending with -CRT (Certificate Transparency)
     Minecraft(String),   // For queries ending with -MINECRAFT or -MC
     Steam(String),       // For queries ending with -STEAM (Steam games/users)
+    SteamSearch(String), // For queries ending with -STEAMSEARCH (Steam game search)
     Aur(String),         // For queries ending with -AUR (Arch User Repository)
     Debian(String),      // For queries ending with -DEBIAN (Debian packages)
     Unknown(String),
@@ -128,6 +129,12 @@ pub fn analyze_query(query: &str) -> QueryType {
     if query.to_uppercase().ends_with("-MC") {
         let base_query = &query[..query.len() - 3]; // Remove "-MC" suffix
         return QueryType::Minecraft(base_query.to_string());
+    }
+    
+    // Check if it's a Steam search query (must be checked before regular Steam query)
+    if query.to_uppercase().ends_with("-STEAMSEARCH") {
+        let base_query = &query[..query.len() - 12]; // Remove "-STEAMSEARCH" suffix
+        return QueryType::SteamSearch(base_query.to_string());
     }
     
     // Check if it's a Steam game/user query

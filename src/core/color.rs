@@ -187,6 +187,22 @@ impl Colorizer {
                         "created" | "changed" | "last-modified" | "expires" | "updated" => {
                             format!("\x1b[1;95m{}:\x1b[0m \x1b[95m{}\x1b[0m", attr, value)
                         },
+                        // Price information - conditional colors for Steam
+                        "price" | "original-price" => {
+                            if value.contains("(%↓)") || value.contains("Free") {
+                                // Green for discounted games and free games
+                                let price_regex = Regex::new(r"(\$[\d,]+\.?\d*|Free)").unwrap();
+                                let discount_regex = Regex::new(r"(\d+%↓)").unwrap();
+                                let colored_value = price_regex.replace_all(value, "\x1b[1;92m$1\x1b[0m").to_string();
+                                let final_value = discount_regex.replace_all(&colored_value, "\x1b[1;92m$1\x1b[0m").to_string();
+                                format!("\x1b[1;95m{}:\x1b[0m{}", attr, final_value)
+                            } else {
+                                // White for full-price games (no discount)
+                                let price_regex = Regex::new(r"(\$[\d,]+\.?\d*)").unwrap();
+                                let colored_value = price_regex.replace_all(value, "\x1b[97m$1\x1b[0m").to_string();
+                                format!("\x1b[1;95m{}:\x1b[0m{}", attr, colored_value)
+                            }
+                        },
                         // Package specific - bright magenta
                         "version" | "package" | "package-base" => {
                             format!("\x1b[1;95m{}:\x1b[0m \x1b[95m{}\x1b[0m", attr, value)
@@ -355,8 +371,17 @@ impl Colorizer {
                         } else if line.contains("name:") || line.contains("personaname:") {
                             format!("\x1b[1;96m{}\x1b[0m", line) // Bright cyan for names
                         } else if line.contains("price:") || line.contains("original-price:") {
-                            let price_regex = Regex::new(r"(\$[\d,]+\.?\d*)").unwrap();
-                            price_regex.replace_all(line, "\x1b[1;92m$1\x1b[0m").to_string()
+                            if line.contains("(%↓)") || line.contains("Free") {
+                                // Green for discounted games and free games
+                                let price_regex = Regex::new(r"(\$[\d,]+\.?\d*|Free)").unwrap();
+                                let discount_regex = Regex::new(r"(\d+%↓)").unwrap();
+                                let colored = price_regex.replace_all(line, "\x1b[1;92m$1\x1b[0m").to_string();
+                                discount_regex.replace_all(&colored, "\x1b[1;92m$1\x1b[0m").to_string()
+                            } else {
+                                // Red for full-price games
+                                let price_regex = Regex::new(r"(\$[\d,]+\.?\d*)").unwrap();
+                                price_regex.replace_all(line, "\x1b[1;91m$1\x1b[0m").to_string()
+                            }
                         } else if line.contains("metacritic-score:") {
                             let score_regex = Regex::new(r"(\d+)").unwrap();
                             score_regex.replace_all(line, "\x1b[1;93m$1\x1b[0m").to_string()
@@ -382,6 +407,44 @@ impl Colorizer {
                             }
                         } else if line.contains("country:") || line.contains("state:") {
                             format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for location
+                        } else {
+                            line.to_string()
+                        }
+                    },
+                    QueryType::SteamSearch(_) => {
+                        // Steam search results - RIPE style coloring
+                        if line.contains("Steam Game Search Results") {
+                            format!("\x1b[1;96m{}\x1b[0m", line) // Bold cyan for header
+                        } else if line.contains("Found") && line.contains("games:") {
+                            format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for count
+                        } else if line.contains(". Game Information") {
+                            format!("\x1b[1;93m{}\x1b[0m", line) // Bright yellow for entry headers
+                        } else if line.contains("app-id:") {
+                            let id_regex = Regex::new(r"(\d+)").unwrap();
+                            id_regex.replace_all(line, "\x1b[1;93m$1\x1b[0m").to_string()
+                        } else if line.contains("name:") {
+                            format!("\x1b[1;96m{}\x1b[0m", line) // Bright cyan for names
+                        } else if line.contains("type:") {
+                            format!("\x1b[96m{}\x1b[0m", line) // Cyan for type
+                        } else if line.contains("price:") {
+                            if line.contains("(%↓)") || line.contains("Free") {
+                                // Green for discounted games and free games
+                                let price_regex = Regex::new(r"(\$[\d,]+\.?\d*|Free)").unwrap();
+                                let discount_regex = Regex::new(r"(\d+%↓)").unwrap();
+                                let colored = price_regex.replace_all(line, "\x1b[1;92m$1\x1b[0m").to_string();
+                                discount_regex.replace_all(&colored, "\x1b[1;92m$1\x1b[0m").to_string()
+                            } else {
+                                // Red for full-price games
+                                let price_regex = Regex::new(r"(\$[\d,]+\.?\d*)").unwrap();
+                                price_regex.replace_all(line, "\x1b[1;91m$1\x1b[0m").to_string()
+                            }
+                        } else if line.contains("platforms:") {
+                            format!("\x1b[95m{}\x1b[0m", line) // Magenta for platforms
+                        } else if line.contains("steam-url:") {
+                            let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
+                            url_regex.replace_all(line, "\x1b[4;94m$1\x1b[0m").to_string()
+                        } else if line.starts_with("%") {
+                            format!("\x1b[90m{}\x1b[0m", line) // Gray for comments
                         } else {
                             line.to_string()
                         }
@@ -481,6 +544,22 @@ impl Colorizer {
                         "last-modified" | "expires" | "updated" | "first-submitted" => {
                             format!("\x1b[90m{}:\x1b[0m \x1b[90m{}\x1b[0m", attr, styled_value)
                         },
+                        // Price information - conditional colors for Steam
+                        "price" | "original-price" => {
+                            if value.contains("(%↓)") || value.contains("Free") {
+                                // Green for discounted games and free games
+                                let price_regex = Regex::new(r"(\$[\d,]+\.?\d*|Free)").unwrap();
+                                let discount_regex = Regex::new(r"(\d+%↓)").unwrap();
+                                let colored_value = price_regex.replace_all(value, "\x1b[1;92m$1\x1b[0m").to_string();
+                                let final_value = discount_regex.replace_all(&colored_value, "\x1b[1;92m$1\x1b[0m").to_string();
+                                format!("\x1b[95m{}:\x1b[0m{}", attr, final_value)
+                            } else {
+                                // White for full-price games (no discount)
+                                let price_regex = Regex::new(r"(\$[\d,]+\.?\d*)").unwrap();
+                                let colored_value = price_regex.replace_all(value, "\x1b[97m$1\x1b[0m").to_string();
+                                format!("\x1b[95m{}:\x1b[0m{}", attr, colored_value)
+                            }
+                        },
                         // Security/crypto - bright red
                         "fingerprint" | "signature" | "certificate" | "ssl" => {
                             format!("\x1b[1;91m{}:\x1b[0m \x1b[91m{}\x1b[0m", attr, styled_value)
@@ -579,9 +658,19 @@ impl Colorizer {
                         } else if line.contains("name:") || line.contains("personaname:") {
                             format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for names
                         } else if line.contains("price:") || line.contains("original-price:") {
-                            let price_regex = Regex::new(r"(\$[\d,]+\.?\d*)").unwrap();
-                            let colored = price_regex.replace_all(line, "\x1b[1;92m$1\x1b[0m").to_string();
-                            format!("\x1b[95m{}\x1b[0m", colored)
+                            if line.contains("(%↓)") || line.contains("Free") {
+                                // Green for discounted games and free games
+                                let price_regex = Regex::new(r"(\$[\d,]+\.?\d*|Free)").unwrap();
+                                let discount_regex = Regex::new(r"(\d+%↓)").unwrap();
+                                let mut colored = price_regex.replace_all(line, "\x1b[1;92m$1\x1b[0m").to_string();
+                                colored = discount_regex.replace_all(&colored, "\x1b[1;92m$1\x1b[0m").to_string();
+                                format!("\x1b[95m{}\x1b[0m", colored)
+                            } else {
+                                // Red for full-price games
+                                let price_regex = Regex::new(r"(\$[\d,]+\.?\d*)").unwrap();
+                                let colored = price_regex.replace_all(line, "\x1b[1;91m$1\x1b[0m").to_string();
+                                format!("\x1b[95m{}\x1b[0m", colored)
+                            }
                         } else if line.contains("discount:") {
                             let discount_regex = Regex::new(r"(\d+%)").unwrap();
                             let colored = discount_regex.replace_all(line, "\x1b[1;91m$1\x1b[0m").to_string();
@@ -621,6 +710,52 @@ impl Colorizer {
                             let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
                             let colored = url_regex.replace_all(line, "\x1b[4;96m$1\x1b[0m").to_string();
                             format!("\x1b[96m{}\x1b[0m", colored)
+                        } else {
+                            line.to_string()
+                        }
+                    },
+                    QueryType::SteamSearch(_) => {
+                        // Steam search results - clean, structured coloring
+                        if line.contains("Steam Game Search Results") {
+                            format!("\x1b[1;96m{}\x1b[0m", line) // Bold cyan for header
+                        } else if line.contains("Found") && line.contains("games:") {
+                            format!("\x1b[1;95m{}\x1b[0m", line) // Bold magenta for count
+                        } else if line.contains(". Game Information") {
+                            format!("\x1b[1;93m{}\x1b[0m", line) // Bold yellow for game entry headers
+                        } else if line.contains("app-id:") {
+                            let id_regex = Regex::new(r"(\d+)").unwrap();
+                            let colored = id_regex.replace_all(line, "\x1b[1;93m$1\x1b[0m").to_string();
+                            format!("\x1b[94m{}\x1b[0m", colored)
+                        } else if line.contains("name:") {
+                            format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for game names
+                        } else if line.contains("type:") {
+                            format!("\x1b[96m{}\x1b[0m", line) // Cyan for app type
+                        } else if line.contains("price:") {
+                            if line.contains("(%↓)") || line.contains("Free") {
+                                // Green for discounted games and free games
+                                let price_regex = Regex::new(r"(\$[\d,]+\.?\d*|Free)").unwrap();
+                                let discount_regex = Regex::new(r"(\d+%↓)").unwrap();
+                                let mut colored = price_regex.replace_all(line, "\x1b[1;92m$1\x1b[0m").to_string();
+                                colored = discount_regex.replace_all(&colored, "\x1b[1;92m$1\x1b[0m").to_string();
+                                format!("\x1b[95m{}\x1b[0m", colored)
+                            } else {
+                                // Red for full-price games
+                                let price_regex = Regex::new(r"(\$[\d,]+\.?\d*)").unwrap();
+                                let colored = price_regex.replace_all(line, "\x1b[1;91m$1\x1b[0m").to_string();
+                                format!("\x1b[95m{}\x1b[0m", colored)
+                            }
+                        } else if line.contains("platforms:") {
+                            format!("\x1b[93m{}\x1b[0m", line) // Yellow for platforms
+                        } else if line.contains("status: Coming Soon") {
+                            format!("\x1b[93m{}\x1b[0m", line) // Yellow for coming soon
+                        } else if line.contains("steam-url:") {
+                            let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
+                            let colored = url_regex.replace_all(line, "\x1b[4;94m$1\x1b[0m").to_string();
+                            format!("\x1b[94m{}\x1b[0m", colored)
+                        } else if line.starts_with("%") {
+                            format!("\x1b[90m{}\x1b[0m", line) // Gray for comments
+                        } else if line.contains("---") {
+                            format!("\x1b[90m{}\x1b[0m", line) // Gray for separators
                         } else {
                             line.to_string()
                         }

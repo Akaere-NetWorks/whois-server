@@ -108,6 +108,69 @@ pub struct SteamUserResponse {
     pub response: SteamUserResponseData,
 }
 
+/// Steam search API response
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SteamSearchResponse {
+    pub success: bool,
+    pub data: Option<SteamSearchData>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SteamSearchData {
+    pub query: String,
+    pub results: Vec<SteamSearchResult>,
+    pub total: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SteamSearchResult {
+    pub appid: u32,
+    pub name: String,
+    pub icon: String,
+    pub logo: String,
+    #[serde(rename = "type")]
+    pub app_type: String,
+    pub platforms: Option<SteamSearchPlatforms>,
+    pub coming_soon: Option<bool>,
+    pub price: Option<String>,
+    pub metascore: Option<u32>,
+    pub reviewstooltip: Option<String>,
+    pub streamingvideo: Option<bool>,
+    pub discount_block: Option<String>,
+    pub early_access: Option<bool>,
+    pub vr_support: Option<SteamVRSupport>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SteamSearchPlatforms {
+    pub windows: bool,
+    pub mac: bool,
+    pub linux: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SteamVRSupport {
+    pub vrhmd: Option<bool>,
+    pub vrhmd_only: Option<bool>,
+}
+
+/// Steam app list API response (for comprehensive search)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SteamAppListResponse {
+    pub applist: SteamAppList,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SteamAppList {
+    pub apps: Vec<SteamAppListItem>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SteamAppListItem {
+    pub appid: u32,
+    pub name: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SteamUserResponseData {
     pub players: Vec<SteamUserProfile>,
@@ -270,6 +333,222 @@ impl SteamService {
         }
     }
 
+    /// Search Steam games by name (fuzzy search)
+    pub async fn search_games(&self, query: &str, limit: usize) -> Result<String> {
+        debug!("Searching Steam games for query: {}", query);
+
+        // First try the Steam store search API (unofficial but works well)
+        match self.search_games_via_store_api(query, limit).await {
+            Ok(results) => Ok(results),
+            Err(store_error) => {
+                debug!("Store API search failed, trying app list fallback: {}", store_error);
+                // Fallback to app list search
+                self.search_games_via_app_list(query, limit).await
+            }
+        }
+    }
+
+    /// Search games using Steam store search API (more detailed results)
+    async fn search_games_via_store_api(&self, query: &str, limit: usize) -> Result<String> {
+        // Use Steam store search endpoint
+        let url = format!(
+            "https://store.steampowered.com/api/storesearch/?term={}&l=english&cc=US",
+            urlencoding::encode(query)
+        );
+
+        let response = self.client
+            .get(&url)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(anyhow::anyhow!("Steam store search API returned status: {}", response.status()));
+        }
+
+        let search_data: serde_json::Value = response.json().await?;
+        
+        // Parse the search results
+        if let Some(items) = search_data.get("items").and_then(|v| v.as_array()) {
+            let mut results = Vec::new();
+            
+            for item in items.iter().take(limit) {
+                if let (Some(id), Some(name)) = (
+                    item.get("id").and_then(|v| v.as_u64()),
+                    item.get("name").and_then(|v| v.as_str())
+                ) {
+                    let app_type = item.get("type").and_then(|v| v.as_str()).unwrap_or("game");
+                    let price_info = self.extract_price_info_from_search(item);
+                    let platforms = self.extract_platforms_from_search(item);
+                    let coming_soon = item.get("coming_soon").and_then(|v| v.as_bool()).unwrap_or(false);
+                    
+                    results.push((id as u32, name.to_string(), app_type.to_string(), price_info, platforms, coming_soon));
+                }
+            }
+            
+            if results.is_empty() {
+                Ok(format!("No Steam games found matching: {}\n", query))
+            } else {
+                Ok(self.format_search_results(query, &results))
+            }
+        } else {
+            Err(anyhow::anyhow!("Invalid response format from Steam store search API"))
+        }
+    }
+
+    /// Search games using Steam app list API (fallback method)
+    async fn search_games_via_app_list(&self, query: &str, limit: usize) -> Result<String> {
+        // Get the complete app list from Steam API
+        let url = "https://api.steampowered.com/ISteamApps/GetAppList/v2/";
+        
+        let response = self.client
+            .get(url)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(anyhow::anyhow!("Steam app list API returned status: {}", response.status()));
+        }
+
+        let app_list_response: SteamAppListResponse = response.json().await?;
+        
+        // Perform fuzzy search on app names
+        let query_lower = query.to_lowercase();
+        let mut matches = Vec::new();
+        
+        for app in &app_list_response.applist.apps {
+            let name_lower = app.name.to_lowercase();
+            
+            // Simple fuzzy matching: exact match, starts with, or contains
+            let score = if name_lower == query_lower {
+                100 // Exact match
+            } else if name_lower.starts_with(&query_lower) {
+                50 // Starts with
+            } else if name_lower.contains(&query_lower) {
+                25 // Contains
+            } else {
+                0 // No match
+            };
+            
+            if score > 0 {
+                matches.push((app.appid, app.name.clone(), score));
+            }
+        }
+        
+        // Sort by score (descending) and take top results
+        matches.sort_by(|a, b| b.2.cmp(&a.2));
+        matches.truncate(limit);
+        
+        if matches.is_empty() {
+            Ok(format!("No Steam games found matching: {}\n", query))
+        } else {
+            // Convert to the format expected by format_search_results
+            let results: Vec<(u32, String, String, Option<String>, String, bool)> = matches
+                .into_iter()
+                .map(|(id, name, _score)| (id, name, "app".to_string(), None, "N/A".to_string(), false))
+                .collect();
+            
+            Ok(self.format_search_results(query, &results))
+        }
+    }
+
+    /// Extract price information from search result item
+    fn extract_price_info_from_search(&self, item: &serde_json::Value) -> Option<String> {
+        if let Some(price_obj) = item.get("price") {
+            // Handle free games
+            if let Some(currency) = price_obj.get("currency").and_then(|v| v.as_str()) {
+                if currency == "USD" {
+                    if let Some(final_price) = price_obj.get("final").and_then(|v| v.as_u64()) {
+                        if final_price == 0 {
+                            return Some("Free".to_string());
+                        }
+                    }
+                }
+            }
+            
+            // Handle priced games with potential discounts
+            if let (Some(final_formatted), Some(initial), Some(final_price), Some(discount_percent)) = (
+                price_obj.get("final_formatted").and_then(|v| v.as_str()),
+                price_obj.get("initial").and_then(|v| v.as_u64()),
+                price_obj.get("final").and_then(|v| v.as_u64()),
+                price_obj.get("discount_percent").and_then(|v| v.as_u64())
+            ) {
+                if discount_percent > 0 && initial > final_price {
+                    // Has discount
+                    return Some(format!("{} ({}%↓)", final_formatted, discount_percent));
+                } else {
+                    // No discount
+                    return Some(final_formatted.to_string());
+                }
+            } else if let Some(final_formatted) = price_obj.get("final_formatted").and_then(|v| v.as_str()) {
+                // Simple price without discount info
+                return Some(final_formatted.to_string());
+            }
+        }
+        
+        None
+    }
+
+    /// Extract platform information from search result item
+    fn extract_platforms_from_search(&self, item: &serde_json::Value) -> String {
+        let mut platforms = Vec::new();
+        
+        if let Some(platform_info) = item.get("platforms") {
+            if platform_info.get("windows").and_then(|v| v.as_bool()).unwrap_or(false) {
+                platforms.push("Windows");
+            }
+            if platform_info.get("mac").and_then(|v| v.as_bool()).unwrap_or(false) {
+                platforms.push("macOS");
+            }
+            if platform_info.get("linux").and_then(|v| v.as_bool()).unwrap_or(false) {
+                platforms.push("Linux");
+            }
+        }
+        
+        if platforms.is_empty() {
+            "N/A".to_string()
+        } else {
+            platforms.join(", ")
+        }
+    }
+
+    /// Format search results for WHOIS display
+    fn format_search_results(&self, query: &str, results: &[(u32, String, String, Option<String>, String, bool)]) -> String {
+        let mut output = String::new();
+
+        output.push_str(&format!("Steam Game Search Results for: {}\n", query));
+        output.push_str("=".repeat(60).as_str());
+        output.push('\n');
+        output.push_str(&format!("Found {} games:\n\n", results.len()));
+
+        for (i, (app_id, name, app_type, price, platforms, coming_soon)) in results.iter().enumerate() {
+            output.push_str(&format!("{}. Game Information\n", i + 1));
+            output.push_str("-".repeat(25).as_str());
+            output.push('\n');
+            
+            output.push_str(&format!("app-id: {}\n", app_id));
+            output.push_str(&format!("name: {}\n", name));
+            output.push_str(&format!("type: {}\n", app_type));
+            
+            if let Some(price_str) = price {
+                output.push_str(&format!("price: {}\n", price_str));
+            }
+            
+            output.push_str(&format!("platforms: {}\n", platforms));
+            
+            if *coming_soon {
+                output.push_str("status: Coming Soon\n");
+            }
+            
+            output.push_str(&format!("steam-url: https://store.steampowered.com/app/{}/\n", app_id));
+            output.push('\n');
+        }
+
+        output.push_str(&format!("% Use '{}-STEAM' to get detailed information for a specific game\n", results[0].0));
+        output.push_str("% Search limited to top 10 results\n");
+
+        output
+    }
+
     /// Format Steam application information for WHOIS display
     fn format_app_info(&self, app: &SteamAppData) -> String {
         let mut output = String::new();
@@ -309,10 +588,13 @@ impl SteamService {
         }
 
         if let Some(price) = &app.price_overview {
-            output.push_str(&format!("price: {}\n", price.final_formatted));
             if price.discount_percent > 0 {
+                // Has discount - show discounted price with percentage
+                output.push_str(&format!("price: {} ({}%↓)\n", price.final_formatted, price.discount_percent));
                 output.push_str(&format!("original-price: {}\n", price.initial_formatted));
-                output.push_str(&format!("discount: {}%\n", price.discount_percent));
+            } else {
+                // No discount - show regular price
+                output.push_str(&format!("price: {}\n", price.final_formatted));
             }
             output.push_str(&format!("currency: {}\n", price.currency));
         }
@@ -438,6 +720,11 @@ impl SteamService {
         query.to_uppercase().ends_with("-STEAM")
     }
 
+    /// Check if a query string is a Steam search query
+    pub fn is_steam_search_query(query: &str) -> bool {
+        query.to_uppercase().ends_with("-STEAMSEARCH")
+    }
+
     /// Parse Steam query to determine if it's an app ID or user ID
     pub fn parse_steam_query(query: &str) -> Option<String> {
         if !Self::is_steam_query(query) {
@@ -445,6 +732,16 @@ impl SteamService {
         }
 
         let clean_query = &query[..query.len() - 6]; // Remove "-STEAM"
+        Some(clean_query.to_string())
+    }
+
+    /// Parse Steam search query
+    pub fn parse_steam_search_query(query: &str) -> Option<String> {
+        if !Self::is_steam_search_query(query) {
+            return None;
+        }
+
+        let clean_query = &query[..query.len() - 12]; // Remove "-STEAMSEARCH"
         Some(clean_query.to_string())
     }
 
@@ -489,6 +786,25 @@ pub async fn process_steam_query(query: &str) -> Result<String> {
     }
 }
 
+/// Process Steam search query with -STEAMSEARCH suffix
+pub async fn process_steam_search_query(query: &str) -> Result<String> {
+    let steam_service = SteamService::new();
+    
+    if let Some(search_query) = SteamService::parse_steam_search_query(query) {
+        debug!("Processing Steam search query for: {}", search_query);
+        
+        if search_query.is_empty() {
+            return Ok(format!("Invalid Steam search query. Please provide a search term.\nExample: Counter-Strike-STEAMSEARCH\n"));
+        }
+        
+        // Search for games with a limit of 10 results
+        steam_service.search_games(&search_query, 10).await
+    } else {
+        error!("Invalid Steam search query format: {}", query);
+        Ok(format!("Invalid Steam search query format. Use: <search_term>-STEAMSEARCH\nExample: Counter-Strike-STEAMSEARCH\nQuery: {}\n", query))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -505,6 +821,17 @@ mod tests {
     }
 
     #[test]
+    fn test_steam_search_query_detection() {
+        assert!(SteamService::is_steam_search_query("Counter-Strike-STEAMSEARCH"));
+        assert!(SteamService::is_steam_search_query("dota-STEAMSEARCH"));
+        assert!(SteamService::is_steam_search_query("Half Life-STEAMSEARCH"));
+        
+        assert!(!SteamService::is_steam_search_query("Counter-Strike"));
+        assert!(!SteamService::is_steam_search_query("Counter-Strike-STEAM"));
+        assert!(!SteamService::is_steam_search_query("STEAMSEARCH-Counter-Strike"));
+    }
+
+    #[test]
     fn test_steam_query_parsing() {
         assert_eq!(
             SteamService::parse_steam_query("730-STEAM"),
@@ -517,6 +844,21 @@ mod tests {
         );
         
         assert_eq!(SteamService::parse_steam_query("730"), None);
+    }
+
+    #[test]
+    fn test_steam_search_query_parsing() {
+        assert_eq!(
+            SteamService::parse_steam_search_query("Counter-Strike-STEAMSEARCH"),
+            Some("Counter-Strike".to_string())
+        );
+        
+        assert_eq!(
+            SteamService::parse_steam_search_query("dota-STEAMSEARCH"),
+            Some("dota".to_string())
+        );
+        
+        assert_eq!(SteamService::parse_steam_search_query("Counter-Strike"), None);
     }
 
     #[test]
