@@ -14,6 +14,7 @@ pub async fn run_async_server(
     dump_traffic: bool,
     dump_dir: &str,
     stats: StatsState,
+    enable_color: bool,
 ) -> Result<()> {
     // Start server
     let listener = TcpListener::bind(&addr).await
@@ -41,7 +42,7 @@ pub async fn run_async_server(
                         
                         // Handle connection
                         tokio::spawn(async move {
-                            if let Err(e) = handle_connection(stream, addr, timeout, dump_traffic, &dump_dir, stats_clone).await {
+                            if let Err(e) = handle_connection(stream, addr, timeout, dump_traffic, &dump_dir, stats_clone, enable_color).await {
                                 error!("Connection handling error: {}", e);
                             }
                             

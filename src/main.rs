@@ -112,12 +112,12 @@ async fn main() -> Result<()> {
     
     if args.use_blocking {
         info!("Using blocking TCP connections (non-async)");
-        run_blocking_server(&addr, args.timeout, args.dump_traffic, &args.dump_dir)?;
+        run_blocking_server(&addr, args.timeout, args.dump_traffic, &args.dump_dir, args.enable_color)?;
         return Ok(());
     }
     
     // Start async server
-    let result = run_async_server(&addr, args.max_connections, args.timeout, args.dump_traffic, &args.dump_dir, stats.clone()).await;
+    let result = run_async_server(&addr, args.max_connections, args.timeout, args.dump_traffic, &args.dump_dir, stats.clone(), args.enable_color).await;
     
     // Save stats on shutdown
     info!("Saving statistics before shutdown...");

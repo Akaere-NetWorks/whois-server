@@ -16,7 +16,7 @@ use crate::services::{
 };
 use crate::config::{SERVER_BANNER, RADB_WHOIS_SERVER, RADB_WHOIS_PORT};
 use crate::dn42::process_dn42_query_managed;
-use crate::core::{analyze_query, is_private_ipv4, is_private_ipv6, QueryType, dump_to_file, StatsState};
+use crate::core::{analyze_query, is_private_ipv4, is_private_ipv6, QueryType, dump_to_file, StatsState, ColorProtocol, Colorizer};
 
 pub async fn handle_connection(
     mut stream: TcpStream,
@@ -25,6 +25,7 @@ pub async fn handle_connection(
     dump_traffic: bool,
     dump_dir: &str,
     stats: StatsState,
+    enable_color: bool,
 ) -> Result<()> {
     // Set nodelay to ensure responses are sent immediately
     if let Err(e) = stream.set_nodelay(true) {
@@ -69,11 +70,31 @@ pub async fn handle_connection(
         dump_to_file(&format!("{}/query_{}.txt", dump_dir, timestamp), &request);
     }
     
-    // Clean request - trim whitespace and get first line
-    let query = match request.trim().lines().next() {
-        Some(q) => q.trim().to_string(),
-        None => return Err(anyhow::anyhow!("Empty query")),
-    };
+    // Parse color protocol headers
+    let mut color_protocol = ColorProtocol::new();
+    color_protocol.enabled = enable_color;
+    let is_capability_probe = color_protocol.parse_headers(&request);
+    
+    // Handle capability probe
+    if is_capability_probe {
+        debug!("Received WHOIS-COLOR capability probe from {}", addr);
+        let capability_response = color_protocol.get_capability_response();
+        
+        if let Err(e) = stream.write_all(capability_response.as_bytes()).await {
+            error!("Failed to send capability response: {}", e);
+        } else {
+            debug!("Sent WHOIS-COLOR capability response");
+        }
+        
+        return Ok(());
+    }
+    
+    // Clean request - trim whitespace and get first line (skip headers)
+    let query_line = request.trim().lines()
+        .find(|line| !line.trim().to_uppercase().starts_with("X-WHOIS-COLOR"))
+        .unwrap_or("");
+    
+    let query = query_line.trim().to_string();
     
     // Skip empty queries
     if query.is_empty() {
@@ -81,7 +102,7 @@ pub async fn handle_connection(
         return Ok(());
     }
     
-    debug!("Received query from {}: {}", addr, query);
+    debug!("Received query from {}: {} (color: {:?})", addr, query, color_protocol.scheme);
     
     // Analyze query type
     let query_type = analyze_query(&query);
@@ -217,7 +238,7 @@ pub async fn handle_connection(
         }
     };
     
-    // Format the response with proper WHOIS format
+    // Format the response with proper WHOIS format and optional colorization
     let formatted_response = match result {
         Ok(resp) => {
             let mut formatted = format!("{}\r\n", SERVER_BANNER);
@@ -225,8 +246,20 @@ pub async fn handle_connection(
             formatted.push_str("% Please report any issues to noc@akae.re\r\n");
             formatted.push_str("\r\n");
             
-            // Add the actual response content
-            formatted.push_str(&resp);
+            // Apply colorization if requested and supported
+            let response_content = if color_protocol.should_colorize() {
+                if let Some(scheme) = &color_protocol.scheme {
+                    let colorizer = Colorizer::new(scheme.clone());
+                    colorizer.colorize_response(&resp, &query_type)
+                } else {
+                    resp
+                }
+            } else {
+                resp
+            };
+            
+            // Add the response content (colorized or plain)
+            formatted.push_str(&response_content);
             
             // Ensure response ends with a CRLF
             if !formatted.ends_with("\r\n") {
@@ -241,7 +274,17 @@ pub async fn handle_connection(
             let mut formatted = format!("{}\r\n", SERVER_BANNER);
             formatted.push_str("% Please report any issues to noc@akae.re\r\n");
             formatted.push_str("\r\n");
-            formatted.push_str(&format!("% Error: {}\r\n", e));
+            
+            let error_msg = format!("% Error: {}\r\n", e);
+            
+            // Apply colorization to error message if requested
+            let colored_error = if color_protocol.should_colorize() {
+                format!("\x1b[91m{}\x1b[0m", error_msg) // Bright red for errors
+            } else {
+                error_msg
+            };
+            
+            formatted.push_str(&colored_error);
             formatted.push_str("\r\n");
             formatted
         }

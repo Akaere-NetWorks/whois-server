@@ -77,4 +77,8 @@ pub struct Cli {
     /// Web dashboard port
     #[arg(long, default_value_t = 9999)]
     pub web_port: u16,
+    
+    /// Enable WHOIS-COLOR protocol support
+    #[arg(long, default_value_t = true)]
+    pub enable_color: bool,
 } 

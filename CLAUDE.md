@@ -48,6 +48,7 @@ cargo build --message-format=short
 - `--dump-traffic`: Write raw queries/responses to files for debugging
 - `--dump-dir`: Directory for traffic dumps (default: dumps)
 - `--use-blocking`: Use blocking (non-async) network operations
+- `--enable-color`: Enable WHOIS-COLOR protocol support (default: true)
 
 ### Testing
 The project does not include traditional unit tests. Testing is performed by running the server and querying it with WHOIS clients:
@@ -58,6 +59,15 @@ whois -h localhost -p 43 example.com
 
 # Test with netcat
 echo "example.com" | nc localhost 43
+
+# Test WHOIS-COLOR protocol capability detection
+echo -e "X-WHOIS-COLOR-PROBE: 1\r\n\r\n" | nc localhost 43
+
+# Test colored responses (RIPE style)
+echo -e "X-WHOIS-COLOR: ripe\r\nexample.com\r\n" | nc localhost 43
+
+# Test colored responses (BGPTools style)
+echo -e "X-WHOIS-COLOR: bgptools\r\n8.8.8.8\r\n" | nc localhost 43
 
 # Test web dashboard
 curl http://localhost:9999/api/stats
@@ -89,6 +99,7 @@ The codebase is organized into logical modules for maintainability and clarity:
 - `query.rs`: Query type detection and routing (15+ query types)
 - `stats.rs`: Real-time statistics collection and persistence
 - `utils.rs`: Shared utility functions
+- `color.rs`: WHOIS-COLOR protocol v1.0 implementation with RIPE and BGPTools schemes
 
 **Server Module (`server/`)**:
 Two server architectures available:
@@ -151,8 +162,51 @@ The `DN42Manager` in `dn42/manager.rs` handles this platform detection and provi
 7. SSL/TLS certificates: -SSL suffix for domain certificate analysis
 8. Certificate Transparency: -CRT suffix for CT log searches
 9. Minecraft servers: -MINECRAFT or -MC suffix for server status
-10. DN42-specific queries (auto-detected)
-11. IANA registry caching for efficient resource lookups
+10. Package queries: -AUR (Arch User Repository), -DEBIAN (Debian packages)
+11. DN42-specific queries (auto-detected)
+12. IANA registry caching for efficient resource lookups
+
+### WHOIS-COLOR Protocol Support
+The server implements WHOIS-COLOR protocol v1.0 for enhanced terminal output:
+
+**Protocol Features**:
+- **Capability Detection**: Automatic detection via `X-WHOIS-COLOR-PROBE` header
+- **Backward Compatibility**: Standard WHOIS operation when color is not supported
+- **Multiple Schemes**: RIPE-style and BGPTools-style colorization
+- **Query-Type Aware**: Different coloring patterns based on query type
+
+**Supported Color Schemes**:
+- **RIPE Style**: Traditional WHOIS database coloring with attribute-based colors
+  - Network resources (routes, prefixes) in green
+  - ASN information in yellow/gold
+  - Contact information in blue
+  - Geographic data in magenta
+  - Status information in bright red
+  - Timestamps in gray
+- **BGPTools Style**: Network analysis focused coloring
+  - ASN numbers highlighted with backgrounds
+  - IP addresses and prefixes in bright colors
+  - Status validation with colored backgrounds (green/red/yellow)
+  - Query-specific highlighting for specialized responses
+
+**Usage Examples**:
+```bash
+# Check server color support
+echo -e "X-WHOIS-COLOR-PROBE: 1\r\n\r\n" | nc whois.akae.re 43
+
+# Query with RIPE-style coloring
+echo -e "X-WHOIS-COLOR: ripe\r\nexample.com\r\n" | nc whois.akae.re 43
+
+# Query with BGPTools-style coloring  
+echo -e "X-WHOIS-COLOR: bgptools\r\nAS15169\r\n" | nc whois.akae.re 43
+```
+
+**Implementation Details**:
+- Only activates when client explicitly requests color support
+- Graceful fallback to standard WHOIS on any protocol issues
+- Query-type specific colorization for all supported query types (-EMAIL, -GEO, -BGP, etc.)
+- ANSI escape code based with terminal compatibility
+- Configurable via `--enable-color` flag (default: enabled)
 
 ### Intelligent Query Routing
 - Automatic DN42 detection for AS4242420000-AS4242423999, .dn42 domains, private IPs

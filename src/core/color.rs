@@ -1,0 +1,623 @@
+/*
+ * WHOIS Server with DN42 Support
+ * Copyright (C) 2025 Akaere Networks
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+use regex::Regex;
+use crate::core::QueryType;
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ColorScheme {
+    Ripe,
+    BgpTools,
+}
+
+impl ColorScheme {
+    pub fn from_string(s: &str) -> Option<Self> {
+        match s.to_lowercase().as_str() {
+            "ripe" => Some(ColorScheme::Ripe),
+            "bgptools" => Some(ColorScheme::BgpTools),
+            _ => None,
+        }
+    }
+    
+    pub fn to_string(&self) -> &'static str {
+        match self {
+            ColorScheme::Ripe => "ripe",
+            ColorScheme::BgpTools => "bgptools",
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ColorProtocol {
+    pub enabled: bool,
+    pub scheme: Option<ColorScheme>,
+    pub client_supports_color: bool,
+}
+
+impl Default for ColorProtocol {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            scheme: None,
+            client_supports_color: false,
+        }
+    }
+}
+
+impl ColorProtocol {
+    pub fn new() -> Self {
+        Self::default()
+    }
+    
+    pub fn parse_headers(&mut self, request: &str) -> bool {
+        let lines: Vec<&str> = request.lines().collect();
+        
+        for line in &lines {
+            let line = line.trim();
+            
+            // Check for capability probe
+            if line.to_uppercase().starts_with("X-WHOIS-COLOR-PROBE:") {
+                self.client_supports_color = true;
+                return true; // This is a capability probe request
+            }
+            
+            // Check for color scheme request
+            if line.to_uppercase().starts_with("X-WHOIS-COLOR:") {
+                if let Some(value_part) = line.split(':').nth(1) {
+                    let value_part = value_part.trim();
+                    
+                    // Support both formats: "ripe" and "scheme=ripe"
+                    let scheme_str = if value_part.starts_with("scheme=") {
+                        &value_part[7..] // Remove "scheme=" prefix
+                    } else {
+                        value_part
+                    };
+                    
+                    if let Some(scheme) = ColorScheme::from_string(scheme_str) {
+                        self.scheme = Some(scheme);
+                        self.client_supports_color = true;
+                    }
+                }
+            }
+        }
+        
+        false // Not a capability probe
+    }
+    
+    pub fn should_colorize(&self) -> bool {
+        self.enabled && self.client_supports_color && self.scheme.is_some()
+    }
+    
+    pub fn get_capability_response(&self) -> String {
+        if self.enabled {
+            "X-WHOIS-COLOR-SUPPORT: 1.0 schemes=ripe,bgptools\r\n\r\n".to_string()
+        } else {
+            "X-WHOIS-COLOR-SUPPORT: no\r\n\r\n".to_string()
+        }
+    }
+}
+
+pub struct Colorizer {
+    scheme: ColorScheme,
+}
+
+impl Colorizer {
+    pub fn new(scheme: ColorScheme) -> Self {
+        Self { scheme }
+    }
+    
+    pub fn colorize_response(&self, response: &str, query_type: &QueryType) -> String {
+        match self.scheme {
+            ColorScheme::Ripe => self.colorize_ripe_style(response, query_type),
+            ColorScheme::BgpTools => self.colorize_bgptools_style(response, query_type),
+        }
+    }
+    
+    fn colorize_ripe_style(&self, response: &str, query_type: &QueryType) -> String {
+        let mut colorized = String::new();
+        
+        for line in response.lines() {
+            let colored_line = if line.starts_with('%') {
+                // Comments in cyan
+                format!("\x1b[36m{}\x1b[0m", line)
+            } else if line.contains(':') && !line.starts_with(' ') {
+                // Attribute-value pairs with specific colors based on query type and attribute
+                let parts: Vec<&str> = line.splitn(2, ':').collect();
+                if parts.len() == 2 {
+                    let attr = parts[0].trim();
+                    let value = parts[1];
+                    
+                    match attr {
+                        // Network resources - bright green
+                        "inetnum" | "inet6num" | "route" | "route6" | "network" | "prefix" => {
+                            format!("\x1b[1;92m{}:\x1b[0m \x1b[92m{}\x1b[0m", attr, value)
+                        },
+                        // ASN info - golden yellow
+                        "origin" | "aut-num" | "as-name" | "asn" => {
+                            format!("\x1b[1;93m{}:\x1b[0m \x1b[93m{}\x1b[0m", attr, value)
+                        },
+                        // Contact info - bright blue
+                        "person" | "admin-c" | "tech-c" | "mnt-by" | "contact" | "email" => {
+                            format!("\x1b[1;94m{}:\x1b[0m \x1b[94m{}\x1b[0m", attr, value)
+                        },
+                        // Description/names - bright cyan
+                        "descr" | "netname" | "orgname" | "org-name" | "description" => {
+                            format!("\x1b[1;96m{}:\x1b[0m \x1b[96m{}\x1b[0m", attr, value)
+                        },
+                        // Geographic info - bright magenta
+                        "country" | "address" | "city" | "region" | "geoloc" => {
+                            format!("\x1b[1;95m{}:\x1b[0m \x1b[95m{}\x1b[0m", attr, value)
+                        },
+                        // Status/state - conditional colors
+                        "status" | "state" | "rpki-status" | "validation" => {
+                            if value.trim().to_lowercase().contains("valid") && !value.trim().to_lowercase().contains("invalid") {
+                                format!("\x1b[1;92m{}:\x1b[0m \x1b[92m{}\x1b[0m", attr, value) // Bright green for valid
+                            } else if value.trim().to_lowercase().contains("invalid") {
+                                format!("\x1b[1;91m{}:\x1b[0m \x1b[91m{}\x1b[0m", attr, value) // Bright red for invalid
+                            } else {
+                                format!("\x1b[1;93m{}:\x1b[0m \x1b[93m{}\x1b[0m", attr, value) // Bright yellow for unknown
+                            }
+                        },
+                        // Dates - gray
+                        "created" | "changed" | "last-modified" | "expires" | "updated" => {
+                            format!("\x1b[1;90m{}:\x1b[0m \x1b[90m{}\x1b[0m", attr, value)
+                        },
+                        // Package specific - bright magenta
+                        "version" | "package" | "package-base" => {
+                            format!("\x1b[1;95m{}:\x1b[0m \x1b[95m{}\x1b[0m", attr, value)
+                        },
+                        // URLs - underlined blue
+                        "aur-url" | "upstream-url" | "url" | "homepage" => {
+                            let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
+                            let colored_value = url_regex.replace_all(value, "\x1b[4;94m$1\x1b[0m").to_string();
+                            format!("\x1b[1;94m{}:\x1b[0m {}", attr, colored_value)
+                        },
+                        // Default - rainbow gradient effect for unknown attributes
+                        _ => {
+                            let hash = attr.chars().map(|c| c as u32).sum::<u32>();
+                            let color_code = 31 + (hash % 6); // Rotate through 31-36 (red to cyan)
+                            format!("\x1b[1;{}m{}:\x1b[0m \x1b[{}m{}\x1b[0m", color_code, attr, color_code, value)
+                        }
+                    }
+                } else {
+                    line.to_string()
+                }
+            } else {
+                // Handle special query type responses
+                match query_type {
+                    QueryType::Geo(_) | QueryType::RirGeo(_) => {
+                        // Geo queries - highlight coordinates and locations
+                        if line.contains("latitude") || line.contains("longitude") || line.contains("coordinates") {
+                            format!("\x1b[95m{}\x1b[0m", line) // Bright magenta for coordinates
+                        } else if line.contains("location") || line.contains("city") || line.contains("region") {
+                            format!("\x1b[94m{}\x1b[0m", line) // Bright blue for locations
+                        } else {
+                            line.to_string()
+                        }
+                    },
+                    QueryType::BGPTool(_) | QueryType::Prefixes(_) => {
+                        // BGP/prefix queries - highlight network paths and ASNs
+                        let asn_regex = Regex::new(r"(AS\d+)").unwrap();
+                        let ip_regex = Regex::new(r"(\d+\.\d+\.\d+\.\d+(?:/\d+)?|[0-9a-fA-F:]+::[0-9a-fA-F:]*(?:/\d+)?)").unwrap();
+                        let mut result = asn_regex.replace_all(line, "\x1b[93m$1\x1b[0m").to_string();
+                        result = ip_regex.replace_all(&result, "\x1b[92m$1\x1b[0m").to_string();
+                        result
+                    },
+                    QueryType::Dns(_) => {
+                        // DNS queries - comprehensive DNS record coloring
+                        if line.contains("DNS Resolution Results") || line.contains("Query:") {
+                            format!("\x1b[1;96m{}\x1b[0m", line) // Bold cyan for headers
+                        } else if line.contains(" A ") && !line.contains("AAAA") {
+                            let ip_regex = Regex::new(r"(\d+\.\d+\.\d+\.\d+)").unwrap();
+                            ip_regex.replace_all(line, "\x1b[92m$1\x1b[0m").to_string()
+                        } else if line.contains(" AAAA ") {
+                            let ipv6_regex = Regex::new(r"([0-9a-fA-F:]+::[0-9a-fA-F:]*)").unwrap();
+                            ipv6_regex.replace_all(line, "\x1b[92m$1\x1b[0m").to_string()
+                        } else if line.contains(" CNAME ") || line.contains(" DNAME ") {
+                            format!("\x1b[94m{}\x1b[0m", line) // Blue for aliases
+                        } else if line.contains(" MX ") {
+                            format!("\x1b[95m{}\x1b[0m", line) // Magenta for mail exchangers
+                        } else if line.contains(" NS ") {
+                            format!("\x1b[96m{}\x1b[0m", line) // Cyan for nameservers
+                        } else if line.contains(" TXT ") || line.contains(" SPF ") {
+                            format!("\x1b[93m{}\x1b[0m", line) // Yellow for text records
+                        } else if line.contains("TTL:") || line.contains("ttl=") {
+                            format!("\x1b[90m{}\x1b[0m", line) // Gray for TTL
+                        } else {
+                            line.to_string()
+                        }
+                    },
+                    QueryType::Ssl(_) => {
+                        // SSL queries - comprehensive certificate information coloring
+                        if line.contains("Certificate Information") || line.contains("SSL Certificate") {
+                            format!("\x1b[1;96m{}\x1b[0m", line) // Bold cyan for headers
+                        } else if line.contains("Subject:") || line.contains("Issuer:") {
+                            format!("\x1b[95m{}\x1b[0m", line) // Magenta for cert subjects
+                        } else if line.contains("Serial Number:") || line.contains("Version:") {
+                            format!("\x1b[94m{}\x1b[0m", line) // Blue for identifiers
+                        } else if line.contains("Not Before:") || line.contains("Not After:") {
+                            if line.contains("Not After:") && line.contains("202") { // Check if expires soon
+                                format!("\x1b[93m{}\x1b[0m", line) // Yellow for expiry dates
+                            } else {
+                                format!("\x1b[90m{}\x1b[0m", line) // Gray for timestamps
+                            }
+                        } else if line.contains("Validity Period:") || line.contains("Algorithms:") {
+                            format!("\x1b[1;37m{}\x1b[0m", line) // Bold white for section headers
+                        } else if line.contains("SHA") || line.contains("Fingerprint") {
+                            format!("\x1b[96m{}\x1b[0m", line) // Cyan for fingerprints
+                        } else if line.contains("Subject Alternative Names:") {
+                            format!("\x1b[92m{}\x1b[0m", line) // Green for SAN section
+                        } else if line.contains("Key Usage:") || line.contains("Extended Key Usage:") {
+                            format!("\x1b[93m{}\x1b[0m", line) // Yellow for usage info
+                        } else if line.contains("Certificate Status:") {
+                            if line.contains("Valid") {
+                                format!("\x1b[92m{}\x1b[0m", line) // Green for valid
+                            } else if line.contains("Expired") || line.contains("Invalid") {
+                                format!("\x1b[91m{}\x1b[0m", line) // Red for invalid/expired
+                            } else {
+                                format!("\x1b[93m{}\x1b[0m", line) // Yellow for other status
+                            }
+                        } else {
+                            line.to_string()
+                        }
+                    },
+                    QueryType::Irr(_) => {
+                        // IRR Explorer - routing registry analysis coloring
+                        if line.contains("Route:") || line.contains("Prefix:") {
+                            format!("\x1b[92m{}\x1b[0m", line) // Green for routes
+                        } else if line.contains("Origin ASN:") || line.contains("AS-Path:") {
+                            let asn_regex = Regex::new(r"(AS\d+)").unwrap();
+                            asn_regex.replace_all(line, "\x1b[93m$1\x1b[0m").to_string()
+                        } else if line.contains("RPKI Status:") {
+                            if line.contains("Valid") {
+                                format!("\x1b[92m{}\x1b[0m", line) // Green for valid RPKI
+                            } else if line.contains("Invalid") {
+                                format!("\x1b[91m{}\x1b[0m", line) // Red for invalid RPKI
+                            } else {
+                                format!("\x1b[93m{}\x1b[0m", line) // Yellow for unknown RPKI
+                            }
+                        } else if line.contains("IRR Sources:") || line.contains("Registered in:") {
+                            format!("\x1b[95m{}\x1b[0m", line) // Magenta for registry info
+                        } else {
+                            line.to_string()
+                        }
+                    },
+                    QueryType::LookingGlass(_) => {
+                        // Looking Glass - BGP routing data coloring
+                        if line.contains("BGP Routing Table") || line.contains("Route Information") {
+                            format!("\x1b[1;96m{}\x1b[0m", line) // Bold cyan for headers
+                        } else if line.contains("*>") || line.contains("best") {
+                            format!("\x1b[92m{}\x1b[0m", line) // Green for best path
+                        } else if line.contains("AS") && line.contains("Path") {
+                            let asn_regex = Regex::new(r"(AS\d+|{\d+}|\d+)").unwrap();
+                            asn_regex.replace_all(line, "\x1b[93m$1\x1b[0m").to_string()
+                        } else if line.contains("Next Hop:") || line.contains("Nexthop:") {
+                            let ip_regex = Regex::new(r"(\d+\.\d+\.\d+\.\d+)").unwrap();
+                            ip_regex.replace_all(line, "\x1b[94m$1\x1b[0m").to_string()
+                        } else if line.contains("MED:") || line.contains("Local Pref:") {
+                            format!("\x1b[95m{}\x1b[0m", line) // Magenta for BGP attributes
+                        } else {
+                            line.to_string()
+                        }
+                    },
+                    QueryType::Rpki(_, _) => {
+                        // RPKI validation - security-focused coloring
+                        if line.contains("RPKI Validation Result") {
+                            format!("\x1b[1;96m{}\x1b[0m", line) // Bold cyan for header
+                        } else if line.contains("Valid") && !line.contains("Invalid") {
+                            format!("\x1b[92m{}\x1b[0m", line) // Green for valid
+                        } else if line.contains("Invalid") {
+                            format!("\x1b[91m{}\x1b[0m", line) // Red for invalid
+                        } else if line.contains("Not Found") || line.contains("Unknown") {
+                            format!("\x1b[93m{}\x1b[0m", line) // Yellow for unknown
+                        } else if line.contains("ROA:") || line.contains("Certificate:") {
+                            format!("\x1b[95m{}\x1b[0m", line) // Magenta for certificate info
+                        } else {
+                            line.to_string()
+                        }
+                    },
+                    _ => line.to_string()
+                }
+            };
+            
+            colorized.push_str(&colored_line);
+            colorized.push_str("\r\n");
+        }
+        
+        // Remove last CRLF if added
+        if colorized.ends_with("\r\n") {
+            colorized.truncate(colorized.len() - 2);
+        }
+        
+        colorized
+    }
+    
+    fn colorize_bgptools_style(&self, response: &str, query_type: &QueryType) -> String {
+        let mut colorized = String::new();
+        
+        for line in response.lines() {
+            let colored_line = if line.starts_with('%') {
+                // Comments in bright cyan
+                format!("\x1b[96m{}\x1b[0m", line)
+            } else if line.contains(':') && !line.starts_with(' ') {
+                // Attribute-value pairs with BGP Tools styling
+                let parts: Vec<&str> = line.splitn(2, ':').collect();
+                if parts.len() == 2 {
+                    let attr = parts[0].trim();
+                    let value = parts[1];
+                    
+                    // Apply regex patterns to value for network elements
+                    let asn_regex = Regex::new(r"(AS\d+)").unwrap();
+                    let ip_regex = Regex::new(r"(\d+\.\d+\.\d+\.\d+(?:/\d+)?|[0-9a-fA-F:]+::[0-9a-fA-F:]*(?:/\d+)?)").unwrap();
+                    let domain_regex = Regex::new(r"([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}").unwrap();
+                    
+                    let mut styled_value = value.to_string();
+                    styled_value = asn_regex.replace_all(&styled_value, "\x1b[93m$1\x1b[0m").to_string();
+                    styled_value = ip_regex.replace_all(&styled_value, "\x1b[92m$1\x1b[0m").to_string();
+                    styled_value = domain_regex.replace_all(&styled_value, "\x1b[94m$1\x1b[0m").to_string();
+                    
+                    match attr {
+                        // Critical network info - bright green
+                        "route" | "route6" | "inetnum" | "inet6num" | "prefix" => {
+                            format!("\x1b[1;92m{}:\x1b[0m \x1b[92m{}\x1b[0m", attr, styled_value)
+                        },
+                        // ASN related - golden yellow
+                        "origin" | "aut-num" | "as-name" => {
+                            format!("\x1b[1;93m{}:\x1b[0m \x1b[93m{}\x1b[0m", attr, styled_value)
+                        },
+                        // Status/validation - conditional colors
+                        "status" | "rpki-status" | "validation" => {
+                            if value.trim().to_lowercase().contains("valid") && !value.trim().to_lowercase().contains("invalid") {
+                                format!("\x1b[1;92m{}:\x1b[0m \x1b[92m{}\x1b[0m", attr, value) // Bright green for valid
+                            } else if value.trim().to_lowercase().contains("invalid") {
+                                format!("\x1b[1;91m{}:\x1b[0m \x1b[91m{}\x1b[0m", attr, value) // Bright red for invalid
+                            } else {
+                                format!("\x1b[1;93m{}:\x1b[0m \x1b[93m{}\x1b[0m", attr, value) // Bright yellow for unknown
+                            }
+                        },
+                        // Geo info - bright magenta
+                        "country" | "city" | "region" | "geoloc" => {
+                            format!("\x1b[1;95m{}:\x1b[0m \x1b[95m{}\x1b[0m", attr, styled_value)
+                        },
+                        // Contact info - bright blue
+                        "person" | "admin-c" | "tech-c" | "mnt-by" | "contact" => {
+                            format!("\x1b[1;94m{}:\x1b[0m \x1b[94m{}\x1b[0m", attr, styled_value)
+                        },
+                        // Package info - bright cyan
+                        "package" | "version" | "depends" | "makedepends" => {
+                            format!("\x1b[1;96m{}:\x1b[0m \x1b[96m{}\x1b[0m", attr, styled_value)
+                        },
+                        // URLs - underlined blue
+                        "aur-url" | "upstream-url" | "url" | "homepage" => {
+                            format!("\x1b[1;94m{}:\x1b[0m \x1b[4;94m{}\x1b[0m", attr, styled_value)
+                        },
+                        // Dates - gray
+                        "created" | "changed" | "last-modified" | "expires" | "updated" | "first-submitted" => {
+                            format!("\x1b[1;90m{}:\x1b[0m \x1b[90m{}\x1b[0m", attr, styled_value)
+                        },
+                        // Security/crypto - bright red
+                        "fingerprint" | "signature" | "certificate" | "ssl" => {
+                            format!("\x1b[1;91m{}:\x1b[0m \x1b[91m{}\x1b[0m", attr, styled_value)
+                        },
+                        // Popularity/stats - bright yellow
+                        "votes" | "popularity" | "players" | "rating" => {
+                            format!("\x1b[1;93m{}:\x1b[0m \x1b[93m{}\x1b[0m", attr, styled_value)
+                        },
+                        // Default - gradient rainbow
+                        _ => {
+                            let hash = attr.chars().map(|c| c as u32).sum::<u32>();
+                            let color_code = 91 + (hash % 6); // Bright colors 91-96
+                            format!("\x1b[1;{}m{}:\x1b[0m \x1b[{}m{}\x1b[0m", color_code, attr, color_code, styled_value)
+                        }
+                    }
+                } else {
+                    line.to_string()
+                }
+            } else {
+                // Handle query-type specific content
+                match query_type {
+                    QueryType::EmailSearch(_) => {
+                        // Email search - highlight email addresses
+                        let email_regex = Regex::new(r"([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})").unwrap();
+                        email_regex.replace_all(line, "\x1b[96m$1\x1b[0m").to_string()
+                    },
+                    QueryType::Trace(_) => {
+                        // Traceroute - highlight hops and latency
+                        if line.contains("ms") || line.contains("hop") {
+                            format!("\x1b[93m{}\x1b[0m", line) // Yellow for timing info
+                        } else {
+                            let ip_regex = Regex::new(r"(\d+\.\d+\.\d+\.\d+)").unwrap();
+                            ip_regex.replace_all(line, "\x1b[92m$1\x1b[0m").to_string()
+                        }
+                    },
+                    QueryType::Crt(_) => {
+                        // Certificate Transparency - comprehensive certificate coloring
+                        if line.contains("Serial Number:") || line.contains("ID:") {
+                            format!("\x1b[94m{}\x1b[0m", line) // Blue for cert identifiers
+                        } else if line.contains("Subject:") || line.contains("Issuer:") {
+                            format!("\x1b[95m{}\x1b[0m", line) // Magenta for cert subjects/issuers
+                        } else if line.contains("Not Before:") || line.contains("Not After:") ||
+                                  line.contains("Logged at:") {
+                            format!("\x1b[90m{}\x1b[0m", line) // Gray for timestamps
+                        } else if line.contains("Fingerprint") || line.contains("SHA") {
+                            format!("\x1b[96m{}\x1b[0m", line) // Cyan for fingerprints
+                        } else if line.contains("Common Name:") || line.contains("CN=") {
+                            format!("\x1b[92m{}\x1b[0m", line) // Green for common names
+                        } else if line.contains("Certificate:") || line.contains("Entry") {
+                            format!("\x1b[93m{}\x1b[0m", line) // Yellow for entry headers
+                        } else {
+                            line.to_string()
+                        }
+                    },
+                    QueryType::Minecraft(_) => {
+                        // Minecraft server - clean color coding
+                        if line.contains("Status: Online") || line.contains("server is online") {
+                            format!("\x1b[1;92m{}\x1b[0m", line) // Bright green for online
+                        } else if line.contains("Status: Offline") || line.contains("offline") || 
+                                  line.contains("unreachable") || line.contains("timeout") {
+                            format!("\x1b[1;91m{}\x1b[0m", line) // Bright red for offline
+                        } else if line.contains("Players:") || line.contains("players online") {
+                            let player_regex = Regex::new(r"(\d+/\d+|\d+ players?)").unwrap();
+                            let colored = player_regex.replace_all(line, "\x1b[1;95m$1\x1b[0m").to_string();
+                            format!("\x1b[95m{}\x1b[0m", colored)
+                        } else if line.contains("Version:") {
+                            let version_regex = Regex::new(r"(\d+\.\d+[\.\d]*)").unwrap();
+                            let colored = version_regex.replace_all(line, "\x1b[1;94m$1\x1b[0m").to_string();
+                            format!("\x1b[94m{}\x1b[0m", colored)
+                        } else if line.contains("MOTD:") || line.contains("Description:") {
+                            format!("\x1b[96m{}\x1b[0m", line)
+                        } else if line.contains("Latency:") || line.contains("ms") {
+                            let latency_regex = Regex::new(r"(\d+)\s*ms").unwrap();
+                            let colored = latency_regex.replace_all(line, "\x1b[1;93m$1ms\x1b[0m").to_string();
+                            format!("\x1b[93m{}\x1b[0m", colored)
+                        } else if line.contains("Max Players:") || line.contains("Slots:") {
+                            let slot_regex = Regex::new(r"(\d+)").unwrap();
+                            let colored = slot_regex.replace_all(line, "\x1b[1;95m$1\x1b[0m").to_string();
+                            format!("\x1b[95m{}\x1b[0m", colored)
+                        } else {
+                            line.to_string()
+                        }
+                    },
+                    QueryType::Aur(_) => {
+                        // AUR packages - clean color coding
+                        if line.contains("out-of-date:") && !line.contains("no") {
+                            format!("\x1b[1;91m{}\x1b[0m", line) // Bright red for out-of-date
+                        } else if line.contains("maintainer:") && line.contains("orphaned") {
+                            format!("\x1b[1;91m{}\x1b[0m", line) // Bright red for orphaned
+                        } else if line.contains("votes:") {
+                            let vote_regex = Regex::new(r"(\d+)").unwrap();
+                            let colored = vote_regex.replace_all(line, "\x1b[1;93m$1\x1b[0m").to_string();
+                            format!("\x1b[95m{}\x1b[0m", colored)
+                        } else if line.contains("popularity:") {
+                            let pop_regex = Regex::new(r"(\d+\.\d+)").unwrap();
+                            let colored = pop_regex.replace_all(line, "\x1b[1;95m$1\x1b[0m").to_string();
+                            format!("\x1b[95m{}\x1b[0m", colored)
+                        } else if line.contains("depends:") {
+                            format!("\x1b[94m{}\x1b[0m", line)
+                        } else if line.contains("makedepends:") {
+                            format!("\x1b[96m{}\x1b[0m", line)
+                        } else if line.contains("optdepends:") {
+                            format!("\x1b[95m{}\x1b[0m", line)
+                        } else if line.contains("conflicts:") {
+                            format!("\x1b[93m{}\x1b[0m", line)
+                        } else if line.contains("aur-url:") || line.contains("upstream-url:") {
+                            let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
+                            let colored = url_regex.replace_all(line, "\x1b[4;94m$1\x1b[0m").to_string();
+                            format!("\x1b[94m{}\x1b[0m", colored)
+                        } else {
+                            line.to_string()
+                        }
+                    },
+                    QueryType::Debian(_) => {
+                        // Debian packages - comprehensive coloring
+                        if line.contains("Priority: required") || line.contains("Priority: important") {
+                            format!("\x1b[91m{}\x1b[0m", line) // Red for critical priority
+                        } else if line.contains("Status:") {
+                            if line.contains("installed") {
+                                format!("\x1b[92m{}\x1b[0m", line) // Green for installed
+                            } else {
+                                format!("\x1b[93m{}\x1b[0m", line) // Yellow for other status
+                            }
+                        } else if line.contains("Depends:") || line.contains("Pre-Depends:") ||
+                                  line.contains("Recommends:") || line.contains("Suggests:") {
+                            format!("\x1b[94m{}\x1b[0m", line) // Blue for dependencies
+                        } else if line.contains("Conflicts:") || line.contains("Breaks:") {
+                            format!("\x1b[91m{}\x1b[0m", line) // Red for conflicts
+                        } else if line.contains("Size:") || line.contains("Installed-Size:") {
+                            format!("\x1b[95m{}\x1b[0m", line) // Magenta for size info
+                        } else {
+                            line.to_string()
+                        }
+                    },
+                    QueryType::Manrs(_) => {
+                        // MANRS - highlight compliance status
+                        if line.contains("compliant") || line.contains("implemented") {
+                            format!("\x1b[92m{}\x1b[0m", line) // Green for compliant
+                        } else if line.contains("non-compliant") || line.contains("missing") {
+                            format!("\x1b[91m{}\x1b[0m", line) // Red for non-compliant
+                        } else {
+                            line.to_string()
+                        }
+                    },
+                    _ => {
+                        // Apply general network pattern highlighting
+                        let asn_regex = Regex::new(r"(AS\d+)").unwrap();
+                        let ip_regex = Regex::new(r"(\d+\.\d+\.\d+\.\d+(?:/\d+)?|[0-9a-fA-F:]+::[0-9a-fA-F:]*(?:/\d+)?)").unwrap();
+                        let domain_regex = Regex::new(r"([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}").unwrap();
+                        
+                        let mut result = asn_regex.replace_all(line, "\x1b[93m$1\x1b[0m").to_string();
+                        result = ip_regex.replace_all(&result, "\x1b[92m$1\x1b[0m").to_string();
+                        result = domain_regex.replace_all(&result, "\x1b[94m$1\x1b[0m").to_string();
+                        result
+                    }
+                }
+            };
+            
+            colorized.push_str(&colored_line);
+            colorized.push_str("\r\n");
+        }
+        
+        // Remove last CRLF if added
+        if colorized.ends_with("\r\n") {
+            colorized.truncate(colorized.len() - 2);
+        }
+        
+        colorized
+    }
+    
+}
+
+pub fn has_ansi_colors(text: &str) -> bool {
+    text.contains('\x1b')
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[test]
+    fn test_color_scheme_parsing() {
+        assert_eq!(ColorScheme::from_string("ripe"), Some(ColorScheme::Ripe));
+        assert_eq!(ColorScheme::from_string("RIPE"), Some(ColorScheme::Ripe));
+        assert_eq!(ColorScheme::from_string("bgptools"), Some(ColorScheme::BgpTools));
+        assert_eq!(ColorScheme::from_string("invalid"), None);
+    }
+    
+    #[test]
+    fn test_protocol_header_parsing() {
+        let mut protocol = ColorProtocol::new();
+        
+        // Test capability probe
+        let probe_request = "X-WHOIS-COLOR-PROBE: 1\r\nexample.com\r\n";
+        assert!(protocol.parse_headers(probe_request));
+        assert!(protocol.client_supports_color);
+        
+        // Test color scheme request
+        let mut protocol2 = ColorProtocol::new();
+        let color_request = "X-WHOIS-COLOR: ripe\r\nexample.com\r\n";
+        assert!(!protocol2.parse_headers(color_request));
+        assert!(protocol2.client_supports_color);
+        assert_eq!(protocol2.scheme, Some(ColorScheme::Ripe));
+    }
+    
+    #[test]
+    fn test_ansi_detection() {
+        assert!(has_ansi_colors("\x1b[31mRed text\x1b[0m"));
+        assert!(!has_ansi_colors("Plain text"));
+    }
+}
