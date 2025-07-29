@@ -26,6 +26,7 @@ pub enum QueryType {
     Crt(String),         // For queries ending with -CRT (Certificate Transparency)
     Minecraft(String),   // For queries ending with -MINECRAFT or -MC
     Aur(String),         // For queries ending with -AUR (Arch User Repository)
+    Debian(String),      // For queries ending with -DEBIAN (Debian packages)
     Unknown(String),
 }
 
@@ -132,6 +133,12 @@ pub fn analyze_query(query: &str) -> QueryType {
     if query.to_uppercase().ends_with("-AUR") {
         let base_query = &query[..query.len() - 4]; // Remove "-AUR" suffix
         return QueryType::Aur(base_query.to_string());
+    }
+    
+    // Check if it's a Debian package query
+    if query.to_uppercase().ends_with("-DEBIAN") {
+        let base_query = &query[..query.len() - 7]; // Remove "-DEBIAN" suffix
+        return QueryType::Debian(base_query.to_string());
     }
     
     // Check if it's a BGP Tools query
