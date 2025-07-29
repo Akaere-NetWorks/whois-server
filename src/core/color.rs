@@ -576,6 +576,33 @@ impl Colorizer {
                             line.to_string()
                         }
                     },
+                    QueryType::Lyric(_) => {
+                        // Lyric - Luotianyi random lyrics coloring
+                        if line.contains("Luotianyi Random Lyric:") {
+                            format!("\x1b[1;96m{}\x1b[0m", line) // Bold cyan for header
+                        } else if line.contains("song-name:") {
+                            format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for song names
+                        } else if line.contains("singer:") {
+                            format!("\x1b[96m{}\x1b[0m", line) // Cyan for singer (Luotianyi)
+                        } else if line.contains("author:") {
+                            format!("\x1b[94m{}\x1b[0m", line) // Blue for authors
+                        } else if line.contains("year:") {
+                            format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for year
+                        } else if line.contains("source:") {
+                            format!("\x1b[96m{}\x1b[0m", line) // Cyan for source (lty.vc)
+                        } else if line.contains("lyric-content:") {
+                            format!("\x1b[1;37m{}\x1b[0m", line) // Bold white for lyric content header
+                        } else if line.starts_with("%") {
+                            format!("\x1b[90m{}\x1b[0m", line) // Gray for comments
+                        } else {
+                            // Lyric content lines - make them colorful
+                            if !line.trim().is_empty() && !line.contains(":") && !line.starts_with("=") && !line.starts_with("%") {
+                                format!("\x1b[1;92m{}\x1b[0m", line) // Bright green for actual lyrics
+                            } else {
+                                line.to_string()
+                            }
+                        }
+                    },
                     QueryType::Acgc(_) => {
                         // ACGC - Anime/Comic/Game character information coloring
                         if line.contains("ACGC Character Information:") {
@@ -1164,6 +1191,33 @@ impl Colorizer {
                             format!("\x1b[94m{}\x1b[0m", colored)
                         } else {
                             line.to_string()
+                        }
+                    },
+                    QueryType::Lyric(_) => {
+                        // Lyric - Luotianyi random lyrics coloring (BGPTools style)
+                        if line.contains("Luotianyi Random Lyric:") {
+                            format!("\x1b[1;96m{}\x1b[0m", line) // Bold cyan for headers
+                        } else if line.contains("song-name:") {
+                            format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for song names
+                        } else if line.contains("singer:") {
+                            format!("\x1b[96m{}\x1b[0m", line) // Cyan for singer (Luotianyi)
+                        } else if line.contains("author:") {
+                            format!("\x1b[94m{}\x1b[0m", line) // Blue for authors
+                        } else if line.contains("year:") {
+                            format!("\x1b[90m{}\x1b[0m", line) // Gray for year
+                        } else if line.contains("source:") {
+                            format!("\x1b[96m{}\x1b[0m", line) // Cyan for source (lty.vc)
+                        } else if line.contains("lyric-content:") {
+                            format!("\x1b[1;37m{}\x1b[0m", line) // Bold white for lyric content header
+                        } else if line.starts_with("%") {
+                            format!("\x1b[90m{}\x1b[0m", line) // Gray for comments
+                        } else {
+                            // Lyric content lines - make them bright and colorful in BGPTools style
+                            if !line.trim().is_empty() && !line.contains(":") && !line.starts_with("=") && !line.starts_with("%") {
+                                format!("\x1b[1;97m{}\x1b[0m", line) // Bright white for actual lyrics
+                            } else {
+                                line.to_string()
+                            }
                         }
                     },
                     QueryType::Acgc(_) => {

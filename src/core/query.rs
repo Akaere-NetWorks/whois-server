@@ -34,6 +34,7 @@ pub enum QueryType {
     Aur(String),         // For queries ending with -AUR (Arch User Repository)
     Debian(String),      // For queries ending with -DEBIAN (Debian packages)
     Wikipedia(String),   // For queries ending with -WIKIPEDIA (Wikipedia articles)
+    Lyric(String),       // For queries ending with -LYRIC (Luotianyi random lyrics)
     Unknown(String),
 }
 
@@ -188,6 +189,12 @@ pub fn analyze_query(query: &str) -> QueryType {
     if query.to_uppercase().ends_with("-WIKIPEDIA") {
         let base_query = &query[..query.len() - 10]; // Remove "-WIKIPEDIA" suffix
         return QueryType::Wikipedia(base_query.to_string());
+    }
+    
+    // Check if it's a Luotianyi lyric query
+    if query.to_uppercase().ends_with("-LYRIC") {
+        let base_query = &query[..query.len() - 6]; // Remove "-LYRIC" suffix
+        return QueryType::Lyric(base_query.to_string());
     }
     
     // Check if it's a BGP Tools query

@@ -14,7 +14,7 @@ use crate::services::{
     process_crt_query, process_minecraft_query, process_minecraft_user_query,
     process_steam_query, process_steam_search_query, process_imdb_query, 
     process_imdb_search_query, process_acgc_query, process_aur_query, 
-    process_debian_query, process_wikipedia_query, query_whois, query_with_iana_referral
+    process_debian_query, process_wikipedia_query, process_lyric_query, query_whois, query_with_iana_referral
 };
 use crate::config::{SERVER_BANNER, RADB_WHOIS_SERVER, RADB_WHOIS_PORT};
 use crate::dn42::process_dn42_query_managed;
@@ -242,6 +242,10 @@ pub async fn handle_connection(
         QueryType::Wikipedia(base_query) => {
             debug!("Processing Wikipedia article query: {}", base_query);
             process_wikipedia_query(&format!("{}-WIKIPEDIA", base_query)).await
+        }
+        QueryType::Lyric(base_query) => {
+            debug!("Processing Luotianyi lyric query: {}", base_query);
+            process_lyric_query(&format!("{}-LYRIC", base_query)).await
         }
         QueryType::Unknown(q) => {
             debug!("Unknown query type: {}", q);

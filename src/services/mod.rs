@@ -17,6 +17,7 @@ pub mod imdb;
 pub mod acgc;
 pub mod packages;
 pub mod wikipedia;
+pub mod lyric;
 
 pub use whois::*;
 pub use email::*;
@@ -37,3 +38,4 @@ pub use imdb::*;
 pub use acgc::*;
 pub use packages::*;
 pub use wikipedia::*;
+pub use lyric::*;
