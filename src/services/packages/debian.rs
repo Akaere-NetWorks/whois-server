@@ -200,71 +200,6 @@ fn format_debian_not_found(package_name: &str) -> String {
     )
 }
 
-// Simplified package info structure for cases where we get detailed package info
-fn format_detailed_debian_response(package: &DebianPackageInfo) -> String {
-    let mut response = String::new();
-    
-    response.push_str(&format!("package: {}\n", package.package));
-    response.push_str(&format!("version: {}\n", package.version));
-    response.push_str(&format!("architecture: {}\n", package.architecture));
-    
-    if let Some(description) = &package.description {
-        response.push_str(&format!("description: {}\n", description));
-    }
-    
-    if let Some(maintainer) = &package.maintainer {
-        response.push_str(&format!("maintainer: {}\n", maintainer));
-    }
-    
-    if let Some(homepage) = &package.homepage {
-        response.push_str(&format!("homepage: {}\n", homepage));
-    }
-    
-    if let Some(section) = &package.section {
-        response.push_str(&format!("section: {}\n", section));
-    }
-    
-    if let Some(priority) = &package.priority {
-        response.push_str(&format!("priority: {}\n", priority));
-    }
-    
-    // Dependencies
-    if let Some(depends) = &package.depends {
-        response.push_str(&format!("depends: {}\n", depends));
-    }
-    
-    if let Some(recommends) = &package.recommends {
-        response.push_str(&format!("recommends: {}\n", recommends));
-    }
-    
-    if let Some(suggests) = &package.suggests {
-        response.push_str(&format!("suggests: {}\n", suggests));
-    }
-    
-    if let Some(conflicts) = &package.conflicts {
-        response.push_str(&format!("conflicts: {}\n", conflicts));
-    }
-    
-    if let Some(replaces) = &package.replaces {
-        response.push_str(&format!("replaces: {}\n", replaces));
-    }
-    
-    if let Some(provides) = &package.provides {
-        response.push_str(&format!("provides: {}\n", provides));
-    }
-    
-    // Size information
-    if let Some(size) = package.size {
-        response.push_str(&format!("download-size: {} bytes\n", size));
-    }
-    
-    if let Some(installed_size) = package.installed_size {
-        response.push_str(&format!("installed-size: {} bytes\n", installed_size));
-    }
-    
-    response
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -278,23 +213,4 @@ mod tests {
         assert!(result.contains("apt search"));
     }
 
-    #[test]
-    fn test_valid_package_names() {
-        // Valid Debian package names
-        assert!(is_valid_debian_package_name("vim"));
-        assert!(is_valid_debian_package_name("libc6-dev"));
-        assert!(is_valid_debian_package_name("python3.11"));
-        assert!(is_valid_debian_package_name("gcc-12+base"));
-        
-        // Invalid names
-        assert!(!is_valid_debian_package_name(""));
-        assert!(!is_valid_debian_package_name("package with spaces"));
-        assert!(!is_valid_debian_package_name("package@invalid"));
-    }
-}
-
-fn is_valid_debian_package_name(name: &str) -> bool {
-    !name.is_empty() && 
-    name.len() <= 100 && 
-    name.chars().all(|c| c.is_ascii_alphanumeric() || "+-._".contains(c))
 }

@@ -16,7 +16,7 @@ use crate::dn42::process_dn42_query_managed_blocking;
 use crate::core::{analyze_query, is_private_ipv4, is_private_ipv6, QueryType, dump_to_file};
 
 // Blocking TCP server implementation for testing
-pub fn run_blocking_server(addr: &str, timeout_secs: u64, dump_traffic: bool, dump_dir: &str, enable_color: bool) -> Result<()> {
+pub fn run_blocking_server(addr: &str, timeout_secs: u64, dump_traffic: bool, dump_dir: &str, _enable_color: bool) -> Result<()> {
     let listener = TcpListener::bind(addr)?;
     listener.set_nonblocking(false)?;
     

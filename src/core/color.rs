@@ -34,12 +34,6 @@ impl ColorScheme {
         }
     }
     
-    pub fn to_string(&self) -> &'static str {
-        match self {
-            ColorScheme::Ripe => "ripe",
-            ColorScheme::BgpTools => "bgptools",
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -614,9 +608,6 @@ impl Colorizer {
     
 }
 
-pub fn has_ansi_colors(text: &str) -> bool {
-    text.contains('\x1b')
-}
 
 #[cfg(test)]
 mod tests {
@@ -647,9 +638,4 @@ mod tests {
         assert_eq!(protocol2.scheme, Some(ColorScheme::Ripe));
     }
     
-    #[test]
-    fn test_ansi_detection() {
-        assert!(has_ansi_colors("\x1b[31mRed text\x1b[0m"));
-        assert!(!has_ansi_colors("Plain text"));
-    }
 }
