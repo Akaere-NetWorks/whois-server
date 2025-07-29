@@ -189,6 +189,12 @@ pub fn run_blocking_server(addr: &str, timeout_secs: u64, dump_traffic: bool, du
                         // Return a notice that Minecraft queries require async server
                         Ok(format!("Minecraft server queries are only supported on the async server.\nPlease use the main server (port 43) for Minecraft queries.\nQuery: {}\n", base_query))
                     }
+                    QueryType::Steam(base_query) => {
+                        info!("Processing Steam game/user query: {}", base_query);
+                        // Steam API queries require async HTTP operations
+                        // Return a notice that Steam queries require async server
+                        Ok(format!("Steam game/user queries are only supported on the async server.\nPlease use the main server (port 43) for Steam queries.\nQuery: {}\n", base_query))
+                    }
                     QueryType::Aur(base_query) => {
                         info!("Processing AUR package query: {}", base_query);
                         // AUR queries require async HTTP operations

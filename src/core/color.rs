@@ -341,6 +341,51 @@ impl Colorizer {
                             line.to_string()
                         }
                     },
+                    QueryType::Steam(_) => {
+                        // Steam - game and user information coloring
+                        if line.contains("Steam Application Information") || line.contains("Steam User Profile Information") {
+                            format!("\x1b[1;96m{}\x1b[0m", line) // Bold cyan for headers
+                        } else if line.contains("Status: Online") || line.contains("status: Online") {
+                            format!("\x1b[1;92m{}\x1b[0m", line) // Bright green for online
+                        } else if line.contains("Status: Offline") || line.contains("status: Offline") {
+                            format!("\x1b[1;91m{}\x1b[0m", line) // Bright red for offline
+                        } else if line.contains("app-id:") || line.contains("steamid:") {
+                            let id_regex = Regex::new(r"(\d+)").unwrap();
+                            id_regex.replace_all(line, "\x1b[1;93m$1\x1b[0m").to_string()
+                        } else if line.contains("name:") || line.contains("personaname:") {
+                            format!("\x1b[1;96m{}\x1b[0m", line) // Bright cyan for names
+                        } else if line.contains("price:") || line.contains("original-price:") {
+                            let price_regex = Regex::new(r"(\$[\d,]+\.?\d*)").unwrap();
+                            price_regex.replace_all(line, "\x1b[1;92m$1\x1b[0m").to_string()
+                        } else if line.contains("metacritic-score:") {
+                            let score_regex = Regex::new(r"(\d+)").unwrap();
+                            score_regex.replace_all(line, "\x1b[1;93m$1\x1b[0m").to_string()
+                        } else if line.contains("developers:") || line.contains("publishers:") {
+                            format!("\x1b[94m{}\x1b[0m", line) // Blue for developers/publishers
+                        } else if line.contains("genres:") || line.contains("categories:") {
+                            format!("\x1b[96m{}\x1b[0m", line) // Cyan for game categories
+                        } else if line.contains("platforms:") {
+                            format!("\x1b[95m{}\x1b[0m", line) // Magenta for platforms
+                        } else if line.contains("release-date:") || line.contains("created:") {
+                            format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for dates
+                        } else if line.contains("steam-url:") || line.contains("profileurl:") || 
+                                  line.contains("website:") || line.contains("metacritic-url:") {
+                            let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
+                            url_regex.replace_all(line, "\x1b[4;94m$1\x1b[0m").to_string()
+                        } else if line.contains("visibility:") || line.contains("profile-state:") {
+                            if line.contains("Public") || line.contains("Configured") {
+                                format!("\x1b[92m{}\x1b[0m", line) // Green for positive states
+                            } else if line.contains("Private") || line.contains("Not Configured") {
+                                format!("\x1b[91m{}\x1b[0m", line) // Red for restricted states
+                            } else {
+                                format!("\x1b[93m{}\x1b[0m", line) // Yellow for other states
+                            }
+                        } else if line.contains("country:") || line.contains("state:") {
+                            format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for location
+                        } else {
+                            line.to_string()
+                        }
+                    },
                     _ => line.to_string()
                 }
             };
@@ -515,6 +560,67 @@ impl Colorizer {
                             let slot_regex = Regex::new(r"(\d+)").unwrap();
                             let colored = slot_regex.replace_all(line, "\x1b[1;95m$1\x1b[0m").to_string();
                             format!("\x1b[95m{}\x1b[0m", colored)
+                        } else {
+                            line.to_string()
+                        }
+                    },
+                    QueryType::Steam(_) => {
+                        // Steam - comprehensive game and user information coloring
+                        if line.contains("Steam Application Information") || line.contains("Steam User Profile Information") {
+                            format!("\x1b[1;96m{}\x1b[0m", line) // Bold cyan for headers
+                        } else if line.contains("Status: Online") || line.contains("status: Online") {
+                            format!("\x1b[1;92m{}\x1b[0m", line) // Bright green for online status
+                        } else if line.contains("Status: Offline") || line.contains("status: Offline") {
+                            format!("\x1b[1;91m{}\x1b[0m", line) // Bright red for offline status
+                        } else if line.contains("app-id:") || line.contains("steamid:") {
+                            let id_regex = Regex::new(r"(\d+)").unwrap();
+                            let colored = id_regex.replace_all(line, "\x1b[1;93m$1\x1b[0m").to_string();
+                            format!("\x1b[94m{}\x1b[0m", colored)
+                        } else if line.contains("name:") || line.contains("personaname:") {
+                            format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for names
+                        } else if line.contains("price:") || line.contains("original-price:") {
+                            let price_regex = Regex::new(r"(\$[\d,]+\.?\d*)").unwrap();
+                            let colored = price_regex.replace_all(line, "\x1b[1;92m$1\x1b[0m").to_string();
+                            format!("\x1b[95m{}\x1b[0m", colored)
+                        } else if line.contains("discount:") {
+                            let discount_regex = Regex::new(r"(\d+%)").unwrap();
+                            let colored = discount_regex.replace_all(line, "\x1b[1;91m$1\x1b[0m").to_string();
+                            format!("\x1b[93m{}\x1b[0m", colored)
+                        } else if line.contains("metacritic-score:") {
+                            let score_regex = Regex::new(r"(\d+)").unwrap();
+                            let colored = score_regex.replace_all(line, "\x1b[1;93m$1\x1b[0m").to_string();
+                            format!("\x1b[95m{}\x1b[0m", colored)
+                        } else if line.contains("recommendations:") || line.contains("achievements:") {
+                            let num_regex = Regex::new(r"(\d+)").unwrap();
+                            let colored = num_regex.replace_all(line, "\x1b[1;96m$1\x1b[0m").to_string();
+                            format!("\x1b[96m{}\x1b[0m", colored)
+                        } else if line.contains("developers:") || line.contains("publishers:") {
+                            format!("\x1b[94m{}\x1b[0m", line) // Blue for developers/publishers
+                        } else if line.contains("genres:") || line.contains("categories:") {
+                            format!("\x1b[96m{}\x1b[0m", line) // Cyan for classifications
+                        } else if line.contains("platforms:") {
+                            format!("\x1b[93m{}\x1b[0m", line) // Yellow for platforms
+                        } else if line.contains("release-date:") || line.contains("created:") {
+                            format!("\x1b[90m{}\x1b[0m", line) // Gray for dates
+                        } else if line.contains("steam-url:") || line.contains("profileurl:") || 
+                                  line.contains("website:") || line.contains("metacritic-url:") {
+                            let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
+                            let colored = url_regex.replace_all(line, "\x1b[4;94m$1\x1b[0m").to_string();
+                            format!("\x1b[94m{}\x1b[0m", colored)
+                        } else if line.contains("visibility:") || line.contains("profile-state:") {
+                            if line.contains("Public") || line.contains("Configured") {
+                                format!("\x1b[92m{}\x1b[0m", line) // Green for public/configured
+                            } else if line.contains("Private") || line.contains("Not Configured") {
+                                format!("\x1b[91m{}\x1b[0m", line) // Red for private/not configured
+                            } else {
+                                format!("\x1b[93m{}\x1b[0m", line) // Yellow for other states
+                            }
+                        } else if line.contains("country:") || line.contains("state:") {
+                            format!("\x1b[95m{}\x1b[0m", line) // Magenta for location
+                        } else if line.contains("avatar:") || line.contains("avatar-medium:") || line.contains("avatar-full:") {
+                            let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
+                            let colored = url_regex.replace_all(line, "\x1b[4;96m$1\x1b[0m").to_string();
+                            format!("\x1b[96m{}\x1b[0m", colored)
                         } else {
                             line.to_string()
                         }
