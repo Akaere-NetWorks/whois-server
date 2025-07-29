@@ -797,6 +797,38 @@ impl Colorizer {
                             line.to_string()
                         }
                     },
+                    QueryType::MinecraftUser(_) => {
+                        // Minecraft user - player information coloring (BGPTools style)
+                        if line.contains("Minecraft User Information:") {
+                            format!("\x1b[1;96m{}\x1b[0m", line) // Bold cyan for headers
+                        } else if line.contains("username:") {
+                            format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for username
+                        } else if line.contains("uuid:") || line.contains("uuid-short:") {
+                            let uuid_regex = Regex::new(r"([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|[0-9a-fA-F]{32})").unwrap();
+                            let colored = uuid_regex.replace_all(line, "\x1b[1;93m$1\x1b[0m").to_string();
+                            format!("\x1b[94m{}\x1b[0m", colored)
+                        } else if line.contains("has-skin:") || line.contains("skin-signed:") {
+                            if line.contains("yes") {
+                                format!("\x1b[1;92m{}\x1b[0m", line) // Bright green for yes
+                            } else {
+                                format!("\x1b[1;91m{}\x1b[0m", line) // Bright red for no
+                            }
+                        } else if line.contains("namemc-url:") || line.contains("skin-url:") || line.contains("avatar-url:") {
+                            let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
+                            let colored = url_regex.replace_all(line, "\x1b[4;94m$1\x1b[0m").to_string();
+                            format!("\x1b[94m{}\x1b[0m", colored)
+                        } else if line.contains("profile-status:") {
+                            if line.contains("failed") || line.contains("error") {
+                                format!("\x1b[1;91m{}\x1b[0m", line) // Bright red for errors
+                            } else {
+                                format!("\x1b[1;93m{}\x1b[0m", line) // Bright yellow for status
+                            }
+                        } else if line.starts_with("property-") {
+                            format!("\x1b[96m{}\x1b[0m", line) // Cyan for properties
+                        } else {
+                            line.to_string()
+                        }
+                    },
                     QueryType::Steam(_) => {
                         // Steam - comprehensive game and user information coloring
                         if line.contains("Steam Application Information") || line.contains("Steam User Profile Information") {

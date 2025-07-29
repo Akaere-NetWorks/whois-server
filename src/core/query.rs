@@ -25,6 +25,7 @@ pub enum QueryType {
     Ssl(String),         // For queries ending with -SSL
     Crt(String),         // For queries ending with -CRT (Certificate Transparency)
     Minecraft(String),   // For queries ending with -MINECRAFT or -MC
+    MinecraftUser(String), // For queries ending with -MCU (Minecraft user info)
     Steam(String),       // For queries ending with -STEAM (Steam games/users)
     SteamSearch(String), // For queries ending with -STEAMSEARCH (Steam game search)
     Imdb(String),        // For queries ending with -IMDB (IMDb movies/TV shows)
@@ -126,6 +127,12 @@ pub fn analyze_query(query: &str) -> QueryType {
     if query.to_uppercase().ends_with("-MINECRAFT") {
         let base_query = &query[..query.len() - 10]; // Remove "-MINECRAFT" suffix
         return QueryType::Minecraft(base_query.to_string());
+    }
+    
+    // Check if it's a Minecraft user query
+    if query.to_uppercase().ends_with("-MCU") {
+        let base_query = &query[..query.len() - 4]; // Remove "-MCU" suffix
+        return QueryType::MinecraftUser(base_query.to_string());
     }
     
     // Check if it's a Minecraft server query (short form)

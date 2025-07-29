@@ -522,6 +522,224 @@ pub async fn process_minecraft_query(query: &str) -> Result<String> {
     ))
 }
 
+/// Minecraft user profile information from Mojang API
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MinecraftUserProfile {
+    pub id: String,
+    pub name: String,
+    #[serde(default)]
+    pub properties: Vec<MinecraftUserProperty>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MinecraftUserProperty {
+    pub name: String,
+    pub value: String,
+    #[serde(default)]
+    pub signature: Option<String>,
+}
+
+/// Minecraft UUID response from Mojang API
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MinecraftUuidResponse {
+    pub id: String,
+    pub name: String,
+}
+
+/// Minecraft user service for querying player information
+pub struct MinecraftUserService {
+    client: reqwest::Client,
+}
+
+impl Default for MinecraftUserService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl MinecraftUserService {
+    /// Create a new Minecraft user service
+    pub fn new() -> Self {
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(10))
+            .user_agent("WhoisServer/1.0 Minecraft User API Client")
+            .build()
+            .unwrap_or_else(|_| reqwest::Client::new());
+
+        Self { client }
+    }
+
+    /// Query Minecraft user information by username
+    pub async fn query_user_info(&self, username: &str) -> Result<String> {
+        debug!("Querying Minecraft user info for: {}", username);
+
+        // First, get UUID from username
+        let uuid = match self.get_uuid_from_username(username).await {
+            Ok(uuid) => uuid,
+            Err(e) => {
+                return Ok(format!("Minecraft User Not Found: {}\nError: {}\n", username, e));
+            }
+        };
+
+        // Then get full profile information
+        match self.get_user_profile(&uuid.id).await {
+            Ok(profile) => Ok(self.format_user_info(&uuid, &profile)),
+            Err(e) => {
+                // Return basic info even if profile fetch fails
+                Ok(self.format_basic_user_info(&uuid, &format!("Profile fetch failed: {}", e)))
+            }
+        }
+    }
+
+    /// Get UUID from username using Mojang API
+    async fn get_uuid_from_username(&self, username: &str) -> Result<MinecraftUuidResponse> {
+        let url = format!("https://api.mojang.com/users/profiles/minecraft/{}", username);
+        
+        let response = self.client
+            .get(&url)
+            .send()
+            .await?;
+
+        if response.status() == 204 {
+            return Err(anyhow::anyhow!("Player not found"));
+        }
+
+        if !response.status().is_success() {
+            return Err(anyhow::anyhow!("API request failed: {}", response.status()));
+        }
+
+        let uuid_response: MinecraftUuidResponse = response.json().await?;
+        Ok(uuid_response)
+    }
+
+    /// Get user profile from UUID using Mojang API
+    async fn get_user_profile(&self, uuid: &str) -> Result<MinecraftUserProfile> {
+        let url = format!("https://sessionserver.mojang.com/session/minecraft/profile/{}", uuid);
+        
+        let response = self.client
+            .get(&url)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(anyhow::anyhow!("Profile request failed: {}", response.status()));
+        }
+
+        let profile: MinecraftUserProfile = response.json().await?;
+        Ok(profile)
+    }
+
+    /// Format user information for WHOIS display
+    fn format_user_info(&self, uuid_info: &MinecraftUuidResponse, profile: &MinecraftUserProfile) -> String {
+        let mut output = String::new();
+
+        output.push_str(&format!("Minecraft User Information: {}\n", uuid_info.name));
+        output.push_str("=".repeat(60).as_str());
+        output.push('\n');
+
+        output.push_str(&format!("username: {}\n", uuid_info.name));
+        output.push_str(&format!("uuid: {}\n", self.format_uuid(&uuid_info.id)));
+        output.push_str(&format!("uuid-short: {}\n", uuid_info.id));
+
+        // Add profile properties
+        for property in &profile.properties {
+            match property.name.as_str() {
+                "textures" => {
+                    output.push_str(&format!("has-skin: {}\n", "yes"));
+                    if property.signature.is_some() {
+                        output.push_str(&format!("skin-signed: {}\n", "yes"));
+                    }
+                }
+                _ => {
+                    output.push_str(&format!("property-{}: {}\n", property.name.to_lowercase(), "present"));
+                }
+            }
+        }
+
+        // Add useful URLs
+        output.push_str(&format!("namemc-url: https://namemc.com/profile/{}\n", uuid_info.id));
+        output.push_str(&format!("skin-url: https://crafatar.com/skins/{}\n", uuid_info.id));
+        output.push_str(&format!("avatar-url: https://crafatar.com/avatars/{}\n", uuid_info.id));
+
+        output.push_str("% Note: Player information is public data from Mojang API\n");
+        
+        output
+    }
+
+    /// Format basic user information when profile fetch fails
+    fn format_basic_user_info(&self, uuid_info: &MinecraftUuidResponse, error: &str) -> String {
+        let mut output = String::new();
+
+        output.push_str(&format!("Minecraft User Information: {}\n", uuid_info.name));
+        output.push_str("=".repeat(60).as_str());
+        output.push('\n');
+
+        output.push_str(&format!("username: {}\n", uuid_info.name));
+        output.push_str(&format!("uuid: {}\n", self.format_uuid(&uuid_info.id)));
+        output.push_str(&format!("uuid-short: {}\n", uuid_info.id));
+        output.push_str(&format!("profile-status: {}\n", error));
+
+        output.push_str(&format!("namemc-url: https://namemc.com/profile/{}\n", uuid_info.id));
+        output.push_str(&format!("skin-url: https://crafatar.com/skins/{}\n", uuid_info.id));
+        output.push_str(&format!("avatar-url: https://crafatar.com/avatars/{}\n", uuid_info.id));
+
+        output
+    }
+
+    /// Format UUID with dashes
+    fn format_uuid(&self, uuid: &str) -> String {
+        if uuid.len() == 32 {
+            format!("{}-{}-{}-{}-{}", 
+                &uuid[0..8], 
+                &uuid[8..12], 
+                &uuid[12..16], 
+                &uuid[16..20], 
+                &uuid[20..32]
+            )
+        } else {
+            uuid.to_string()
+        }
+    }
+
+    /// Check if a query string is a Minecraft user query
+    pub fn is_minecraft_user_query(query: &str) -> bool {
+        query.to_uppercase().ends_with("-MCU")
+    }
+
+    /// Parse Minecraft user query
+    pub fn parse_minecraft_user_query(query: &str) -> Option<String> {
+        if !Self::is_minecraft_user_query(query) {
+            return None;
+        }
+
+        let clean_query = &query[..query.len() - 4]; // Remove "-MCU"
+        Some(clean_query.to_string())
+    }
+}
+
+/// Process Minecraft user query with -MCU suffix
+pub async fn process_minecraft_user_query(query: &str) -> Result<String> {
+    let user_service = MinecraftUserService::new();
+    
+    if let Some(username) = MinecraftUserService::parse_minecraft_user_query(query) {
+        debug!("Processing Minecraft user query for: {}", username);
+        
+        if username.is_empty() {
+            return Ok(format!("Invalid Minecraft user query. Please provide a username.\nExample: Notch-MCU\n"));
+        }
+        
+        // Validate username format (Minecraft usernames are 3-16 characters, alphanumeric and underscores)
+        if username.len() < 3 || username.len() > 16 || !username.chars().all(|c| c.is_alphanumeric() || c == '_') {
+            return Ok(format!("Invalid Minecraft username format. Usernames must be 3-16 characters, alphanumeric and underscores only.\nQuery: {}\n", username));
+        }
+        
+        user_service.query_user_info(&username).await
+    } else {
+        error!("Invalid Minecraft user query format: {}", query);
+        Ok(format!("Invalid Minecraft user query format. Use: <username>-MCU\nExample: Notch-MCU\nQuery: {}\n", query))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

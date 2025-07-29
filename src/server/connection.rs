@@ -11,10 +11,10 @@ use crate::services::{
     process_rir_geo_query, process_prefixes_query, process_irr_query,
     process_looking_glass_query, process_manrs_query, process_rpki_query,
     process_dns_query, process_traceroute_query, process_ssl_query, 
-    process_crt_query, process_minecraft_query, process_steam_query,
-    process_steam_search_query, process_imdb_query, process_imdb_search_query,
-    process_acgc_query, process_aur_query, process_debian_query, 
-    query_whois, query_with_iana_referral
+    process_crt_query, process_minecraft_query, process_minecraft_user_query,
+    process_steam_query, process_steam_search_query, process_imdb_query, 
+    process_imdb_search_query, process_acgc_query, process_aur_query, 
+    process_debian_query, query_whois, query_with_iana_referral
 };
 use crate::config::{SERVER_BANNER, RADB_WHOIS_SERVER, RADB_WHOIS_PORT};
 use crate::dn42::process_dn42_query_managed;
@@ -206,6 +206,10 @@ pub async fn handle_connection(
         QueryType::Minecraft(base_query) => {
             debug!("Processing Minecraft server query: {}", base_query);
             process_minecraft_query(&format!("{}-MC", base_query)).await
+        }
+        QueryType::MinecraftUser(base_query) => {
+            debug!("Processing Minecraft user query: {}", base_query);
+            process_minecraft_user_query(&format!("{}-MCU", base_query)).await
         }
         QueryType::Steam(base_query) => {
             debug!("Processing Steam game/user query: {}", base_query);
