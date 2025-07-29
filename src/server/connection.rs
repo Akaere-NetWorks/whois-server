@@ -12,7 +12,8 @@ use crate::services::{
     process_looking_glass_query, process_manrs_query, process_rpki_query,
     process_dns_query, process_traceroute_query, process_ssl_query, 
     process_crt_query, process_minecraft_query, process_steam_query,
-    process_steam_search_query, process_aur_query, process_debian_query, 
+    process_steam_search_query, process_imdb_query, process_imdb_search_query,
+    process_aur_query, process_debian_query, 
     query_whois, query_with_iana_referral
 };
 use crate::config::{SERVER_BANNER, RADB_WHOIS_SERVER, RADB_WHOIS_PORT};
@@ -213,6 +214,14 @@ pub async fn handle_connection(
         QueryType::SteamSearch(base_query) => {
             debug!("Processing Steam game search query: {}", base_query);
             process_steam_search_query(&format!("{}-STEAMSEARCH", base_query)).await
+        }
+        QueryType::Imdb(base_query) => {
+            debug!("Processing IMDb movie/TV show query: {}", base_query);
+            process_imdb_query(&format!("{}-IMDB", base_query)).await
+        }
+        QueryType::ImdbSearch(base_query) => {
+            debug!("Processing IMDb search query: {}", base_query);
+            process_imdb_search_query(&format!("{}-IMDBSEARCH", base_query)).await
         }
         QueryType::Aur(base_query) => {
             debug!("Processing AUR package query: {}", base_query);

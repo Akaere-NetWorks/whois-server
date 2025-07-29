@@ -449,6 +449,102 @@ impl Colorizer {
                             line.to_string()
                         }
                     },
+                    QueryType::Imdb(_) => {
+                        // IMDb - movie and TV show information coloring
+                        if line.contains("IMDb Information for:") {
+                            format!("\x1b[1;96m{}\x1b[0m", line) // Bold cyan for headers
+                        } else if line.contains("imdb-id:") {
+                            let id_regex = Regex::new(r"(tt\d+)").unwrap();
+                            id_regex.replace_all(line, "\x1b[1;93m$1\x1b[0m").to_string()
+                        } else if line.contains("title:") {
+                            format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for titles
+                        } else if line.contains("year:") || line.contains("released:") {
+                            let year_regex = Regex::new(r"(\d{4})").unwrap();
+                            year_regex.replace_all(line, "\x1b[1;93m$1\x1b[0m").to_string()
+                        } else if line.contains("type:") {
+                            if line.contains("movie") {
+                                format!("\x1b[94m{}\x1b[0m", line) // Blue for movies
+                            } else if line.contains("series") {
+                                format!("\x1b[96m{}\x1b[0m", line) // Cyan for TV series
+                            } else {
+                                format!("\x1b[95m{}\x1b[0m", line) // Magenta for other types
+                            }
+                        } else if line.contains("imdb-rating:") {
+                            let rating_regex = Regex::new(r"(\d+\.\d+/10)").unwrap();
+                            if line.contains("8.") || line.contains("9.") {
+                                rating_regex.replace_all(line, "\x1b[1;92m$1\x1b[0m").to_string() // Green for high ratings
+                            } else if line.contains("7.") {
+                                rating_regex.replace_all(line, "\x1b[1;93m$1\x1b[0m").to_string() // Yellow for good ratings
+                            } else {
+                                rating_regex.replace_all(line, "\x1b[1;91m$1\x1b[0m").to_string() // Red for low ratings
+                            }
+                        } else if line.contains("metascore:") {
+                            let score_regex = Regex::new(r"(\d+/100)").unwrap();
+                            score_regex.replace_all(line, "\x1b[1;95m$1\x1b[0m").to_string()
+                        } else if line.contains("box-office:") {
+                            let money_regex = Regex::new(r"(\$[\d,]+)").unwrap();
+                            money_regex.replace_all(line, "\x1b[1;92m$1\x1b[0m").to_string()
+                        } else if line.contains("director:") || line.contains("writer:") {
+                            format!("\x1b[94m{}\x1b[0m", line) // Blue for creative roles
+                        } else if line.contains("actors:") {
+                            format!("\x1b[96m{}\x1b[0m", line) // Cyan for actors
+                        } else if line.contains("genre:") {
+                            format!("\x1b[95m{}\x1b[0m", line) // Magenta for genres
+                        } else if line.contains("awards:") && !line.contains("N/A") {
+                            format!("\x1b[1;93m{}\x1b[0m", line) // Bright yellow for awards
+                        } else if line.contains("rated:") {
+                            if line.contains("PG") || line.contains("G") {
+                                format!("\x1b[92m{}\x1b[0m", line) // Green for family-friendly
+                            } else if line.contains("R") || line.contains("NC-17") {
+                                format!("\x1b[91m{}\x1b[0m", line) // Red for mature content
+                            } else {
+                                format!("\x1b[93m{}\x1b[0m", line) // Yellow for other ratings
+                            }
+                        } else if line.contains("imdb-url:") || line.contains("website:") {
+                            let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
+                            url_regex.replace_all(line, "\x1b[4;94m$1\x1b[0m").to_string()
+                        } else if line.contains("country:") || line.contains("language:") {
+                            format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for location/language
+                        } else if line.contains("runtime:") {
+                            let time_regex = Regex::new(r"(\d+\s*min)").unwrap();
+                            time_regex.replace_all(line, "\x1b[1;96m$1\x1b[0m").to_string()
+                        } else {
+                            line.to_string()
+                        }
+                    },
+                    QueryType::ImdbSearch(_) => {
+                        // IMDb search results - RIPE style coloring
+                        if line.contains("IMDb Search Results for:") {
+                            format!("\x1b[1;96m{}\x1b[0m", line) // Bold cyan for header
+                        } else if line.contains("Found") && line.contains("titles:") {
+                            format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for count
+                        } else if line.contains(". Title Information") {
+                            format!("\x1b[1;93m{}\x1b[0m", line) // Bright yellow for entry headers
+                        } else if line.contains("imdb-id:") {
+                            let id_regex = Regex::new(r"(tt\d+)").unwrap();
+                            id_regex.replace_all(line, "\x1b[1;93m$1\x1b[0m").to_string()
+                        } else if line.contains("title:") {
+                            format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for titles
+                        } else if line.contains("year:") {
+                            let year_regex = Regex::new(r"(\d{4})").unwrap();
+                            year_regex.replace_all(line, "\x1b[1;93m$1\x1b[0m").to_string()
+                        } else if line.contains("type:") {
+                            if line.contains("movie") {
+                                format!("\x1b[94m{}\x1b[0m", line) // Blue for movies
+                            } else if line.contains("series") {
+                                format!("\x1b[96m{}\x1b[0m", line) // Cyan for TV series
+                            } else {
+                                format!("\x1b[95m{}\x1b[0m", line) // Magenta for other types
+                            }
+                        } else if line.contains("imdb-url:") {
+                            let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
+                            url_regex.replace_all(line, "\x1b[4;94m$1\x1b[0m").to_string()
+                        } else if line.starts_with("%") {
+                            format!("\x1b[90m{}\x1b[0m", line) // Gray for comments
+                        } else {
+                            line.to_string()
+                        }
+                    },
                     _ => line.to_string()
                 }
             };
@@ -817,6 +913,102 @@ impl Colorizer {
                             format!("\x1b[92m{}\x1b[0m", line) // Green for compliant
                         } else if line.contains("non-compliant") || line.contains("missing") {
                             format!("\x1b[91m{}\x1b[0m", line) // Red for non-compliant
+                        } else {
+                            line.to_string()
+                        }
+                    },
+                    QueryType::Imdb(_) => {
+                        // IMDb - movie and TV show information coloring (BGPTools style)
+                        if line.contains("IMDb Information for:") {
+                            format!("\x1b[1;96m{}\x1b[0m", line) // Bold cyan for headers
+                        } else if line.contains("imdb-id:") {
+                            let id_regex = Regex::new(r"(tt\d+)").unwrap();
+                            let colored = id_regex.replace_all(line, "\x1b[1;93m$1\x1b[0m").to_string();
+                            format!("\x1b[94m{}\x1b[0m", colored)
+                        } else if line.contains("title:") {
+                            format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for titles
+                        } else if line.contains("year:") || line.contains("released:") {
+                            let year_regex = Regex::new(r"(\d{4})").unwrap();
+                            let colored = year_regex.replace_all(line, "\x1b[1;93m$1\x1b[0m").to_string();
+                            format!("\x1b[95m{}\x1b[0m", colored)
+                        } else if line.contains("imdb-rating:") {
+                            let rating_regex = Regex::new(r"(\d+\.\d+/10)").unwrap();
+                            if line.contains("8.") || line.contains("9.") {
+                                let colored = rating_regex.replace_all(line, "\x1b[1;92m$1\x1b[0m").to_string();
+                                format!("\x1b[92m{}\x1b[0m", colored) // Green for high ratings
+                            } else if line.contains("7.") {
+                                let colored = rating_regex.replace_all(line, "\x1b[1;93m$1\x1b[0m").to_string();
+                                format!("\x1b[93m{}\x1b[0m", colored) // Yellow for good ratings
+                            } else {
+                                let colored = rating_regex.replace_all(line, "\x1b[1;91m$1\x1b[0m").to_string();
+                                format!("\x1b[91m{}\x1b[0m", colored) // Red for low ratings
+                            }
+                        } else if line.contains("box-office:") {
+                            let money_regex = Regex::new(r"(\$[\d,]+)").unwrap();
+                            let colored = money_regex.replace_all(line, "\x1b[1;92m$1\x1b[0m").to_string();
+                            format!("\x1b[95m{}\x1b[0m", colored)
+                        } else if line.contains("director:") || line.contains("writer:") {
+                            format!("\x1b[94m{}\x1b[0m", line) // Blue for creative roles
+                        } else if line.contains("actors:") {
+                            format!("\x1b[96m{}\x1b[0m", line) // Cyan for actors
+                        } else if line.contains("genre:") {
+                            format!("\x1b[95m{}\x1b[0m", line) // Magenta for genres
+                        } else if line.contains("awards:") && !line.contains("N/A") {
+                            format!("\x1b[1;93m{}\x1b[0m", line) // Bright yellow for awards
+                        } else if line.contains("rated:") {
+                            if line.contains("PG") || line.contains("G") {
+                                format!("\x1b[92m{}\x1b[0m", line) // Green for family-friendly
+                            } else if line.contains("R") || line.contains("NC-17") {
+                                format!("\x1b[91m{}\x1b[0m", line) // Red for mature content
+                            } else {
+                                format!("\x1b[93m{}\x1b[0m", line) // Yellow for other ratings
+                            }
+                        } else if line.contains("imdb-url:") || line.contains("website:") {
+                            let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
+                            let colored = url_regex.replace_all(line, "\x1b[4;94m$1\x1b[0m").to_string();
+                            format!("\x1b[94m{}\x1b[0m", colored)
+                        } else if line.contains("runtime:") {
+                            let time_regex = Regex::new(r"(\d+\s*min)").unwrap();
+                            let colored = time_regex.replace_all(line, "\x1b[1;96m$1\x1b[0m").to_string();
+                            format!("\x1b[96m{}\x1b[0m", colored)
+                        } else {
+                            line.to_string()
+                        }
+                    },
+                    QueryType::ImdbSearch(_) => {
+                        // IMDb search results - BGPTools style coloring
+                        if line.contains("IMDb Search Results for:") {
+                            format!("\x1b[1;96m{}\x1b[0m", line) // Bold cyan for header
+                        } else if line.contains("Found") && line.contains("titles:") {
+                            format!("\x1b[1;95m{}\x1b[0m", line) // Bold magenta for count
+                        } else if line.contains(". Title Information") {
+                            format!("\x1b[1;93m{}\x1b[0m", line) // Bold yellow for entry headers
+                        } else if line.contains("imdb-id:") {
+                            let id_regex = Regex::new(r"(tt\d+)").unwrap();
+                            let colored = id_regex.replace_all(line, "\x1b[1;93m$1\x1b[0m").to_string();
+                            format!("\x1b[94m{}\x1b[0m", colored)
+                        } else if line.contains("title:") {
+                            format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for titles
+                        } else if line.contains("year:") {
+                            let year_regex = Regex::new(r"(\d{4})").unwrap();
+                            let colored = year_regex.replace_all(line, "\x1b[1;93m$1\x1b[0m").to_string();
+                            format!("\x1b[95m{}\x1b[0m", colored)
+                        } else if line.contains("type:") {
+                            if line.contains("movie") {
+                                format!("\x1b[94m{}\x1b[0m", line) // Blue for movies
+                            } else if line.contains("series") {
+                                format!("\x1b[96m{}\x1b[0m", line) // Cyan for TV series
+                            } else {
+                                format!("\x1b[95m{}\x1b[0m", line) // Magenta for other types
+                            }
+                        } else if line.contains("imdb-url:") {
+                            let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
+                            let colored = url_regex.replace_all(line, "\x1b[4;94m$1\x1b[0m").to_string();
+                            format!("\x1b[94m{}\x1b[0m", colored)
+                        } else if line.starts_with("%") {
+                            format!("\x1b[90m{}\x1b[0m", line) // Gray for comments
+                        } else if line.contains("---") {
+                            format!("\x1b[90m{}\x1b[0m", line) // Gray for separators
                         } else {
                             line.to_string()
                         }

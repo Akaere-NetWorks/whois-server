@@ -80,6 +80,11 @@ whois -h whois.akae.re 8.8.8.8-GEO
 # Test Steam services
 whois -h whois.akae.re 730-STEAM  # Counter-Strike 2 game info
 whois -h whois.akae.re Counter-Strike-STEAMSEARCH  # Game search
+
+# Test IMDb services
+whois -h whois.akae.re Inception-IMDB  # Movie information
+whois -h whois.akae.re tt1375666-IMDB  # Movie by IMDb ID
+whois -h whois.akae.re Batman-IMDBSEARCH  # Movie search
 ```
 
 ## Architecture Overview
@@ -127,6 +132,7 @@ Two server architectures available:
 - `crt.rs`: Certificate Transparency logs service via crt.sh API integration
 - `minecraft.rs`: Minecraft server status queries using Server List Ping protocol
 - `steam.rs`: Steam API integration for game information and user profiles with price display
+- `imdb.rs`: IMDb/OMDb API integration for movie and TV show information with comprehensive details
 - `aur.rs`: Arch User Repository package information queries
 - `debian.rs`: Debian package database queries and information
 
@@ -170,9 +176,10 @@ The `DN42Manager` in `dn42/manager.rs` handles this platform detection and provi
 8. Certificate Transparency: -CRT suffix for CT log searches
 9. Minecraft servers: -MINECRAFT or -MC suffix for server status
 10. Steam integration: -STEAM (game/user info), -STEAMSEARCH (game search)
-11. Package queries: -AUR (Arch User Repository), -DEBIAN (Debian packages)
-12. DN42-specific queries (auto-detected)
-13. IANA registry caching for efficient resource lookups
+11. IMDb integration: -IMDB (movie/TV info), -IMDBSEARCH (title search)
+12. Package queries: -AUR (Arch User Repository), -DEBIAN (Debian packages)
+13. DN42-specific queries (auto-detected)
+14. IANA registry caching for efficient resource lookups
 
 ### WHOIS-COLOR Protocol Support
 The server implements WHOIS-COLOR protocol v1.0 for enhanced terminal output:
@@ -235,6 +242,7 @@ echo -e "X-WHOIS-COLOR: bgptools\r\nAS15169\r\n" | nc whois.akae.re 43
 - **Certificate Transparency**: crt.sh API integration for CT log searches with robust error handling
 - **Minecraft Servers**: Server List Ping protocol implementation for server status queries
 - **Steam API**: Game information, user profiles, and game search with price display and discount detection
+- **IMDb/OMDb API**: Movie and TV show information with ratings, cast, plot summaries, and search functionality
 - **Package Repositories**: AUR (Arch User Repository) and Debian package database integration
 
 ### Statistics and Monitoring
@@ -253,10 +261,12 @@ Configuration is handled through:
 
 **Environment Variables**:
 - `STEAM_API_KEY`: Required for Steam user profile queries (obtain from https://steamcommunity.com/dev/apikey)
+- `OMDB_API_KEY`: Required for IMDb movie/TV queries (obtain from http://www.omdbapi.com/apikey.aspx)
 
 **Example .env file**:
 ```
 STEAM_API_KEY=your_steam_api_key_here
+OMDB_API_KEY=your_omdb_api_key_here
 ```
 
 ### Data Persistence
@@ -307,6 +317,7 @@ STEAM_API_KEY=your_steam_api_key_here
 ## Important Implementation Details
 
 ### Recent Updates
+- **IMDb API Integration**: Added comprehensive movie and TV show information queries with ratings, cast, plot summaries, and search functionality via OMDb API
 - **Steam API Integration**: Added comprehensive Steam game and user information queries with price display, discount detection, and game search functionality
 - **Enhanced Color Support**: Implemented conditional price coloring in WHOIS-COLOR protocol (green for discounts, white for full price)
 - **Package Repository Support**: Added AUR and Debian package database integration

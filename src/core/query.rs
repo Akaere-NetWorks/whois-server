@@ -27,6 +27,8 @@ pub enum QueryType {
     Minecraft(String),   // For queries ending with -MINECRAFT or -MC
     Steam(String),       // For queries ending with -STEAM (Steam games/users)
     SteamSearch(String), // For queries ending with -STEAMSEARCH (Steam game search)
+    Imdb(String),        // For queries ending with -IMDB (IMDb movies/TV shows)
+    ImdbSearch(String),  // For queries ending with -IMDBSEARCH (IMDb title search)
     Aur(String),         // For queries ending with -AUR (Arch User Repository)
     Debian(String),      // For queries ending with -DEBIAN (Debian packages)
     Unknown(String),
@@ -141,6 +143,18 @@ pub fn analyze_query(query: &str) -> QueryType {
     if query.to_uppercase().ends_with("-STEAM") {
         let base_query = &query[..query.len() - 6]; // Remove "-STEAM" suffix
         return QueryType::Steam(base_query.to_string());
+    }
+    
+    // Check if it's an IMDb search query (must be checked before regular IMDb query)
+    if query.to_uppercase().ends_with("-IMDBSEARCH") {
+        let base_query = &query[..query.len() - 11]; // Remove "-IMDBSEARCH" suffix
+        return QueryType::ImdbSearch(base_query.to_string());
+    }
+    
+    // Check if it's an IMDb movie/TV show query
+    if query.to_uppercase().ends_with("-IMDB") {
+        let base_query = &query[..query.len() - 5]; // Remove "-IMDB" suffix
+        return QueryType::Imdb(base_query.to_string());
     }
     
     // Check if it's an AUR package query

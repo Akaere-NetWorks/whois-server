@@ -13,6 +13,7 @@ pub mod ssl;
 pub mod crt;
 pub mod minecraft;
 pub mod steam;
+pub mod imdb;
 pub mod packages;
 
 pub use whois::*;
@@ -30,4 +31,5 @@ pub use ssl::*;
 pub use crt::*;
 pub use minecraft::*;
 pub use steam::*;
+pub use imdb::*;
 pub use packages::*;
