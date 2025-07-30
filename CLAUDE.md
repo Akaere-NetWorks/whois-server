@@ -85,6 +85,25 @@ whois -h whois.akae.re Counter-Strike-STEAMSEARCH  # Game search
 whois -h whois.akae.re Inception-IMDB  # Movie information
 whois -h whois.akae.re tt1375666-IMDB  # Movie by IMDb ID
 whois -h whois.akae.re Batman-IMDBSEARCH  # Movie search
+
+# Test package repositories
+whois -h whois.akae.re rust-CARGO  # Rust crate information
+whois -h whois.akae.re express-NPM  # NPM package information
+whois -h whois.akae.re requests-PYPI  # Python package information
+whois -h whois.akae.re firefox-AUR  # Arch User Repository package
+
+# Test entertainment services
+whois -h whois.akae.re "Linux-WIKIPEDIA"  # Wikipedia article
+whois -h whois.akae.re "Miku-ACGC"  # Anime character information
+whois -h whois.akae.re "LYRIC"  # Random Luotianyi lyrics
+
+# Test development tools
+whois -h whois.akae.re torvalds-GITHUB  # GitHub user information
+whois -h whois.akae.re "HELP"  # Show available query types
+
+# Test Minecraft services
+whois -h whois.akae.re hypixel.net-MINECRAFT  # Minecraft server status
+whois -h whois.akae.re Notch-MCU  # Minecraft user information
 ```
 
 ## Architecture Overview
@@ -133,8 +152,21 @@ Two server architectures available:
 - `minecraft.rs`: Minecraft server status queries using Server List Ping protocol
 - `steam.rs`: Steam API integration for game information and user profiles with price display
 - `imdb.rs`: IMDb/OMDb API integration for movie and TV show information with comprehensive details
-- `aur.rs`: Arch User Repository package information queries
-- `debian.rs`: Debian package database queries and information
+- `acgc.rs`: Anime/Comic/Game Character queries via ACGC API
+- `wikipedia.rs`: Wikipedia article queries and content extraction
+- `lyric.rs`: Luotianyi random lyric queries for entertainment
+- `github.rs`: GitHub user and repository information queries
+- `help.rs`: Help system for available query types and usage information
+- `packages/`: Package repository integrations including:
+  - `aur.rs`: Arch User Repository package information queries
+  - `debian.rs`: Debian package database queries and information
+  - `ubuntu.rs`: Ubuntu package database queries
+  - `nixos.rs`: NixOS package database queries
+  - `opensuse.rs`: OpenSUSE package database queries
+  - `aosc.rs`: AOSC (AnthonOS) package database queries  
+  - `npm.rs`: NPM (Node.js) package registry queries
+  - `pypi.rs`: PyPI (Python) package index queries
+  - `cargo.rs`: Cargo (Rust) crate registry queries
 
 **DN42 Module (`dn42/`)**:
 Platform-aware DN42 implementation with automatic backend selection:
@@ -177,9 +209,12 @@ The `DN42Manager` in `dn42/manager.rs` handles this platform detection and provi
 9. Minecraft servers: -MINECRAFT or -MC suffix for server status
 10. Steam integration: -STEAM (game/user info), -STEAMSEARCH (game search)
 11. IMDb integration: -IMDB (movie/TV info), -IMDBSEARCH (title search)
-12. Package queries: -AUR (Arch User Repository), -DEBIAN (Debian packages)
-13. DN42-specific queries (auto-detected)
-14. IANA registry caching for efficient resource lookups
+12. Entertainment queries: -ACGC (anime/comic/game characters), -WIKIPEDIA (articles), -LYRIC (random lyrics)
+13. Package repository queries: -AUR, -DEBIAN, -UBUNTU, -NIXOS, -OPENSUSE, -AOSC, -NPM, -PYPI, -CARGO
+14. Development tools: -GITHUB (users/repositories), HELP (available query types)
+15. Minecraft integration: -MINECRAFT/-MC (server status), -MCU (user info)
+16. DN42-specific queries (auto-detected)
+17. IANA registry caching for efficient resource lookups
 
 ### WHOIS-COLOR Protocol Support
 The server implements WHOIS-COLOR protocol v1.0 for enhanced terminal output:
@@ -243,7 +278,11 @@ echo -e "X-WHOIS-COLOR: bgptools\r\nAS15169\r\n" | nc whois.akae.re 43
 - **Minecraft Servers**: Server List Ping protocol implementation for server status queries
 - **Steam API**: Game information, user profiles, and game search with price display and discount detection
 - **IMDb/OMDb API**: Movie and TV show information with ratings, cast, plot summaries, and search functionality
-- **Package Repositories**: AUR (Arch User Repository) and Debian package database integration
+- **Package Repositories**: Comprehensive package database integration including AUR, Debian, Ubuntu, NixOS, OpenSUSE, AOSC, NPM (Node.js), PyPI (Python), and Cargo (Rust)
+- **GitHub API**: User profiles, repository information, and project statistics
+- **Wikipedia API**: Article content extraction and summary generation
+- **ACGC API**: Anime/Comic/Game Character information database
+- **Entertainment Services**: Luotianyi lyric database for random lyric queries
 
 ### Statistics and Monitoring
 The stats module provides comprehensive metrics:
@@ -317,10 +356,14 @@ OMDB_API_KEY=your_omdb_api_key_here
 ## Important Implementation Details
 
 ### Recent Updates
+- **Comprehensive Package Repository Integration**: Added support for 9 major package repositories (Cargo, NPM, PyPI, GitHub, AUR, Debian, Ubuntu, NixOS, OpenSUSE, AOSC) with unified query interface
+- **Entertainment Service Expansion**: Added Wikipedia article queries, ACGC anime/comic/game character database, and Luotianyi lyric services
+- **GitHub API Integration**: Full GitHub user and repository information queries with comprehensive project statistics
+- **Enhanced Help System**: Built-in HELP command providing complete query type reference and usage examples
+- **Minecraft User Queries**: Extended Minecraft support to include user profile information via -MCU suffix
 - **IMDb API Integration**: Added comprehensive movie and TV show information queries with ratings, cast, plot summaries, and search functionality via OMDb API
 - **Steam API Integration**: Added comprehensive Steam game and user information queries with price display, discount detection, and game search functionality
 - **Enhanced Color Support**: Implemented conditional price coloring in WHOIS-COLOR protocol (green for discounts, white for full price)
-- **Package Repository Support**: Added AUR and Debian package database integration
 - **DNS Service Optimization**: The DNS service has been optimized to use Cloudflare's 1.1.1.1 as a fixed DNS server instead of multiple root servers for improved reliability and performance
 - **Enhanced Network Services**: Added traceroute and IANA cache services for comprehensive network analysis
 - **Platform-Aware Caching**: Improved LMDB caching strategies for cross-platform compatibility

@@ -15,6 +15,11 @@ This document provides detailed technical information about the advanced feature
 - [SSL/TLS Certificate Analysis](#ssltls-certificate-analysis)
 - [Certificate Transparency Search](#certificate-transparency-search)
 - [Minecraft Server Status](#minecraft-server-status)
+- [Steam Integration](#steam-integration)
+- [IMDb Integration](#imdb-integration)
+- [Package Repository Queries](#package-repository-queries)
+- [Entertainment Services](#entertainment-services)
+- [Development Tools](#development-tools)
 - [Intelligent Query Routing](#intelligent-query-routing)
 - [Web Dashboard API](#web-dashboard-api)
 - [Statistics and Monitoring](#statistics-and-monitoring)
@@ -433,6 +438,154 @@ whois -h whois.akae.re mc.server.com-MC
 - **Version Checking**: Verify server compatibility
 - **Network Testing**: Test Minecraft server connectivity
 
+## 🎮 Steam Integration
+
+### Overview
+The Steam integration provides comprehensive game and user information using Steam's Store API and Web API.
+
+### Supported Query Formats
+```
+<app_id>-STEAM
+<steam_id>-STEAM
+<search_term>-STEAMSEARCH
+```
+
+### Examples
+```bash
+# Game information by App ID
+whois -h whois.akae.re 730-STEAM
+
+# User profile by Steam ID
+whois -h whois.akae.re 76561198000000000-STEAM
+
+# Game search
+whois -h whois.akae.re Counter-Strike-STEAMSEARCH
+```
+
+### Response Information
+- **Game Details**: Name, description, release date
+- **Price Information**: Current price, discounts, and special offers
+- **User Profiles**: Steam level, games owned, achievements
+- **Store Information**: Metacritic scores, developer, publisher
+- **Search Results**: Top 10 matching games with price information
+
+### Features
+- **Dual API Approach**: Steam Store API with App List fallback
+- **Price Intelligence**: Automatic discount detection
+- **Environment Configuration**: Supports `.env` file for Steam API key
+- **App ID Detection**: Automatic differentiation between games and users
+
+## 🎬 IMDb Integration
+
+### Overview
+The IMDb integration provides comprehensive movie and TV show information using the OMDb API.
+
+### Supported Query Formats
+```
+<title>-IMDB
+<imdb_id>-IMDB
+<search_term>-IMDBSEARCH
+```
+
+### Examples
+```bash
+# Movie information by title
+whois -h whois.akae.re Inception-IMDB
+
+# Movie by IMDb ID
+whois -h whois.akae.re tt1375666-IMDB
+
+# Title search
+whois -h whois.akae.re Batman-IMDBSEARCH
+```
+
+### Response Information
+- **Basic Information**: Title, year, runtime, genre
+- **Ratings**: IMDb rating, Metacritic score, Rotten Tomatoes
+- **Cast and Crew**: Director, writer, main actors
+- **Plot Summary**: Detailed plot description
+- **Technical Details**: Language, country, awards
+
+### Environment Configuration
+Requires `OMDB_API_KEY` in `.env` file (obtain from http://www.omdbapi.com/apikey.aspx)
+
+## 📦 Package Repository Queries
+
+### Overview
+Comprehensive package database integration covering 9 major package repositories.
+
+### Supported Repositories
+- **Cargo**: Rust crate registry (`rust-CARGO`)
+- **NPM**: Node.js package registry (`express-NPM`)
+- **PyPI**: Python Package Index (`requests-PYPI`)
+- **AUR**: Arch User Repository (`firefox-AUR`)
+- **Debian**: Debian package database (`nginx-DEBIAN`)
+- **Ubuntu**: Ubuntu package database (`vim-UBUNTU`)
+- **NixOS**: NixOS package database (`git-NIXOS`)
+- **OpenSUSE**: OpenSUSE package database (`gcc-OPENSUSE`)
+- **AOSC**: AOSC package database (`kernel-AOSC`)
+
+### Response Information
+- **Package Details**: Name, version, description
+- **Dependencies**: Required and optional dependencies
+- **Maintainer Information**: Package maintainer details
+- **Download Statistics**: Download counts and popularity
+- **Build Information**: Architecture, build status
+
+## 🎭 Entertainment Services
+
+### Wikipedia Integration
+```bash
+# Wikipedia article lookup
+whois -h whois.akae.re "Linux-WIKIPEDIA"
+```
+- **Article Content**: Summary and key information
+- **Links**: Related articles and external links
+- **Categories**: Article categorization
+
+### ACGC Character Database
+```bash
+# Anime/Comic/Game character information
+whois -h whois.akae.re "Miku-ACGC"
+```
+- **Character Details**: Name, series, description
+- **Visual Information**: Character images and artwork
+- **Series Information**: Related anime/game/comic series
+
+### Luotianyi Lyrics
+```bash
+# Random Luotianyi lyrics
+whois -h whois.akae.re "LYRIC"
+```
+- **Random Lyrics**: Random Luotianyi lyric selection
+- **Song Information**: Song title and artist details
+
+## 🛠️ Development Tools
+
+### GitHub Integration
+```bash
+# GitHub user information
+whois -h whois.akae.re torvalds-GITHUB
+
+# Repository information
+whois -h whois.akae.re torvalds/linux-GITHUB
+```
+
+### Response Information
+- **User Profiles**: Bio, location, company, follower count
+- **Repository Details**: Description, language, stars, forks
+- **Activity Statistics**: Commit counts, contribution activity
+- **Organization Information**: Organization membership and details
+
+### Built-in Help System
+```bash
+# Show all available query types
+whois -h whois.akae.re "HELP"
+```
+- **Query Type Reference**: Complete list of supported suffixes
+- **Usage Examples**: Example queries for each type
+- **Feature Documentation**: Brief description of each service
+
 ## 🎯 Intelligent Query Routing
 
 ### Overview
@@ -440,7 +593,7 @@ The server implements intelligent query routing to provide the best possible res
 
 ### Routing Logic
 
-1. **Query Type Detection**: Automatic identification of 11+ query types
+1. **Query Type Detection**: Automatic identification of 25+ query types
 2. **DN42 Detection**: Special handling for DN42 resources
 3. **Private IP Handling**: RFC1918 ranges routed to DN42
 4. **Smart Fallback**: Automatic fallback to DN42 for failed public queries

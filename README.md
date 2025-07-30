@@ -58,7 +58,12 @@
 - **🔍 Network Analysis** - Traceroute functionality for network path analysis
 - **🔐 SSL/TLS Analysis** - Certificate analysis and validation using rustls
 - **🔍 Certificate Transparency** - CT logs search via crt.sh API integration
-- **🎮 Minecraft Status** - Server status queries using Server List Ping protocol
+- **🎮 Minecraft Integration** - Server status and user profile queries using Server List Ping protocol
+- **🎮 Steam Integration** - Game information, user profiles, and game search with price display
+- **🎬 IMDb Integration** - Movie and TV show information with ratings, cast, and search functionality
+- **📦 Package Repository Support** - Comprehensive package queries for 9 major repositories (Cargo, NPM, PyPI, GitHub, AUR, Debian, Ubuntu, NixOS, OpenSUSE, AOSC)
+- **🎭 Entertainment Services** - Wikipedia articles, anime/comic/game character database, and Luotianyi lyrics
+- **🛠️ Development Tools** - GitHub user/repository information and built-in help system
 - **📈 Real-time Statistics** - Comprehensive usage tracking and monitoring
 - **🌐 Web Dashboard** - Modern web interface for statistics and testing
 - **⚡ Dual Operation Modes** - Both async and blocking network operations
@@ -120,6 +125,26 @@ whois -h whois.akae.re example.com-CRT
 
 # Minecraft server status
 whois -h whois.akae.re play.hypixel.net-MC
+
+# Steam game information
+whois -h whois.akae.re 730-STEAM
+
+# IMDb movie search  
+whois -h whois.akae.re Inception-IMDB
+
+# Package repository queries
+whois -h whois.akae.re rust-CARGO
+whois -h whois.akae.re express-NPM
+whois -h whois.akae.re requests-PYPI
+
+# Entertainment services
+whois -h whois.akae.re "Linux-WIKIPEDIA"
+whois -h whois.akae.re "Miku-ACGC"
+whois -h whois.akae.re "LYRIC"
+
+# Development tools
+whois -h whois.akae.re torvalds-GITHUB
+whois -h whois.akae.re "HELP"
 ```
 
 ## 🖥️ Web Dashboard
@@ -238,6 +263,25 @@ telnet localhost 43
 | **-SSL** | `example.com-SSL` | SSL/TLS certificate analysis and validation |
 | **-CRT** | `example.com-CRT` | Certificate Transparency logs search |
 | **-MINECRAFT** | `mc.hypixel.net-MINECRAFT` | Minecraft server status (alias: -MC) |
+| **-MCU** | `Notch-MCU` | Minecraft user profile information |
+| **-STEAM** | `730-STEAM` | Steam game/user information |
+| **-STEAMSEARCH** | `Counter-Strike-STEAMSEARCH` | Steam game search |
+| **-IMDB** | `Inception-IMDB` | IMDb movie/TV show information |
+| **-IMDBSEARCH** | `Batman-IMDBSEARCH` | IMDb title search |
+| **-CARGO** | `rust-CARGO` | Rust crate information |
+| **-NPM** | `express-NPM` | NPM package information |
+| **-PYPI** | `requests-PYPI` | Python package information |
+| **-AUR** | `firefox-AUR` | Arch User Repository packages |
+| **-DEBIAN** | `nginx-DEBIAN` | Debian package information |
+| **-UBUNTU** | `vim-UBUNTU` | Ubuntu package information |
+| **-NIXOS** | `git-NIXOS` | NixOS package information |
+| **-OPENSUSE** | `gcc-OPENSUSE` | OpenSUSE package information |
+| **-AOSC** | `kernel-AOSC` | AOSC package information |
+| **-GITHUB** | `torvalds-GITHUB` | GitHub user/repository information |
+| **-WIKIPEDIA** | `Linux-WIKIPEDIA` | Wikipedia article information |
+| **-ACGC** | `Miku-ACGC` | Anime/Comic/Game character info |
+| **-LYRIC** | `LYRIC` | Random Luotianyi lyrics |
+| **HELP** | `HELP` | Show all available query types |
 
 ### Geo-location Services
 
@@ -326,7 +370,7 @@ src/
 ├── main.rs          # Application entry point and initialization
 ├── config.rs        # Configuration and command-line parsing
 ├── core/            # Core application logic
-│   ├── query.rs     # Query type detection and routing (11+ query types)
+│   ├── query.rs     # Query type detection and routing (25+ query types)
 │   ├── stats.rs     # Real-time statistics collection and persistence  
 │   └── utils.rs     # Shared utility functions
 ├── server/          # TCP server implementations
@@ -346,8 +390,25 @@ src/
 │   ├── traceroute.rs # Network traceroute functionality
 │   ├── ssl.rs       # SSL/TLS certificate analysis
 │   ├── crt.rs       # Certificate Transparency logs
-│   ├── minecraft.rs # Minecraft server status
+│   ├── minecraft.rs # Minecraft server status and user profiles
+│   ├── steam.rs     # Steam game and user information
+│   ├── imdb.rs      # IMDb movie and TV show information
+│   ├── acgc.rs      # Anime/Comic/Game character database
+│   ├── wikipedia.rs # Wikipedia article information
+│   ├── lyric.rs     # Luotianyi random lyrics
+│   ├── github.rs    # GitHub user and repository information
+│   ├── help.rs      # Built-in help system
 │   ├── iana_cache.rs # IANA registry data caching
+│   └── packages/    # Package repository integrations
+│       ├── cargo.rs    # Rust crate information
+│       ├── npm.rs      # NPM package information
+│       ├── pypi.rs     # Python package information
+│       ├── aur.rs      # Arch User Repository
+│       ├── debian.rs   # Debian packages
+│       ├── ubuntu.rs   # Ubuntu packages
+│       ├── nixos.rs    # NixOS packages
+│       ├── opensuse.rs # OpenSUSE packages
+│       └── aosc.rs     # AOSC packages
 │   └── geo/         # Geo-location services
 │       ├── services.rs     # Service orchestration
 │       ├── types.rs        # Data type definitions
@@ -369,7 +430,7 @@ src/
 
 ### Key Components
 
-- **Query Engine** - Intelligent query parsing and type detection with 11+ query types
+- **Query Engine** - Intelligent query parsing and type detection with 25+ query types
 - **Platform-Aware DN42** - Automatic Windows/Unix backend selection with LMDB caching
 - **Dual Server Architecture** - Both async (Tokio) and blocking server implementations
 - **Modular Services** - Clean separation of external service integrations

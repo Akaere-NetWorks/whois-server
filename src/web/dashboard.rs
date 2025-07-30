@@ -172,7 +172,7 @@ async fn dashboard() -> impl IntoResponse {
                 </div>
             </div>
             <p class="text-xl text-base-content/70 max-w-2xl mx-auto">
-                High-performance WHOIS server with comprehensive DN42 support, geo-location services, and advanced query capabilities
+                High-performance WHOIS server with 25+ query types, comprehensive DN42 support, Steam/IMDb integration, 9 package repositories, and advanced network analysis
             </p>
         </div>
 
@@ -190,7 +190,7 @@ async fn dashboard() -> impl IntoResponse {
                     <code class="font-mono font-semibold">whois -h whois.akae.re [query]</code>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div class="space-y-3">
                         <h3 class="font-semibold text-lg">Standard Queries</h3>
                         <div class="space-y-2 text-sm">
@@ -202,78 +202,112 @@ async fn dashboard() -> impl IntoResponse {
                     </div>
                     
                     <div class="space-y-3">
-                        <h3 class="font-semibold text-lg">Network Analysis</h3>
+                        <h3 class="font-semibold text-lg">Gaming & Entertainment</h3>
                         <div class="space-y-2 text-sm">
-                            <div><code class="bg-base-200 px-2 py-1 rounded">AS213605-BGPTOOL</code> - BGP analysis</div>
-                            <div><code class="bg-base-200 px-2 py-1 rounded">AS213605-PREFIXES</code> - ASN prefixes</div>
-                            <div><code class="bg-base-200 px-2 py-1 rounded">1.1.1.0-RADB</code> - RADB query</div>
-                            <div><code class="bg-base-200 px-2 py-1 rounded">192.0.2.0/24-IRR</code> - IRR Explorer</div>
-                            <div><code class="bg-base-200 px-2 py-1 rounded">1.1.1.0-LG</code> - Looking Glass</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded">730-STEAM</code> - Steam game info</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded">Inception-IMDB</code> - Movie information</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded">hypixel.net-MC</code> - Minecraft server</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded">Linux-WIKIPEDIA</code> - Wikipedia articles</div>
                         </div>
                     </div>
                     
                     <div class="space-y-3">
-                        <h3 class="font-semibold text-lg">Geographic & Contact</h3>
+                        <h3 class="font-semibold text-lg">Package Repositories</h3>
                         <div class="space-y-2 text-sm">
+                            <div><code class="bg-base-200 px-2 py-1 rounded">rust-CARGO</code> - Rust crates</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded">express-NPM</code> - NPM packages</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded">requests-PYPI</code> - Python packages</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded">firefox-AUR</code> - Arch packages</div>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-3">
+                        <h3 class="font-semibold text-lg">Network Analysis</h3>
+                        <div class="space-y-2 text-sm">
+                            <div><code class="bg-base-200 px-2 py-1 rounded">AS213605-BGPTOOL</code> - BGP analysis</div>
                             <div><code class="bg-base-200 px-2 py-1 rounded">8.8.8.8-GEO</code> - IP geolocation</div>
-                            <div><code class="bg-base-200 px-2 py-1 rounded">8.8.8.8-RIRGEO</code> - RIR geo data</div>
-                            <div><code class="bg-base-200 px-2 py-1 rounded">AS213605-EMAIL</code> - Contact search</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded">192.0.2.0/24-IRR</code> - IRR Explorer</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded">torvalds-GITHUB</code> - GitHub users</div>
                         </div>
                     </div>
                 </div>
 
                 <div class="mt-6">
                     <h3 class="font-semibold text-lg mb-3">Advanced Query Features</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+                    <div class="grid grid-cols-1 md:grid-cols-5 gap-4 text-sm">
+                        <div class="space-y-2">
+                            <h4 class="font-medium text-cute-pink-600">Gaming & Media</h4>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-STEAM</code> - Steam games/users</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-STEAMSEARCH</code> - Steam search</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-IMDB</code> - Movie/TV info</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-IMDBSEARCH</code> - Movie search</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-MINECRAFT</code> - Server status</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-MCU</code> - Minecraft users</div>
+                        </div>
+                        <div class="space-y-2">
+                            <h4 class="font-medium text-cute-pink-600">Package Repositories</h4>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-CARGO</code> - Rust crates</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-NPM</code> - Node.js packages</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-PYPI</code> - Python packages</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-AUR</code> - Arch packages</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-DEBIAN</code> - Debian packages</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-UBUNTU/-NIXOS/-OPENSUSE/-AOSC</code></div>
+                        </div>
+                        <div class="space-y-2">
+                            <h4 class="font-medium text-cute-pink-600">Entertainment & Info</h4>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-WIKIPEDIA</code> - Wikipedia articles</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-ACGC</code> - Anime characters</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-LYRIC</code> - Random lyrics</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-GITHUB</code> - GitHub users/repos</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">HELP</code> - Show all query types</div>
+                        </div>
                         <div class="space-y-2">
                             <h4 class="font-medium text-cute-pink-600">Security & Validation</h4>
                             <div><code class="bg-base-200 px-2 py-1 rounded text-xs">PREFIX-ASN-RPKI</code> - RPKI validation</div>
                             <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-MANRS</code> - MANRS compliance</div>
-                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-SSL</code> - SSL certificate info</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-SSL</code> - SSL certificates</div>
                             <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-CRT</code> - Certificate Transparency</div>
                         </div>
                         <div class="space-y-2">
-                            <h4 class="font-medium text-cute-pink-600">Network Diagnostics</h4>
+                            <h4 class="font-medium text-cute-pink-600">Network Analysis</h4>
                             <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-DNS</code> - DNS resolution</div>
                             <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-TRACE</code> - Network traceroute</div>
-                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-TRACEROUTE</code> - Full traceroute</div>
-                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-MINECRAFT</code> - Minecraft server</div>
-                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-MC</code> - Minecraft (short)</div>
-                        </div>
-                        <div class="space-y-2">
-                            <h4 class="font-medium text-cute-pink-600">Routing Analysis</h4>
-                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-RADB</code> - Routing Assets DB</div>
-                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-IRR</code> - IRR Explorer + RPKI</div>
-                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-LG</code> - Looking Glass (BIRD)</div>
-                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-BGPTOOL</code> - BGP information</div>
-                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-PREFIXES</code> - ASN prefixes</div>
-                        </div>
-                        <div class="space-y-2">
-                            <h4 class="font-medium text-cute-pink-600">Geographic & Contact</h4>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-BGPTOOL</code> - BGP analysis</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-IRR</code> - IRR Explorer</div>
                             <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-GEO</code> - IP geolocation</div>
-                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-RIRGEO</code> - RIR geographic data</div>
-                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">-EMAIL</code> - Contact search</div>
                         </div>
                     </div>
                 </div>
 
                 <div class="mt-6">
-                    <h3 class="font-semibold text-lg mb-3">Example Queries</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <h3 class="font-semibold text-lg mb-3">Example Queries - Try These!</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                         <div class="space-y-2">
-                            <h4 class="font-medium text-cute-pink-600">Real-world Examples</h4>
-                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">google.com-SSL</code> - Google's SSL certificate</div>
-                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">8.8.8.8-TRACEROUTE</code> - Trace to Google DNS</div>
-                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">1.1.1.0/24-13335-RPKI</code> - RPKI validation</div>
-                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">minecraft.net-MC</code> - Minecraft server status</div>
-                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">cloudflare.com-CRT</code> - Certificate transparency</div>
+                            <h4 class="font-medium text-cute-pink-600">Gaming & Entertainment</h4>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">730-STEAM</code> - Counter-Strike 2 info</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">Counter-Strike-STEAMSEARCH</code> - Steam search</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">Inception-IMDB</code> - Movie information</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">Batman-IMDBSEARCH</code> - Movie search</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">hypixel.net-MC</code> - Minecraft server</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">Notch-MCU</code> - Minecraft user</div>
                         </div>
                         <div class="space-y-2">
-                            <h4 class="font-medium text-cute-pink-600">DN42 Network Examples</h4>
-                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">AS4242420000</code> - DN42 ASN lookup</div>
-                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">example.dn42</code> - DN42 domain</div>
-                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">172.20.0.1</code> - Private IP (DN42)</div>
-                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">fd42::/64</code> - DN42 IPv6 range</div>
+                            <h4 class="font-medium text-cute-pink-600">Package Repositories</h4>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">rust-CARGO</code> - Rust programming language</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">express-NPM</code> - Express.js framework</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">requests-PYPI</code> - Python HTTP library</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">firefox-AUR</code> - Firefox browser (Arch)</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">nginx-DEBIAN</code> - Nginx web server</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">git-NIXOS</code> - Git version control</div>
+                        </div>
+                        <div class="space-y-2">
+                            <h4 class="font-medium text-cute-pink-600">Developer & Network Tools</h4>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">torvalds-GITHUB</code> - Linux creator profile</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">Linux-WIKIPEDIA</code> - Linux operating system</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">Miku-ACGC</code> - Hatsune Miku character</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">LYRIC</code> - Random Luotianyi lyrics</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">google.com-SSL</code> - SSL certificate analysis</div>
+                            <div><code class="bg-base-200 px-2 py-1 rounded text-xs">HELP</code> - Show all available queries</div>
                         </div>
                     </div>
                 </div>
@@ -282,14 +316,21 @@ async fn dashboard() -> impl IntoResponse {
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
-                    <span><strong>Smart Routing:</strong> DN42 networks are automatically detected and routed. Private IPs, .dn42 domains, and AS4242420000+ ASNs use DN42 backend.</span>
+                    <span><strong>25+ Query Types:</strong> From standard WHOIS to Steam games, IMDb movies, package repositories, Wikipedia articles, and network analysis tools.</span>
                 </div>
                 
                 <div class="alert alert-success mt-4">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
-                    <span><strong>High Performance:</strong> Cross-platform LMDB caching, intelligent query routing, and comprehensive external service integrations.</span>
+                    <span><strong>Smart Integration:</strong> 9 package repositories, Steam/IMDb APIs, GitHub integration, DN42 auto-detection, and comprehensive entertainment services.</span>
+                </div>
+                
+                <div class="alert alert-warning mt-4">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.998-.833-2.768 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                    </svg>
+                    <span><strong>Try HELP:</strong> Type <code class="bg-warning/20 px-1 rounded">HELP</code> to see all available query types and examples. Environment variables required for Steam user profiles and IMDb queries.</span>
                 </div>
             </div>
         </div>
