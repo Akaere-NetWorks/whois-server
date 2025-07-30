@@ -37,6 +37,9 @@ pub enum QueryType {
     Ubuntu(String),      // For queries ending with -UBUNTU (Ubuntu packages)
     NixOs(String),       // For queries ending with -NIXOS (NixOS packages)
     OpenSuse(String),    // For queries ending with -OPENSUSE (OpenSUSE packages)
+    Npm(String),         // For queries ending with -NPM (NPM packages)
+    Pypi(String),        // For queries ending with -PYPI (PyPI packages)
+    GitHub(String),      // For queries ending with -GITHUB (GitHub users/repos)
     Wikipedia(String),   // For queries ending with -WIKIPEDIA (Wikipedia articles)
     Lyric(String),       // For queries ending with -LYRIC (Luotianyi random lyrics)
     Unknown(String),
@@ -211,6 +214,24 @@ pub fn analyze_query(query: &str) -> QueryType {
     if query.to_uppercase().ends_with("-OPENSUSE") {
         let base_query = &query[..query.len() - 9]; // Remove "-OPENSUSE" suffix
         return QueryType::OpenSuse(base_query.to_string());
+    }
+    
+    // Check if it's an NPM package query
+    if query.to_uppercase().ends_with("-NPM") {
+        let base_query = &query[..query.len() - 4]; // Remove "-NPM" suffix
+        return QueryType::Npm(base_query.to_string());
+    }
+    
+    // Check if it's a PyPI package query
+    if query.to_uppercase().ends_with("-PYPI") {
+        let base_query = &query[..query.len() - 5]; // Remove "-PYPI" suffix
+        return QueryType::Pypi(base_query.to_string());
+    }
+    
+    // Check if it's a GitHub user/repository query
+    if query.to_uppercase().ends_with("-GITHUB") {
+        let base_query = &query[..query.len() - 7]; // Remove "-GITHUB" suffix
+        return QueryType::GitHub(base_query.to_string());
     }
     
     // Check if it's a Wikipedia article query

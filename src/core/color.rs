@@ -184,7 +184,8 @@ impl Colorizer {
                             }
                         },
                         // Dates - bright magenta (matches reference)
-                        "created" | "changed" | "last-modified" | "expires" | "updated" => {
+                        "created" | "changed" | "last-modified" | "expires" | "updated" |
+                        "created-at" | "updated-at" | "pushed-at" => {
                             format!("\x1b[1;95m{}:\x1b[0m \x1b[95m{}\x1b[0m", attr, value)
                         },
                         // Price information - conditional colors for Steam
@@ -209,7 +210,14 @@ impl Colorizer {
                         "section" | "priority" | "project" | "repository" | "release" | 
                         "architecture" | "platforms" | "outputs" | "maintainers" | "author" |
                         "depends" | "replaces" | "breaks" | "provides" | "suggests" | "upstream" |
-                        "upstream-version" | "architectures" | "aosc-url" => {
+                        "upstream-version" | "architectures" | "aosc-url" | "latest-version" |
+                        "beta-version" | "keywords" | "dependencies" | "dev-dependencies" |
+                        "requires-python" | "programming-languages" | "development-status" |
+                        "username" | "user-id" | "user-type" | "display-name" | "bio" |
+                        "company" | "location" | "twitter" | "public-repos" | "public-gists" |
+                        "followers" | "following" | "repository-name" | "full-name" | "repository-id" |
+                        "owner" | "owner-type" | "language" | "default-branch" | "stars" | 
+                        "watchers" | "forks" | "open-issues" | "visibility" | "features" | "topics" => {
                             format!("\x1b[1;95m{}:\x1b[0m \x1b[95m{}\x1b[0m", attr, value)
                         },
                         // Package descriptions - cyan
@@ -221,12 +229,14 @@ impl Colorizer {
                             format!("\x1b[1;92m{}:\x1b[0m \x1b[92m{}\x1b[0m", attr, value)
                         },
                         // Size information - yellow
-                        "size" | "filename" | "modified-time" => {
+                        "size" | "filename" | "modified-time" | "unpacked-size" | "file-count" |
+                        "total-size" | "wheel-files" | "source-files" => {
                             format!("\x1b[93m{}:\x1b[0m \x1b[93m{}\x1b[0m", attr, value)
                         },
                         // URLs - underlined blue
                         "aur-url" | "upstream-url" | "url" | "homepage" | "ubuntu-url" | 
-                        "nixos-url" | "opensuse-url" => {
+                        "nixos-url" | "opensuse-url" | "npm-url" | "registry-url" | "pypi-url" |
+                        "api-url" | "github-url" | "clone-url" | "ssh-url" | "avatar-url" => {
                             let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
                             let colored_value = url_regex.replace_all(value, "\x1b[4;94m$1\x1b[0m").to_string();
                             format!("\x1b[1;94m{}:\x1b[0m {}", attr, colored_value)

@@ -261,6 +261,24 @@ pub fn run_blocking_server(addr: &str, timeout_secs: u64, dump_traffic: bool, du
                         // Return a notice that OpenSUSE queries require async server
                         Ok(format!("OpenSUSE package queries are only supported on the async server.\nPlease use the main server (port 43) for OpenSUSE queries.\nQuery: {}\n", base_query))
                     }
+                    QueryType::Npm(base_query) => {
+                        info!("Processing NPM package query: {}", base_query);
+                        // NPM queries require async HTTP operations
+                        // Return a notice that NPM queries require async server
+                        Ok(format!("NPM package queries are only supported on the async server.\nPlease use the main server (port 43) for NPM queries.\nQuery: {}\n", base_query))
+                    }
+                    QueryType::Pypi(base_query) => {
+                        info!("Processing PyPI package query: {}", base_query);
+                        // PyPI queries require async HTTP operations
+                        // Return a notice that PyPI queries require async server
+                        Ok(format!("PyPI package queries are only supported on the async server.\nPlease use the main server (port 43) for PyPI queries.\nQuery: {}\n", base_query))
+                    }
+                    QueryType::GitHub(base_query) => {
+                        info!("Processing GitHub user/repository query: {}", base_query);
+                        // GitHub queries require async HTTP operations
+                        // Return a notice that GitHub queries require async server
+                        Ok(format!("GitHub user/repository queries are only supported on the async server.\nPlease use the main server (port 43) for GitHub queries.\nQuery: {}\n", base_query))
+                    }
                     QueryType::Wikipedia(base_query) => {
                         info!("Processing Wikipedia article query: {}", base_query);
                         // Wikipedia queries require async HTTP operations

@@ -18,6 +18,7 @@ pub mod acgc;
 pub mod packages;
 pub mod wikipedia;
 pub mod lyric;
+pub mod github;
 
 pub use whois::*;
 pub use email::*;
@@ -39,3 +40,4 @@ pub use acgc::*;
 pub use packages::*;
 pub use wikipedia::*;
 pub use lyric::*;
+pub use github::*;

@@ -15,6 +15,7 @@ use crate::services::{
     process_steam_query, process_steam_search_query, process_imdb_query, 
     process_imdb_search_query, process_acgc_query, process_aosc_query, process_aur_query, 
     process_debian_query, process_ubuntu_query, process_nixos_query, process_opensuse_query,
+    process_npm_query, process_pypi_query, process_github_query,
     process_wikipedia_query, process_lyric_query, query_whois, query_with_iana_referral
 };
 use crate::config::{SERVER_BANNER, RADB_WHOIS_SERVER, RADB_WHOIS_PORT};
@@ -255,6 +256,18 @@ pub async fn handle_connection(
         QueryType::OpenSuse(base_query) => {
             debug!("Processing OpenSUSE package query: {}", base_query);
             process_opensuse_query(base_query).await
+        }
+        QueryType::Npm(base_query) => {
+            debug!("Processing NPM package query: {}", base_query);
+            process_npm_query(base_query).await
+        }
+        QueryType::Pypi(base_query) => {
+            debug!("Processing PyPI package query: {}", base_query);
+            process_pypi_query(base_query).await
+        }
+        QueryType::GitHub(base_query) => {
+            debug!("Processing GitHub user/repository query: {}", base_query);
+            process_github_query(base_query).await
         }
         QueryType::Wikipedia(base_query) => {
             debug!("Processing Wikipedia article query: {}", base_query);
