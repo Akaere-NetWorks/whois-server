@@ -36,7 +36,7 @@ struct NixOSPackage {
     package_pname: String,
     package_pversion: String,
     package_description: Option<String>,
-    package_longDescription: Option<String>,
+    package_long_description: Option<String>,
     package_license: Option<Vec<NixOSLicense>>,
     package_maintainers: Option<Vec<NixOSMaintainer>>,
     package_platforms: Option<Vec<String>>,
@@ -47,8 +47,8 @@ struct NixOSPackage {
 
 #[derive(Debug, Deserialize, Serialize)]
 struct NixOSLicense {
-    fullName: Option<String>,
-    spdxId: Option<String>,
+    full_name: Option<String>,
+    spdx_id: Option<String>,
     url: Option<String>,
 }
 
@@ -135,7 +135,7 @@ fn generate_nixos_package_info(query: &str) -> Vec<NixOSPackage> {
             package_pname: query.to_string(),
             package_pversion: "9.1.1475".to_string(),
             package_description: Some("Most popular clone of the VI editor".to_string()),
-            package_longDescription: Some("Vim is a greatly improved version of the good old UNIX editor Vi. Many new features have been added: multi-level undo, syntax highlighting, command line history, on-line help, spell checking, filename completion, block operations, script language, etc.".to_string()),
+            package_long_description: Some("Vim is a greatly improved version of the good old UNIX editor Vi. Many new features have been added: multi-level undo, syntax highlighting, command line history, on-line help, spell checking, filename completion, block operations, script language, etc.".to_string()),
             package_license: None,
             package_maintainers: None,
             package_platforms: Some(vec!["x86_64-linux".to_string(), "aarch64-linux".to_string(), "x86_64-darwin".to_string(), "aarch64-darwin".to_string()]),
@@ -149,7 +149,7 @@ fn generate_nixos_package_info(query: &str) -> Vec<NixOSPackage> {
             package_pname: query.to_string(),
             package_pversion: "2.45.2".to_string(),
             package_description: Some("Distributed version control system".to_string()),
-            package_longDescription: Some("Git is a free and open source distributed version control system designed to handle everything from small to very large projects with speed and efficiency.".to_string()),
+            package_long_description: Some("Git is a free and open source distributed version control system designed to handle everything from small to very large projects with speed and efficiency.".to_string()),
             package_license: None,
             package_maintainers: None,
             package_platforms: Some(vec!["x86_64-linux".to_string(), "aarch64-linux".to_string(), "x86_64-darwin".to_string(), "aarch64-darwin".to_string()]),
@@ -163,7 +163,7 @@ fn generate_nixos_package_info(query: &str) -> Vec<NixOSPackage> {
             package_pname: "python3".to_string(),
             package_pversion: "3.11.9".to_string(),
             package_description: Some("A high-level dynamically-typed programming language".to_string()),
-            package_longDescription: Some("Python is an interpreted, interactive, object-oriented programming language suitable for a wide variety of applications.".to_string()),
+            package_long_description: Some("Python is an interpreted, interactive, object-oriented programming language suitable for a wide variety of applications.".to_string()),
             package_license: None,
             package_maintainers: None,
             package_platforms: Some(vec!["x86_64-linux".to_string(), "aarch64-linux".to_string(), "x86_64-darwin".to_string(), "aarch64-darwin".to_string()]),
@@ -177,7 +177,7 @@ fn generate_nixos_package_info(query: &str) -> Vec<NixOSPackage> {
             package_pname: query.to_string(),
             package_pversion: "latest".to_string(),
             package_description: Some(format!("NixOS package: {}", query)),
-            package_longDescription: Some("Package available in NixOS. Use 'nix search' or visit search.nixos.org for detailed information.".to_string()),
+            package_long_description: Some("Package available in NixOS. Use 'nix search' or visit search.nixos.org for detailed information.".to_string()),
             package_license: None,
             package_maintainers: None,
             package_platforms: Some(vec!["x86_64-linux".to_string(), "aarch64-linux".to_string()]),
@@ -215,7 +215,7 @@ fn format_nixos_response(packages: &[NixOSPackage], query: &str) -> String {
             output.push_str(&format!("description: {}\n", description));
         }
         
-        if let Some(long_desc) = &package.package_longDescription {
+        if let Some(long_desc) = &package.package_long_description {
             let truncated_desc = if long_desc.len() > 300 {
                 format!("{}...", &long_desc[..300])
             } else {
@@ -226,7 +226,7 @@ fn format_nixos_response(packages: &[NixOSPackage], query: &str) -> String {
         
         if let Some(licenses) = &package.package_license {
             let license_names: Vec<String> = licenses.iter()
-                .filter_map(|l| l.fullName.as_ref().or(l.spdxId.as_ref()))
+                .filter_map(|l| l.full_name.as_ref().or(l.spdx_id.as_ref()))
                 .cloned()
                 .collect();
             if !license_names.is_empty() {
