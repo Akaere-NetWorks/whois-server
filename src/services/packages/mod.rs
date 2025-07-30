@@ -10,7 +10,13 @@
 
 pub mod aur;
 pub mod debian;
+pub mod ubuntu;
+pub mod nixos;
+pub mod opensuse;
 
 // Re-export package services
 pub use aur::process_aur_query;
 pub use debian::process_debian_query;
+pub use ubuntu::process_ubuntu_query;
+pub use nixos::process_nixos_query;
+pub use opensuse::process_opensuse_query;

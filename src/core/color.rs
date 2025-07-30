@@ -204,11 +204,27 @@ impl Colorizer {
                             }
                         },
                         // Package specific - bright magenta
-                        "version" | "package" | "package-base" => {
+                        "version" | "package" | "package-base" | "package-name" | "attribute-name" | 
+                        "attribute-set" | "component" | "source-package" | "source-version" |
+                        "section" | "priority" | "project" | "repository" | "release" | 
+                        "architecture" | "platforms" | "outputs" | "maintainers" | "author" => {
                             format!("\x1b[1;95m{}:\x1b[0m \x1b[95m{}\x1b[0m", attr, value)
                         },
+                        // Package descriptions - cyan
+                        "summary" | "long-description" | "nixpkgs-position" => {
+                            format!("\x1b[96m{}:\x1b[0m \x1b[96m{}\x1b[0m", attr, value)
+                        },
+                        // License and legal - bright green
+                        "license" | "distribution" => {
+                            format!("\x1b[1;92m{}:\x1b[0m \x1b[92m{}\x1b[0m", attr, value)
+                        },
+                        // Size information - yellow
+                        "size" | "filename" | "modified-time" => {
+                            format!("\x1b[93m{}:\x1b[0m \x1b[93m{}\x1b[0m", attr, value)
+                        },
                         // URLs - underlined blue
-                        "aur-url" | "upstream-url" | "url" | "homepage" => {
+                        "aur-url" | "upstream-url" | "url" | "homepage" | "ubuntu-url" | 
+                        "nixos-url" | "opensuse-url" => {
                             let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
                             let colored_value = url_regex.replace_all(value, "\x1b[4;94m$1\x1b[0m").to_string();
                             format!("\x1b[1;94m{}:\x1b[0m {}", attr, colored_value)
@@ -745,11 +761,27 @@ impl Colorizer {
                             format!("\x1b[34m{}:\x1b[0m \x1b[34m{}\x1b[0m", attr, styled_value)
                         },
                         // Package info - bright cyan
-                        "package" | "version" | "depends" | "makedepends" => {
+                        "package" | "version" | "depends" | "makedepends" | "package-name" | 
+                        "attribute-name" | "attribute-set" | "component" | "source-package" | 
+                        "source-version" | "section" | "priority" | "project" | "repository" | 
+                        "release" | "architecture" | "platforms" | "outputs" | "maintainers" | "author" => {
                             format!("\x1b[1;96m{}:\x1b[0m \x1b[96m{}\x1b[0m", attr, styled_value)
                         },
+                        // Package descriptions - bright magenta
+                        "summary" | "long-description" | "nixpkgs-position" => {
+                            format!("\x1b[1;95m{}:\x1b[0m \x1b[95m{}\x1b[0m", attr, styled_value)
+                        },
+                        // License and legal - bright green
+                        "license" | "distribution" => {
+                            format!("\x1b[1;92m{}:\x1b[0m \x1b[92m{}\x1b[0m", attr, styled_value)
+                        },
+                        // Size and metadata - bright yellow
+                        "size" | "filename" | "modified-time" => {
+                            format!("\x1b[1;93m{}:\x1b[0m \x1b[93m{}\x1b[0m", attr, styled_value)
+                        },
                         // URLs - underlined blue
-                        "aur-url" | "upstream-url" | "url" | "homepage" => {
+                        "aur-url" | "upstream-url" | "url" | "homepage" | "ubuntu-url" | 
+                        "nixos-url" | "opensuse-url" => {
                             format!("\x1b[1;94m{}:\x1b[0m \x1b[4;94m{}\x1b[0m", attr, styled_value)
                         },
                         // Dates - gray (non-allocation dates)

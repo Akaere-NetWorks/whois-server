@@ -33,6 +33,9 @@ pub enum QueryType {
     Acgc(String),        // For queries ending with -ACGC (Anime/Comic/Game Characters)
     Aur(String),         // For queries ending with -AUR (Arch User Repository)
     Debian(String),      // For queries ending with -DEBIAN (Debian packages)
+    Ubuntu(String),      // For queries ending with -UBUNTU (Ubuntu packages)
+    NixOs(String),       // For queries ending with -NIXOS (NixOS packages)
+    OpenSuse(String),    // For queries ending with -OPENSUSE (OpenSUSE packages)
     Wikipedia(String),   // For queries ending with -WIKIPEDIA (Wikipedia articles)
     Lyric(String),       // For queries ending with -LYRIC (Luotianyi random lyrics)
     Unknown(String),
@@ -183,6 +186,24 @@ pub fn analyze_query(query: &str) -> QueryType {
     if query.to_uppercase().ends_with("-DEBIAN") {
         let base_query = &query[..query.len() - 7]; // Remove "-DEBIAN" suffix
         return QueryType::Debian(base_query.to_string());
+    }
+    
+    // Check if it's an Ubuntu package query
+    if query.to_uppercase().ends_with("-UBUNTU") {
+        let base_query = &query[..query.len() - 7]; // Remove "-UBUNTU" suffix
+        return QueryType::Ubuntu(base_query.to_string());
+    }
+    
+    // Check if it's a NixOS package query
+    if query.to_uppercase().ends_with("-NIXOS") {
+        let base_query = &query[..query.len() - 6]; // Remove "-NIXOS" suffix
+        return QueryType::NixOs(base_query.to_string());
+    }
+    
+    // Check if it's an OpenSUSE package query
+    if query.to_uppercase().ends_with("-OPENSUSE") {
+        let base_query = &query[..query.len() - 9]; // Remove "-OPENSUSE" suffix
+        return QueryType::OpenSuse(base_query.to_string());
     }
     
     // Check if it's a Wikipedia article query

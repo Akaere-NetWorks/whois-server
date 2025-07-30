@@ -237,6 +237,24 @@ pub fn run_blocking_server(addr: &str, timeout_secs: u64, dump_traffic: bool, du
                         // Return a notice that Debian queries require async server
                         Ok(format!("Debian package queries are only supported on the async server.\nPlease use the main server (port 43) for Debian queries.\nQuery: {}\n", base_query))
                     }
+                    QueryType::Ubuntu(base_query) => {
+                        info!("Processing Ubuntu package query: {}", base_query);
+                        // Ubuntu queries require async HTTP operations
+                        // Return a notice that Ubuntu queries require async server
+                        Ok(format!("Ubuntu package queries are only supported on the async server.\nPlease use the main server (port 43) for Ubuntu queries.\nQuery: {}\n", base_query))
+                    }
+                    QueryType::NixOs(base_query) => {
+                        info!("Processing NixOS package query: {}", base_query);
+                        // NixOS queries require async HTTP operations
+                        // Return a notice that NixOS queries require async server
+                        Ok(format!("NixOS package queries are only supported on the async server.\nPlease use the main server (port 43) for NixOS queries.\nQuery: {}\n", base_query))
+                    }
+                    QueryType::OpenSuse(base_query) => {
+                        info!("Processing OpenSUSE package query: {}", base_query);
+                        // OpenSUSE queries require async HTTP operations
+                        // Return a notice that OpenSUSE queries require async server
+                        Ok(format!("OpenSUSE package queries are only supported on the async server.\nPlease use the main server (port 43) for OpenSUSE queries.\nQuery: {}\n", base_query))
+                    }
                     QueryType::Wikipedia(base_query) => {
                         info!("Processing Wikipedia article query: {}", base_query);
                         // Wikipedia queries require async HTTP operations
