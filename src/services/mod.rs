@@ -19,6 +19,7 @@ pub mod packages;
 pub mod wikipedia;
 pub mod lyric;
 pub mod github;
+pub mod help;
 
 pub use whois::*;
 pub use email::*;

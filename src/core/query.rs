@@ -39,13 +39,20 @@ pub enum QueryType {
     OpenSuse(String),    // For queries ending with -OPENSUSE (OpenSUSE packages)
     Npm(String),         // For queries ending with -NPM (NPM packages)
     Pypi(String),        // For queries ending with -PYPI (PyPI packages)
+    Cargo(String),       // For queries ending with -CARGO (Rust crates)
     GitHub(String),      // For queries ending with -GITHUB (GitHub users/repos)
     Wikipedia(String),   // For queries ending with -WIKIPEDIA (Wikipedia articles)
     Lyric(String),       // For queries ending with -LYRIC (Luotianyi random lyrics)
+    Help,                // For HELP queries (show available query types)
     Unknown(String),
 }
 
 pub fn analyze_query(query: &str) -> QueryType {
+    // Check if it's a HELP query (case-insensitive)
+    if query.to_uppercase() == "HELP" {
+        return QueryType::Help;
+    }
+    
     // Check if it's an RPKI query in format PREFIX-ASN-RPKI
     if query.to_uppercase().ends_with("-RPKI") {
         let base_query = &query[..query.len() - 5]; // Remove "-RPKI" suffix
@@ -226,6 +233,12 @@ pub fn analyze_query(query: &str) -> QueryType {
     if query.to_uppercase().ends_with("-PYPI") {
         let base_query = &query[..query.len() - 5]; // Remove "-PYPI" suffix
         return QueryType::Pypi(base_query.to_string());
+    }
+    
+    // Check if it's a Cargo (Rust crates) package query
+    if query.to_uppercase().ends_with("-CARGO") {
+        let base_query = &query[..query.len() - 6]; // Remove "-CARGO" suffix
+        return QueryType::Cargo(base_query.to_string());
     }
     
     // Check if it's a GitHub user/repository query

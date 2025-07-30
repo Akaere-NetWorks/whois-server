@@ -213,6 +213,9 @@ impl Colorizer {
                         "upstream-version" | "architectures" | "aosc-url" | "latest-version" |
                         "beta-version" | "keywords" | "dependencies" | "dev-dependencies" |
                         "requires-python" | "programming-languages" | "development-status" |
+                        "crate-name" | "stable-version" | "published-by" | "yanked" | "package-size" |
+                        "total-downloads" | "recent-downloads" | "categories" | "total-versions" |
+                        "recent-versions" | "registry" |
                         "username" | "user-id" | "user-type" | "display-name" | "bio" |
                         "company" | "location" | "twitter" | "public-repos" | "public-gists" |
                         "followers" | "following" | "repository-name" | "full-name" | "repository-id" |
@@ -236,7 +239,8 @@ impl Colorizer {
                         // URLs - underlined blue
                         "aur-url" | "upstream-url" | "url" | "homepage" | "ubuntu-url" | 
                         "nixos-url" | "opensuse-url" | "npm-url" | "registry-url" | "pypi-url" |
-                        "api-url" | "github-url" | "clone-url" | "ssh-url" | "avatar-url" => {
+                        "crates-io-url" | "docs-rs-url" | "api-url" | "github-url" | "clone-url" | 
+                        "ssh-url" | "avatar-url" => {
                             let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
                             let colored_value = url_regex.replace_all(value, "\x1b[4;94m$1\x1b[0m").to_string();
                             format!("\x1b[1;94m{}:\x1b[0m {}", attr, colored_value)

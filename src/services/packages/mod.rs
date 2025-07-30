@@ -10,6 +10,7 @@
 
 pub mod aosc;
 pub mod aur;
+pub mod cargo;
 pub mod debian;
 pub mod nixos;
 pub mod npm;
@@ -20,6 +21,7 @@ pub mod ubuntu;
 // Re-export package services
 pub use aosc::process_aosc_query;
 pub use aur::process_aur_query;
+pub use cargo::process_cargo_query;
 pub use debian::process_debian_query;
 pub use nixos::process_nixos_query;
 pub use npm::process_npm_query;

@@ -291,6 +291,16 @@ pub fn run_blocking_server(addr: &str, timeout_secs: u64, dump_traffic: bool, du
                         // Return a notice that lyric queries require async server
                         Ok(format!("Luotianyi lyric queries are only supported on the async server.\nPlease use the main server (port 43) for lyric queries.\nQuery: {}\n", base_query))
                     }
+                    QueryType::Cargo(base_query) => {
+                        info!("Processing Cargo package query: {}", base_query);
+                        // Cargo queries require async HTTP operations
+                        // Return a notice that Cargo queries require async server
+                        Ok(format!("Cargo package queries are only supported on the async server.\nPlease use the main server (port 43) for Cargo queries.\nQuery: {}\n", base_query))
+                    }
+                    QueryType::Help => {
+                        info!("Processing HELP query");
+                        Ok(crate::services::help::generate_help_response())
+                    }
                     QueryType::Unknown(q) => {
                         info!("Unknown query type: {}", q);
                         if q.to_uppercase().ends_with("-DN42") || q.to_uppercase().ends_with("-MNT") {
