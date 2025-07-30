@@ -8,6 +8,7 @@
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 
+pub mod aosc;
 pub mod aur;
 pub mod debian;
 pub mod ubuntu;
@@ -15,6 +16,7 @@ pub mod nixos;
 pub mod opensuse;
 
 // Re-export package services
+pub use aosc::process_aosc_query;
 pub use aur::process_aur_query;
 pub use debian::process_debian_query;
 pub use ubuntu::process_ubuntu_query;

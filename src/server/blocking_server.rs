@@ -225,6 +225,12 @@ pub fn run_blocking_server(addr: &str, timeout_secs: u64, dump_traffic: bool, du
                         // Return a notice that ACGC queries require async server
                         Ok(format!("ACGC character queries are only supported on the async server.\nPlease use the main server (port 43) for ACGC queries.\nQuery: {}\n", base_query))
                     }
+                    QueryType::Aosc(base_query) => {
+                        info!("Processing AOSC package query: {}", base_query);
+                        // AOSC queries require async HTTP operations
+                        // Return a notice that AOSC queries require async server
+                        Ok(format!("AOSC package queries are only supported on the async server.\nPlease use the main server (port 43) for AOSC queries.\nQuery: {}\n", base_query))
+                    }
                     QueryType::Aur(base_query) => {
                         info!("Processing AUR package query: {}", base_query);
                         // AUR queries require async HTTP operations

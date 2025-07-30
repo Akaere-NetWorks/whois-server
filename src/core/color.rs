@@ -207,7 +207,9 @@ impl Colorizer {
                         "version" | "package" | "package-base" | "package-name" | "attribute-name" | 
                         "attribute-set" | "component" | "source-package" | "source-version" |
                         "section" | "priority" | "project" | "repository" | "release" | 
-                        "architecture" | "platforms" | "outputs" | "maintainers" | "author" => {
+                        "architecture" | "platforms" | "outputs" | "maintainers" | "author" |
+                        "depends" | "replaces" | "breaks" | "provides" | "suggests" | "upstream" |
+                        "upstream-version" | "architectures" | "aosc-url" => {
                             format!("\x1b[1;95m{}:\x1b[0m \x1b[95m{}\x1b[0m", attr, value)
                         },
                         // Package descriptions - cyan
@@ -764,7 +766,9 @@ impl Colorizer {
                         "package" | "version" | "depends" | "makedepends" | "package-name" | 
                         "attribute-name" | "attribute-set" | "component" | "source-package" | 
                         "source-version" | "section" | "priority" | "project" | "repository" | 
-                        "release" | "architecture" | "platforms" | "outputs" | "maintainers" | "author" => {
+                        "release" | "architecture" | "platforms" | "outputs" | "maintainers" | "author" |
+                        "replaces" | "breaks" | "provides" | "suggests" | "upstream" | 
+                        "upstream-version" | "architectures" => {
                             format!("\x1b[1;96m{}:\x1b[0m \x1b[96m{}\x1b[0m", attr, styled_value)
                         },
                         // Package descriptions - bright magenta
@@ -781,7 +785,7 @@ impl Colorizer {
                         },
                         // URLs - underlined blue
                         "aur-url" | "upstream-url" | "url" | "homepage" | "ubuntu-url" | 
-                        "nixos-url" | "opensuse-url" => {
+                        "nixos-url" | "opensuse-url" | "aosc-url" => {
                             format!("\x1b[1;94m{}:\x1b[0m \x1b[4;94m{}\x1b[0m", attr, styled_value)
                         },
                         // Dates - gray (non-allocation dates)

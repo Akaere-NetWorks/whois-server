@@ -13,7 +13,7 @@ use crate::services::{
     process_dns_query, process_traceroute_query, process_ssl_query, 
     process_crt_query, process_minecraft_query, process_minecraft_user_query,
     process_steam_query, process_steam_search_query, process_imdb_query, 
-    process_imdb_search_query, process_acgc_query, process_aur_query, 
+    process_imdb_search_query, process_acgc_query, process_aosc_query, process_aur_query, 
     process_debian_query, process_ubuntu_query, process_nixos_query, process_opensuse_query,
     process_wikipedia_query, process_lyric_query, query_whois, query_with_iana_referral
 };
@@ -231,6 +231,10 @@ pub async fn handle_connection(
         QueryType::Acgc(base_query) => {
             debug!("Processing ACGC character query: {}", base_query);
             process_acgc_query(&format!("{}-ACGC", base_query)).await
+        }
+        QueryType::Aosc(base_query) => {
+            debug!("Processing AOSC package query: {}", base_query);
+            process_aosc_query(base_query).await
         }
         QueryType::Aur(base_query) => {
             debug!("Processing AUR package query: {}", base_query);

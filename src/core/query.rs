@@ -31,6 +31,7 @@ pub enum QueryType {
     Imdb(String),        // For queries ending with -IMDB (IMDb movies/TV shows)
     ImdbSearch(String),  // For queries ending with -IMDBSEARCH (IMDb title search)
     Acgc(String),        // For queries ending with -ACGC (Anime/Comic/Game Characters)
+    Aosc(String),        // For queries ending with -AOSC (AOSC packages)
     Aur(String),         // For queries ending with -AUR (Arch User Repository)
     Debian(String),      // For queries ending with -DEBIAN (Debian packages)
     Ubuntu(String),      // For queries ending with -UBUNTU (Ubuntu packages)
@@ -174,6 +175,12 @@ pub fn analyze_query(query: &str) -> QueryType {
     if query.to_uppercase().ends_with("-ACGC") {
         let base_query = &query[..query.len() - 5]; // Remove "-ACGC" suffix
         return QueryType::Acgc(base_query.to_string());
+    }
+    
+    // Check if it's an AOSC package query
+    if query.to_uppercase().ends_with("-AOSC") {
+        let base_query = &query[..query.len() - 5]; // Remove "-AOSC" suffix
+        return QueryType::Aosc(base_query.to_string());
     }
     
     // Check if it's an AUR package query
