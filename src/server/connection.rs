@@ -16,7 +16,7 @@ use crate::services::{
     process_imdb_search_query, process_acgc_query, process_aosc_query, process_aur_query, 
     process_debian_query, process_ubuntu_query, process_nixos_query, process_opensuse_query,
     process_npm_query, process_pypi_query, process_cargo_query, process_github_query,
-    process_wikipedia_query, process_lyric_query, query_whois, query_with_iana_referral
+    process_wikipedia_query, process_lyric_query, query_random_meal, query_whois, query_with_iana_referral
 };
 use crate::config::{SERVER_BANNER, RADB_WHOIS_SERVER, RADB_WHOIS_PORT};
 use crate::dn42::process_dn42_query_managed;
@@ -280,6 +280,10 @@ pub async fn handle_connection(
         QueryType::Lyric(base_query) => {
             debug!("Processing Luotianyi lyric query: {}", base_query);
             process_lyric_query(&format!("{}-LYRIC", base_query)).await
+        }
+        QueryType::Meal => {
+            debug!("Processing meal suggestion query");
+            query_random_meal().await
         }
         QueryType::Help => {
             debug!("Processing HELP query");

@@ -635,6 +635,30 @@ impl Colorizer {
                             }
                         }
                     },
+                    QueryType::Meal => {
+                        // Meal suggestions - food-themed colorization
+                        if line.contains("Meal Information") {
+                            format!("\x1b[1;96m{}\x1b[0m", line) // Bold cyan for header
+                        } else if line.contains("meal-name:") {
+                            format!("\x1b[1;93m{}\x1b[0m", line) // Bright yellow for meal names
+                        } else if line.contains("category:") {
+                            format!("\x1b[92m{}\x1b[0m", line) // Green for categories
+                        } else if line.contains("cuisine:") {
+                            format!("\x1b[95m{}\x1b[0m", line) // Magenta for cuisine type
+                        } else if line.contains("ingredient:") {
+                            format!("\x1b[94m{}\x1b[0m", line) // Blue for ingredients
+                        } else if line.contains("instruction-") {
+                            format!("\x1b[96m{}\x1b[0m", line) // Cyan for cooking instructions
+                        } else if line.contains("youtube-video:") || line.contains("meal-image:") {
+                            format!("\x1b[1;91m{}\x1b[0m", line) // Bright red for media links
+                        } else if line.contains("tags:") {
+                            format!("\x1b[90m{}\x1b[0m", line) // Gray for tags
+                        } else if line.starts_with("%") {
+                            format!("\x1b[90m{}\x1b[0m", line) // Gray for comments
+                        } else {
+                            line.to_string()
+                        }
+                    },
                     QueryType::Acgc(_) => {
                         // ACGC - Anime/Comic/Game character information coloring
                         if line.contains("ACGC Character Information:") {
@@ -1268,6 +1292,30 @@ impl Colorizer {
                             } else {
                                 line.to_string()
                             }
+                        }
+                    },
+                    QueryType::Meal => {
+                        // Meal suggestions - food-themed colorization (BGPTools style)
+                        if line.contains("Meal Information") {
+                            format!("\x1b[1;46m\x1b[30m{}\x1b[0m", line) // Black text on cyan background for header
+                        } else if line.contains("meal-name:") {
+                            format!("\x1b[1;43m\x1b[30m{}\x1b[0m", line) // Black text on bright yellow background for meal names
+                        } else if line.contains("category:") {
+                            format!("\x1b[1;42m\x1b[30m{}\x1b[0m", line) // Black text on green background for categories
+                        } else if line.contains("cuisine:") {
+                            format!("\x1b[1;45m\x1b[37m{}\x1b[0m", line) // White text on magenta background for cuisine type
+                        } else if line.contains("ingredient:") {
+                            format!("\x1b[1;94m{}\x1b[0m", line) // Bright blue for ingredients
+                        } else if line.contains("instruction-") {
+                            format!("\x1b[1;96m{}\x1b[0m", line) // Bright cyan for cooking instructions
+                        } else if line.contains("youtube-video:") || line.contains("meal-image:") {
+                            format!("\x1b[1;41m\x1b[37m{}\x1b[0m", line) // White text on red background for media links
+                        } else if line.contains("tags:") {
+                            format!("\x1b[90m{}\x1b[0m", line) // Gray for tags
+                        } else if line.starts_with("%") {
+                            format!("\x1b[90m{}\x1b[0m", line) // Gray for comments
+                        } else {
+                            line.to_string()
                         }
                     },
                     QueryType::Acgc(_) => {

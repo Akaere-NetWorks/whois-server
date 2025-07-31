@@ -20,6 +20,7 @@ pub mod wikipedia;
 pub mod lyric;
 pub mod github;
 pub mod help;
+pub mod meal;
 
 pub use whois::*;
 pub use email::*;
@@ -42,3 +43,4 @@ pub use packages::*;
 pub use wikipedia::*;
 pub use lyric::*;
 pub use github::*;
+pub use meal::*;

@@ -297,6 +297,12 @@ pub fn run_blocking_server(addr: &str, timeout_secs: u64, dump_traffic: bool, du
                         // Return a notice that Cargo queries require async server
                         Ok(format!("Cargo package queries are only supported on the async server.\nPlease use the main server (port 43) for Cargo queries.\nQuery: {}\n", base_query))
                     }
+                    QueryType::Meal => {
+                        info!("Processing meal suggestion query");
+                        // Meal queries require async HTTP operations
+                        // Return a notice that meal queries require async server
+                        Ok("Meal suggestion queries (今天吃什么/-MEAL) are only supported on the async server.\nPlease use the main server (port 43) for meal queries.\n".to_string())
+                    }
                     QueryType::Help => {
                         info!("Processing HELP query");
                         Ok(crate::services::help::generate_help_response())

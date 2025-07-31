@@ -43,11 +43,17 @@ pub enum QueryType {
     GitHub(String),      // For queries ending with -GITHUB (GitHub users/repos)
     Wikipedia(String),   // For queries ending with -WIKIPEDIA (Wikipedia articles)
     Lyric(String),       // For queries ending with -LYRIC (Luotianyi random lyrics)
+    Meal,                // For meal suggestions (今天吃什么 or -MEAL)
     Help,                // For HELP queries (show available query types)
     Unknown(String),
 }
 
 pub fn analyze_query(query: &str) -> QueryType {
+    // Check if it's a meal suggestion query (Chinese phrase or -MEAL suffix)
+    if query == "今天吃什么" || query.to_uppercase().ends_with("-MEAL") {
+        return QueryType::Meal;
+    }
+    
     // Check if it's a HELP query (case-insensitive)
     if query.to_uppercase() == "HELP" {
         return QueryType::Help;
