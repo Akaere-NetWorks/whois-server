@@ -301,6 +301,7 @@ impl server::Handler for WhoisSshHandler {
             Special commands:\r\n\
             • 'history'    - View your connection history\r\n\
             • 'help'       - Show all available query types\r\n\
+            • 'clear/cls'  - Clear the screen\r\n\
             • 'exit/quit'  - Disconnect from server\r\n\
             \r\n\
             Controls:\r\n\
@@ -348,6 +349,15 @@ impl WhoisSshHandler {
                                 || command.eq_ignore_ascii_case("bye") {
                                 session.data(channel, CryptoVec::from_slice(b"Goodbye!\r\n"));
                                 session.close(channel);
+                                return Ok(());
+                            }
+
+                            // Check for clear command
+                            if command.eq_ignore_ascii_case("clear") 
+                                || command.eq_ignore_ascii_case("cls") {
+                                // Clear screen using ANSI escape sequences
+                                session.data(channel, CryptoVec::from_slice(b"\x1B[2J\x1B[H"));
+                                session.data(channel, CryptoVec::from_slice(b"whois> "));
                                 return Ok(());
                             }
 
