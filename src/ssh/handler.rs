@@ -46,6 +46,7 @@ pub struct WhoisSshHandler {
     /// Client address
     client_addr: Option<SocketAddr>,
     /// Server host key
+    #[allow(dead_code)]
     host_key: Arc<key::KeyPair>,
 }
 
@@ -454,7 +455,7 @@ impl WhoisSshHandler {
                         let line_len = session_data.current_line.len();
                         if session_data.cursor_pos < line_len {
                             let move_forward = line_len - session_data.cursor_pos;
-                            let move_cmd = format!("\x1B[{}C", move_forward);
+                            let move_cmd = format!("\x1B[{move_forward}C");
                             session.data(channel, CryptoVec::from_slice(move_cmd.as_bytes()));
                             session_data.cursor_pos = line_len;
                         }
@@ -467,7 +468,7 @@ impl WhoisSshHandler {
                         session.data(channel, CryptoVec::from_slice(prompt_and_line.as_bytes()));
                         if session_data.cursor_pos < session_data.current_line.len() {
                             let move_back = session_data.current_line.len() - session_data.cursor_pos;
-                            let move_cmd = format!("\x1B[{}D", move_back);
+                            let move_cmd = format!("\x1B[{move_back}D");
                             session.data(channel, CryptoVec::from_slice(move_cmd.as_bytes()));
                         }
                     }
@@ -639,7 +640,7 @@ impl WhoisSshHandler {
                     let line_len = session_data.current_line.len();
                     if session_data.cursor_pos < line_len {
                         let move_forward = line_len - session_data.cursor_pos;
-                        let move_cmd = format!("\x1B[{}C", move_forward);
+                        let move_cmd = format!("\x1B[{move_forward}C");
                         session.data(channel, CryptoVec::from_slice(move_cmd.as_bytes()));
                         session_data.cursor_pos = line_len;
                     }

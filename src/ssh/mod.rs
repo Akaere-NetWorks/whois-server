@@ -16,6 +16,9 @@ pub mod history;
 pub mod certificates;
 
 pub use server::SshServer;
+#[allow(unused_imports)]
 pub use handler::WhoisSshHandler;
+#[allow(unused_imports)]
 pub use history::SshConnectionHistory;
+#[allow(unused_imports)]
 pub use certificates::SshCertificateManager;

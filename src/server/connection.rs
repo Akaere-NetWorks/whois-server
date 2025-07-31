@@ -411,6 +411,7 @@ pub async fn handle_connection(
 }
 
 /// Process a WHOIS query and return the response (for use by SSH server and other modules)
+#[allow(dead_code)]
 pub async fn handle_query(query: &str, query_type: &QueryType, color_scheme: Option<ColorScheme>) -> Result<String> {
     crate::core::process_query(query, query_type, color_scheme).await
 } 

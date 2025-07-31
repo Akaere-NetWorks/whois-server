@@ -42,7 +42,7 @@ impl SshConnectionHistory {
         // Ensure the parent directory exists
         if let Some(parent) = db_path.parent() {
             std::fs::create_dir_all(parent)
-                .with_context(|| format!("Failed to create directory {:?}", parent))?;
+                .with_context(|| format!("Failed to create directory {parent:?}"))?;
         }
 
         // On Windows, LMDB requires the path to be a directory, not a file
@@ -57,7 +57,7 @@ impl SshConnectionHistory {
         // Create the LMDB directory if it doesn't exist
         if !lmdb_dir.exists() {
             std::fs::create_dir_all(&lmdb_dir)
-                .with_context(|| format!("Failed to create LMDB directory {:?}", lmdb_dir))?;
+                .with_context(|| format!("Failed to create LMDB directory {lmdb_dir:?}"))?;
         }
 
         debug!("Opening LMDB environment at: {:?}", lmdb_dir);
@@ -66,7 +66,7 @@ impl SshConnectionHistory {
             .set_max_dbs(1)
             .set_map_size(10 * 1024 * 1024) // 10MB should be enough for connection history
             .open(&lmdb_dir)
-            .with_context(|| format!("Failed to open LMDB environment at {:?}", lmdb_dir))?;
+            .with_context(|| format!("Failed to open LMDB environment at {lmdb_dir:?}"))?;
 
         // Try to open existing database first, create if needed
         let db = match env.open_db(Some("ssh_history")) {
@@ -136,7 +136,7 @@ impl SshConnectionHistory {
             .with_context(|| "Failed to open cursor")?;
 
         let mut records = Vec::new();
-        let ip_prefix = format!("{}_", ip);
+        let ip_prefix = format!("{ip}_");
 
         // Iterate through records with matching IP prefix
         for (key, value) in cursor.iter() {
@@ -237,6 +237,7 @@ impl SshConnectionHistory {
     }
 
     /// Get total number of stored records
+    #[allow(dead_code)]
     pub fn get_total_records(&self) -> Result<usize> {
         let txn = self.env.begin_ro_txn()
             .with_context(|| "Failed to begin read transaction")?;

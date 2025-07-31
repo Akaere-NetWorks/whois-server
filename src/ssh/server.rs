@@ -152,6 +152,7 @@ impl SshServer {
     }
 
     /// Get SSH server statistics
+    #[allow(dead_code)]
     pub async fn get_stats(&self) -> Result<SshServerStats> {
         let total_records = self.history.get_total_records()
             .with_context(|| "Failed to get SSH history record count")?;
@@ -166,6 +167,7 @@ impl SshServer {
 
 /// SSH server statistics
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct SshServerStats {
     pub total_connections: usize,
     pub active_connections: usize,
