@@ -357,6 +357,12 @@ impl WhoisSshHandler {
                                 || command.eq_ignore_ascii_case("cls") {
                                 // Clear screen using ANSI escape sequences
                                 session.data(channel, CryptoVec::from_slice(b"\x1B[2J\x1B[H"));
+                                
+                                // Reset session state
+                                session_data.current_line.clear();
+                                session_data.cursor_pos = 0;
+                                session_data.history_index = None;
+                                
                                 session.data(channel, CryptoVec::from_slice(b"whois> "));
                                 return Ok(());
                             }
