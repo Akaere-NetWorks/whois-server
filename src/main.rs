@@ -23,6 +23,7 @@ mod storage;
 mod services;
 mod web;
 mod dn42;
+mod ssh;
 
 use anyhow::Result;
 use clap::Parser;
@@ -34,6 +35,7 @@ use server::{create_dump_dir_if_needed, run_async_server, run_blocking_server};
 use core::{create_stats_state, save_stats_on_shutdown};
 use web::run_web_server;
 use dn42::{start_periodic_sync, initialize_dn42_manager, get_dn42_platform_info, is_dn42_online_mode, dn42_manager_maintenance};
+use ssh::{SshServer, server::SshServerConfig};
 use tokio::time::{interval, Duration};
 
 #[tokio::main]
@@ -105,6 +107,35 @@ async fn main() -> Result<()> {
             tracing::error!("Web server error: {}", e);
         }
     });
+    
+    // Start SSH server if enabled
+    if args.enable_ssh {
+        let ssh_config = SshServerConfig {
+            listen_addr: args.host.clone(),
+            port: args.ssh_port,
+            cache_dir: args.ssh_cache_dir.clone(),
+        };
+        
+        tokio::spawn(async move {
+            info!("Starting SSH server on port {}", ssh_config.port);
+            let mut ssh_server = match SshServer::new(ssh_config) {
+                Ok(server) => server,
+                Err(e) => {
+                    tracing::error!("Failed to create SSH server: {}", e);
+                    return;
+                }
+            };
+            
+            if let Err(e) = ssh_server.initialize().await {
+                tracing::error!("Failed to initialize SSH server: {}", e);
+                return;
+            }
+            
+            if let Err(e) = ssh_server.start().await {
+                tracing::error!("SSH server error: {}", e);
+            }
+        });
+    }
     
     // Create server address
     let addr = format!("{}:{}", args.host, args.port);

@@ -1,6 +1,6 @@
 mod async_server;
 mod blocking_server;
-mod connection;
+pub mod connection;
 mod utils;
 
 pub use async_server::run_async_server;

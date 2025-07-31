@@ -5,3 +5,4 @@ pub mod storage;
 pub mod services;
 pub mod web;
 pub mod dn42;
+pub mod ssh;

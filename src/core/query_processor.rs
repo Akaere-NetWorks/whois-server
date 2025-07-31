@@ -1,10 +1,11 @@
-use std::net::SocketAddr;
-use std::time::Duration;
+// WHOIS Server - Query Processor
+// Copyright (C) 2025 Akaere Networks
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+//! Core query processing logic shared between different server implementations
 
 use anyhow::Result;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::TcpStream;
-use tracing::{debug, error, warn};
+use tracing::debug;
 
 use crate::services::{
     process_bgptool_query, process_email_search, process_geo_query, 
@@ -18,101 +19,16 @@ use crate::services::{
     process_npm_query, process_pypi_query, process_cargo_query, process_github_query,
     process_wikipedia_query, process_lyric_query, query_random_meal, query_whois, query_with_iana_referral
 };
-use crate::config::{SERVER_BANNER, RADB_WHOIS_SERVER, RADB_WHOIS_PORT};
+use crate::config::{RADB_WHOIS_SERVER, RADB_WHOIS_PORT};
 use crate::dn42::process_dn42_query_managed;
-use crate::core::{analyze_query, is_private_ipv4, is_private_ipv6, QueryType, dump_to_file, StatsState, ColorProtocol, Colorizer, ColorScheme};
+use crate::core::{is_private_ipv4, is_private_ipv6, QueryType, ColorScheme, Colorizer};
 
-pub async fn handle_connection(
-    mut stream: TcpStream,
-    addr: SocketAddr,
-    timeout: Duration,
-    dump_traffic: bool,
-    dump_dir: &str,
-    stats: StatsState,
-    enable_color: bool,
-) -> Result<()> {
-    // Set nodelay to ensure responses are sent immediately
-    if let Err(e) = stream.set_nodelay(true) {
-        warn!("Failed to set TCP_NODELAY: {}", e);
-    }
+/// Process a WHOIS query and return the response (for use by SSH server and other modules)
+pub async fn process_query(query: &str, query_type: &QueryType, color_scheme: Option<ColorScheme>) -> Result<String> {
+    debug!("Processing query: {} (type: {:?})", query, query_type);
     
-    // Read request
-    let mut buffer = [0u8; 1024];
-    let mut request = String::new();
-    
-    let read_future = async {
-        let mut total_read = 0;
-        loop {
-            match stream.read(&mut buffer).await {
-                Ok(0) => break,
-                Ok(n) => {
-                    request.push_str(&String::from_utf8_lossy(&buffer[0..n]));
-                    total_read += n;
-                    
-                    // Check for CRLF terminator
-                    if request.contains("\r\n") || total_read > 900 {
-                        break;
-                    }
-                }
-                Err(e) => return Err(anyhow::anyhow!("Failed to read request: {}", e)),
-            }
-        }
-        Ok(())
-    };
-    
-    // Read with timeout
-    if let Err(_) = tokio::time::timeout(timeout, read_future).await {
-        return Err(anyhow::anyhow!("Request read timeout"));
-    }
-    
-    // Dump query if requested
-    if dump_traffic {
-        let timestamp = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_millis();
-        dump_to_file(&format!("{}/query_{}.txt", dump_dir, timestamp), &request);
-    }
-    
-    // Parse color protocol headers
-    let mut color_protocol = ColorProtocol::new();
-    color_protocol.enabled = enable_color;
-    let is_capability_probe = color_protocol.parse_headers(&request);
-    
-    // Handle capability probe
-    if is_capability_probe {
-        debug!("Received WHOIS-COLOR capability probe from {}", addr);
-        let capability_response = color_protocol.get_capability_response();
-        
-        if let Err(e) = stream.write_all(capability_response.as_bytes()).await {
-            error!("Failed to send capability response: {}", e);
-        } else {
-            debug!("Sent WHOIS-COLOR capability response");
-        }
-        
-        return Ok(());
-    }
-    
-    // Clean request - trim whitespace and get first line (skip headers)
-    let query_line = request.trim().lines()
-        .find(|line| !line.trim().to_uppercase().starts_with("X-WHOIS-COLOR"))
-        .unwrap_or("");
-    
-    let query = query_line.trim().to_string();
-    
-    // Skip empty queries
-    if query.is_empty() {
-        debug!("Received empty query from {}", addr);
-        return Ok(());
-    }
-    
-    debug!("Received query from {}: {} (color: {:?})", addr, query, color_protocol.scheme);
-    
-    // Analyze query type
-    let query_type = analyze_query(&query);
-    
-    // Select appropriate WHOIS server and query
-    let result = match &query_type {
+    // Process the query based on its type
+    let result = match query_type {
         QueryType::Domain(domain) => {
             debug!("Processing domain query: {}", domain);
             if domain.to_lowercase().ends_with(".dn42") {
@@ -126,18 +42,18 @@ pub async fn handle_connection(
             debug!("Processing IPv4 query: {}", ip);
             if is_private_ipv4(*ip) {
                 debug!("Detected private IPv4 address, using DN42 query");
-                process_dn42_query_managed(&query).await
+                process_dn42_query_managed(query).await
             } else {
-                query_with_iana_referral(&query).await
+                query_with_iana_referral(query).await
             }
         }
         QueryType::IPv6(ip) => {
             debug!("Processing IPv6 query: {}", ip);
             if is_private_ipv6(*ip) {
                 debug!("Detected private IPv6 address, using DN42 query");
-                process_dn42_query_managed(&query).await
+                process_dn42_query_managed(query).await
             } else {
-                query_with_iana_referral(&query).await
+                query_with_iana_referral(query).await
             }
         }
         QueryType::ASN(asn) => {
@@ -296,7 +212,6 @@ pub async fn handle_connection(
                 process_dn42_query_managed(q).await
             } else {
                 let public_result = query_with_iana_referral(q).await;
-                
                 match &public_result {
                     Ok(response) if response.trim().is_empty() 
                         || response.contains("No entries found") 
@@ -314,103 +229,16 @@ pub async fn handle_connection(
         }
     };
     
-    // Format the response with proper WHOIS format and optional colorization
-    let formatted_response = match result {
-        Ok(resp) => {
-            let mut formatted = format!("{}\r\n", SERVER_BANNER);
-            formatted.push_str("% The objects are in RPSL format\r\n");
-            formatted.push_str("% Please report any issues to noc@akae.re\r\n");
-            formatted.push_str("\r\n");
-            
-            // Apply colorization if requested and supported
-            let response_content = if color_protocol.should_colorize() {
-                if let Some(scheme) = &color_protocol.scheme {
-                    let colorizer = Colorizer::new(scheme.clone());
-                    colorizer.colorize_response(&resp, &query_type)
-                } else {
-                    resp
-                }
+    // Apply colorization if scheme is provided
+    match result {
+        Ok(response) => {
+            if let Some(scheme) = color_scheme {
+                let colorizer = Colorizer::new(scheme);
+                Ok(colorizer.colorize_response(&response, query_type))
             } else {
-                resp
-            };
-            
-            // Add the response content (colorized or plain)
-            formatted.push_str(&response_content);
-            
-            // Ensure response ends with a CRLF
-            if !formatted.ends_with("\r\n") {
-                formatted.push_str("\r\n");
+                Ok(response)
             }
-            
-            formatted
-        },
-        Err(e) => {
-            error!("WHOIS query error for {}: {}", query, e);
-            
-            let mut formatted = format!("{}\r\n", SERVER_BANNER);
-            formatted.push_str("% Please report any issues to noc@akae.re\r\n");
-            formatted.push_str("\r\n");
-            
-            let error_msg = format!("% Error: {}\r\n", e);
-            
-            // Apply colorization to error message if requested
-            let colored_error = if color_protocol.should_colorize() {
-                format!("\x1b[91m{}\x1b[0m", error_msg) // Bright red for errors
-            } else {
-                error_msg
-            };
-            
-            formatted.push_str(&colored_error);
-            formatted.push_str("\r\n");
-            formatted
         }
-    };
-    
-    // Dump response if requested
-    if dump_traffic {
-        let timestamp = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_millis();
-        dump_to_file(&format!("{}/response_{}.txt", dump_dir, timestamp), &formatted_response);
+        Err(e) => Err(e)
     }
-    
-    // Log the response size (helpful for debugging)
-    debug!("Sending response ({} bytes) for query: {}", formatted_response.len(), query);
-    
-    // Send response - use write_all to ensure entire response is sent
-    match stream.write_all(formatted_response.as_bytes()).await {
-        Ok(_) => {
-            // Flush to ensure data is sent
-            if let Err(e) = stream.flush().await {
-                error!("Failed to flush response: {}", e);
-            }
-            debug!("Query response sent: {}", query);
-            
-            // Record statistics
-            crate::core::record_request(&stats, formatted_response.len()).await;
-        },
-        Err(e) => {
-            error!("Failed to send response for {}: {}", query, e);
-            return Err(anyhow::anyhow!("Failed to send response: {}", e));
-        }
-    }
-    
-    // According to RFC 3912, the server MUST close the connection, not wait for client
-    debug!("Closing connection from server side (RFC 3912 requirement)");
-    
-    // First shutdown write side to ensure all data is transmitted
-    if let Err(e) = stream.shutdown().await {
-        warn!("Error shutting down connection: {}", e);
-    }
-    
-    // Drop the stream to forcibly close the connection
-    drop(stream);
-    
-    Ok(())
 }
-
-/// Process a WHOIS query and return the response (for use by SSH server and other modules)
-pub async fn handle_query(query: &str, query_type: &QueryType, color_scheme: Option<ColorScheme>) -> Result<String> {
-    crate::core::process_query(query, query_type, color_scheme).await
-} 

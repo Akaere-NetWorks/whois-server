@@ -81,4 +81,16 @@ pub struct Cli {
     /// Enable WHOIS-COLOR protocol support
     #[arg(long, default_value_t = true)]
     pub enable_color: bool,
+    
+    /// Enable SSH server
+    #[arg(long)]
+    pub enable_ssh: bool,
+    
+    /// SSH server port
+    #[arg(long, default_value_t = 2222)]
+    pub ssh_port: u16,
+    
+    /// SSH cache directory
+    #[arg(long, default_value = "./cache/ssh")]
+    pub ssh_cache_dir: String,
 } 
