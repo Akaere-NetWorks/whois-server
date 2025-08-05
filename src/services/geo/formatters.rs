@@ -87,55 +87,28 @@ pub fn format_ultimate_geo_response(
             if let Some(data) = &ripe_response.data {
                 if let Some(located) = &data.located_resources {
                     if !located.is_empty() {
-                        let mut rows = Vec::new();
-                        let mut max_resource_len = 8;
-                        let mut max_country_len = 7;
-                        let mut max_city_len = 4;
-                        
                         for item in located {
+                            formatted.push_str(&format!("Resource:  {}\n", item.resource));
+                            
                             if let Some(locations) = &item.locations {
                                 for location in locations {
                                     let country = location.country.as_deref().unwrap_or("N/A");
                                     let city = location.city.as_deref().unwrap_or("N/A");
-                                    let lat = location.latitude.map(|f| format!("{:.4}", f)).unwrap_or_else(|| "N/A".to_string());
-                                    let lon = location.longitude.map(|f| format!("{:.4}", f)).unwrap_or_else(|| "N/A".to_string());
                                     
-                                    max_resource_len = std::cmp::max(max_resource_len, item.resource.len());
-                                    max_country_len = std::cmp::max(max_country_len, country.len());
-                                    max_city_len = std::cmp::max(max_city_len, city.len());
+                                    formatted.push_str(&format!("Country:   {}\n", country));
+                                    formatted.push_str(&format!("City:      {}\n", city));
                                     
-                                    rows.push((item.resource.clone(), country.to_string(), city.to_string(), lat, lon));
+                                    if let (Some(lat), Some(lon)) = (location.latitude, location.longitude) {
+                                        formatted.push_str(&format!("Location:  {:.4}, {:.4}\n", lat, lon));
+                                    } else {
+                                        formatted.push_str("Location:  N/A\n");
+                                    }
                                 }
                             } else {
-                                max_resource_len = std::cmp::max(max_resource_len, item.resource.len());
-                                rows.push((item.resource.clone(), "N/A".to_string(), "N/A".to_string(), "N/A".to_string(), "N/A".to_string()));
+                                formatted.push_str("Country:   N/A\n");
+                                formatted.push_str("City:      N/A\n");
+                                formatted.push_str("Location:  N/A\n");
                             }
-                        }
-                        
-                        formatted.push_str(&format!(
-                            "{:<width1$} | {:<width2$} | {:<width3$} | Latitude  | Longitude\n",
-                            "Resource", "Country", "City",
-                            width1 = max_resource_len,
-                            width2 = max_country_len,
-                            width3 = max_city_len
-                        ));
-                        
-                        formatted.push_str(&format!(
-                            "{:-<width1$}-|-{:-<width2$}-|-{:-<width3$}-|-----------|----------\n",
-                            "", "", "",
-                            width1 = max_resource_len,
-                            width2 = max_country_len,
-                            width3 = max_city_len
-                        ));
-                        
-                        for (resource, country, city, lat, lon) in rows {
-                            formatted.push_str(&format!(
-                                "{:<width1$} | {:<width2$} | {:<width3$} | {:<9} | {}\n",
-                                resource, country, city, lat, lon,
-                                width1 = max_resource_len,
-                                width2 = max_country_len,
-                                width3 = max_city_len
-                            ));
                         }
                     } else {
                         formatted.push_str("% No location data available\n");
