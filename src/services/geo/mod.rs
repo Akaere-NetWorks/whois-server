@@ -4,6 +4,9 @@ pub mod constants;
 pub mod utils;
 pub mod ripe_api;
 pub mod ipinfo_api;
+pub mod ipapi;
+pub mod bilibili;
+pub mod meituan;
 pub mod formatters;
 pub mod services;
 

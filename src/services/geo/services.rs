@@ -4,38 +4,48 @@ use std::time::Duration;
 
 use super::ripe_api::{query_ripe_api, query_ripe_api_blocking, query_rir_geo_api, query_rir_geo_api_blocking, query_prefixes_api, query_prefixes_api_blocking};
 use super::ipinfo_api::{query_ipinfo_api, query_ipinfo_api_blocking};
-use super::formatters::{format_combined_geo_response, format_rir_geo_response, format_prefixes_response, format_prefixes_response_blocking};
+use super::ipapi::{query_ipapi, query_ipapi_blocking};
+use super::bilibili::{query_bilibili, query_bilibili_blocking};
+use super::meituan::{query_meituan, query_meituan_blocking};
+use super::formatters::{format_ultimate_geo_response, format_rir_geo_response, format_prefixes_response, format_prefixes_response_blocking};
 
 /// Process geo location queries ending with -GEO
 pub async fn process_geo_query(resource: &str) -> Result<String> {
-    debug!("Processing geo query for: {}", resource);
+    debug!("Processing ultimate geo query for: {}", resource);
     
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(10))
         .build()?;
     
-    // Query both APIs in parallel
+    // Query all five APIs in parallel
     let ripe_future = query_ripe_api(&client, resource);
     let ipinfo_future = query_ipinfo_api(&client, resource);
+    let ipapi_future = query_ipapi(&client, resource);
+    let bilibili_future = query_bilibili(&client, resource);
+    let meituan_future = query_meituan(&client, resource);
     
-    let (ripe_result, ipinfo_result) = tokio::join!(ripe_future, ipinfo_future);
+    let (ripe_result, ipinfo_result, ipapi_result, bilibili_result, meituan_result) = 
+        tokio::join!(ripe_future, ipinfo_future, ipapi_future, bilibili_future, meituan_future);
     
-    format_combined_geo_response(resource, ripe_result, ipinfo_result)
+    format_ultimate_geo_response(resource, ripe_result, ipinfo_result, ipapi_result, bilibili_result, meituan_result)
 }
 
 /// Process geo location queries ending with -GEO (blocking version)
 pub fn process_geo_query_blocking(resource: &str, timeout: Duration) -> Result<String> {
-    debug!("Processing geo query (blocking) for: {}", resource);
+    debug!("Processing ultimate geo query (blocking) for: {}", resource);
     
     let client = reqwest::blocking::Client::builder()
         .timeout(timeout)
         .build()?;
     
-    // Query both APIs
+    // Query all five APIs
     let ripe_result = query_ripe_api_blocking(&client, resource);
     let ipinfo_result = query_ipinfo_api_blocking(&client, resource);
+    let ipapi_result = query_ipapi_blocking(&client, resource);
+    let bilibili_result = query_bilibili_blocking(&client, resource);
+    let meituan_result = query_meituan_blocking(&client, resource);
     
-    format_combined_geo_response(resource, ripe_result, ipinfo_result)
+    format_ultimate_geo_response(resource, ripe_result, ipinfo_result, ipapi_result, bilibili_result, meituan_result)
 }
 
 /// Process RIR geo location queries ending with -RIRGEO

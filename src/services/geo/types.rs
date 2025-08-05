@@ -188,4 +188,105 @@ pub struct Timeline {
     pub starttime: Option<String>,
     #[allow(dead_code)]
     pub endtime: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct IpApiResponse {
+    #[serde(rename = "query")]
+    pub ip: String,
+    pub status: String,
+    pub country: Option<String>,
+    #[serde(rename = "countryCode")]
+    pub country_code: Option<String>,
+    pub region: Option<String>,
+    #[serde(rename = "regionName")]
+    pub region_name: Option<String>,
+    pub city: Option<String>,
+    pub zip: Option<String>,
+    pub lat: Option<f64>,
+    pub lon: Option<f64>,
+    pub timezone: Option<String>,
+    pub isp: Option<String>,
+    pub org: Option<String>,
+    #[serde(rename = "as")]
+    pub asn_info: Option<String>,
+    pub mobile: Option<bool>,
+    pub proxy: Option<bool>,
+    pub hosting: Option<bool>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct BilibiliIpResponse {
+    pub code: i32,
+    pub message: String,
+    pub data: Option<BilibiliIpData>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct BilibiliIpData {
+    pub addr: String,
+    pub country: String,
+    pub province: String,
+    pub city: String,
+    pub isp: String,
+    pub latitude: String,
+    pub longitude: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct MeituanIpResponse {
+    pub data: Option<MeituanIpData>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct MeituanIpData {
+    pub lng: f64,
+    pub fromwhere: String,
+    pub ip: String,
+    pub rgeo: MeituanRgeo,
+    pub lat: f64,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct MeituanRgeo {
+    pub country: String,
+    pub province: String,
+    pub adcode: String,
+    pub city: String,
+    pub district: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct MeituanCityResponse {
+    pub data: Option<MeituanCityData>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[allow(dead_code)]
+pub struct MeituanCityData {
+    pub area: u32,
+    pub country: String,
+    pub lng: f64,
+    #[serde(rename = "cityPinyin")]
+    pub city_pinyin: String,
+    pub city: String,
+    #[serde(rename = "isForeign")]
+    pub is_foreign: bool,
+    #[serde(rename = "originCityID")]
+    pub origin_city_id: u32,
+    #[serde(rename = "dpCityId")]
+    pub dp_city_id: u32,
+    #[serde(rename = "openCityName")]
+    pub open_city_name: String,
+    #[serde(rename = "isOpen")]
+    pub is_open: bool,
+    pub province: String,
+    #[serde(rename = "areaName")]
+    pub area_name: String,
+    #[serde(rename = "parentArea")]
+    pub parent_area: u32,
+    pub district: String,
+    pub id: u32,
+    pub detail: String,
+    pub lat: f64,
 } 
