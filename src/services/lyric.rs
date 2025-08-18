@@ -18,8 +18,8 @@
 
 use std::time::Duration;
 use anyhow::Result;
-use serde::{Deserialize, Serialize};
-use tracing::{debug, error};
+use serde::{ Deserialize, Serialize };
+use tracing::{ debug, error };
 
 /// Luotianyi lyric API response structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -31,7 +31,7 @@ pub struct LyricResponse {
 }
 
 /// Luotianyi lyric service for random lyrics
-/// 
+///
 /// This service fetches random Luotianyi lyrics from lty.vc API
 pub struct LyricService {
     client: reqwest::Client,
@@ -47,7 +47,8 @@ impl Default for LyricService {
 impl LyricService {
     /// Create a new lyric service
     pub fn new() -> Self {
-        let client = reqwest::Client::builder()
+        let client = reqwest::Client
+            ::builder()
             .timeout(Duration::from_secs(10))
             .user_agent("WhoisServer/1.0 (https://github.com/akaere/whois-server)")
             .build()
@@ -64,26 +65,34 @@ impl LyricService {
 
         let params = [("format", "json")];
 
-        let response = self.client
-            .get(&self.base_url)
-            .query(&params)
-            .send()
-            .await?;
+        let response = self.client.get(&self.base_url).query(&params).send().await?;
 
         let status = response.status();
         debug!("Lyric API response status: {}", status);
-        
+
         if !status.is_success() {
-            let error_text = response.text().await.unwrap_or_else(|_| "Unable to read error response".to_string());
+            let error_text = response
+                .text().await
+                .unwrap_or_else(|_| "Unable to read error response".to_string());
             debug!("Lyric API error response: {}", error_text);
             return Err(anyhow::anyhow!("Lyric request failed: {} - {}", status, error_text));
         }
 
         let response_text = response.text().await?;
-        debug!("Lyric API response body: {}", &response_text[..std::cmp::min(200, response_text.len())]);
-        
-        let lyric_data: LyricResponse = serde_json::from_str(&response_text)
-            .map_err(|e| anyhow::anyhow!("Failed to parse lyric response: {} - Response: {}", e, &response_text[..std::cmp::min(100, response_text.len())]))?;
+        debug!(
+            "Lyric API response body: {}",
+            &response_text[..std::cmp::min(200, response_text.len())]
+        );
+
+        let lyric_data: LyricResponse = serde_json
+            ::from_str(&response_text)
+            .map_err(|e|
+                anyhow::anyhow!(
+                    "Failed to parse lyric response: {} - Response: {}",
+                    e,
+                    &response_text[..std::cmp::min(100, response_text.len())]
+                )
+            )?;
 
         Ok(self.format_lyric_info(&lyric_data))
     }
@@ -98,7 +107,7 @@ impl LyricService {
 
         output.push_str(&format!("song-name: {}\n", lyric.title));
         output.push_str(&format!("singer: 洛天依 (Luotianyi)\n"));
-        
+
         if !lyric.author.is_empty() {
             output.push_str(&format!("author: {}\n", lyric.author.join(", ")));
         }
@@ -116,7 +125,7 @@ impl LyricService {
         output.push_str("\n");
         output.push_str("% Information retrieved from lty.vc API\n");
         output.push_str("% Query processed by WHOIS server\n");
-        
+
         output
     }
 
@@ -139,13 +148,15 @@ impl LyricService {
 /// Process lyric query with -LYRIC suffix
 pub async fn process_lyric_query(query: &str) -> Result<String> {
     let lyric_service = LyricService::new();
-    
+
     if LyricService::parse_lyric_query(query).is_some() {
         debug!("Processing Luotianyi lyric query");
         lyric_service.get_random_lyric().await
     } else {
         error!("Invalid lyric query format: {}", query);
-        Ok(format!("Invalid lyric query format. Use: <any_text>-LYRIC or just -LYRIC\nExample: random-LYRIC\nQuery: {}\n", query))
+        Ok(
+            format!("Invalid lyric query format. Use: <any_text>-LYRIC or just -LYRIC\nExample: random-LYRIC\nQuery: {}\n", query)
+        )
     }
 }
 
@@ -159,7 +170,7 @@ mod tests {
         assert!(LyricService::is_lyric_query("luotianyi-LYRIC"));
         assert!(LyricService::is_lyric_query("-LYRIC"));
         assert!(LyricService::is_lyric_query("test-lyric"));
-        
+
         assert!(!LyricService::is_lyric_query("random"));
         assert!(!LyricService::is_lyric_query("example.com-SSL"));
         assert!(!LyricService::is_lyric_query("LYRIC-random"));
@@ -167,16 +178,10 @@ mod tests {
 
     #[test]
     fn test_lyric_query_parsing() {
-        assert_eq!(
-            LyricService::parse_lyric_query("random-LYRIC"),
-            Some("random".to_string())
-        );
-        
-        assert_eq!(
-            LyricService::parse_lyric_query("-LYRIC"),
-            Some("".to_string())
-        );
-        
+        assert_eq!(LyricService::parse_lyric_query("random-LYRIC"), Some("random".to_string()));
+
+        assert_eq!(LyricService::parse_lyric_query("-LYRIC"), Some("".to_string()));
+
         assert_eq!(LyricService::parse_lyric_query("random"), None);
     }
 

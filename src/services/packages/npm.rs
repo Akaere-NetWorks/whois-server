@@ -16,10 +16,10 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-use anyhow::{Context, Result};
+use anyhow::{ Context, Result };
 use reqwest;
-use serde::{Deserialize, Serialize};
-use tracing::{debug, error};
+use serde::{ Deserialize, Serialize };
+use tracing::{ debug, error };
 use std::collections::HashMap;
 
 const NPM_REGISTRY_URL: &str = "https://registry.npmjs.org/";
@@ -113,18 +113,20 @@ struct NPMDist {
 
 pub async fn process_npm_query(package_name: &str) -> Result<String> {
     debug!("Processing NPM query for package: {}", package_name);
-    
+
     if package_name.is_empty() {
         return Err(anyhow::anyhow!("Package name cannot be empty"));
     }
-    
+
     // Validate NPM package name format (including scoped packages like @types/node)
-    if package_name.len() > 214 || 
-       package_name.contains(' ') ||
-       package_name.to_lowercase() != package_name {
+    if
+        package_name.len() > 214 ||
+        package_name.contains(' ') ||
+        package_name.to_lowercase() != package_name
+    {
         return Err(anyhow::anyhow!("Invalid NPM package name format"));
     }
-    
+
     // Handle scoped packages (starting with @)
     if package_name.starts_with('@') {
         // Scoped package format: @scope/name
@@ -138,9 +140,14 @@ pub async fn process_npm_query(package_name: &str) -> Result<String> {
         // Validate scope and package name parts
         let scope = &parts[0][1..]; // Remove @ prefix
         let name = parts[1];
-        if scope.is_empty() || name.is_empty() || 
-           scope.starts_with('.') || scope.starts_with('_') ||
-           name.starts_with('.') || name.starts_with('_') {
+        if
+            scope.is_empty() ||
+            name.is_empty() ||
+            scope.starts_with('.') ||
+            scope.starts_with('_') ||
+            name.starts_with('.') ||
+            name.starts_with('_')
+        {
             return Err(anyhow::anyhow!("Invalid scoped NPM package format"));
         }
     } else {
@@ -149,7 +156,7 @@ pub async fn process_npm_query(package_name: &str) -> Result<String> {
             return Err(anyhow::anyhow!("Invalid NPM package name format"));
         }
     }
-    
+
     match query_npm_package(package_name).await {
         Ok(package) => Ok(format_npm_response(&package, package_name)),
         Err(e) => {
@@ -160,7 +167,8 @@ pub async fn process_npm_query(package_name: &str) -> Result<String> {
 }
 
 async fn query_npm_package(package_name: &str) -> Result<NPMPackage> {
-    let client = reqwest::Client::builder()
+    let client = reqwest::Client
+        ::builder()
         .timeout(std::time::Duration::from_secs(15))
         .user_agent("Mozilla/5.0 (compatible; WHOIS-Server/1.0)")
         .build()
@@ -174,13 +182,12 @@ async fn query_npm_package(package_name: &str) -> Result<NPMPackage> {
         urlencoding::encode(package_name).to_string()
     };
     let package_url = format!("{}{}", NPM_REGISTRY_URL, encoded_name);
-    
+
     debug!("Querying NPM registry: {}", package_url);
-    
+
     let response = client
         .get(&package_url)
-        .send()
-        .await
+        .send().await
         .context("Failed to send request to NPM registry")?;
 
     if response.status() == 404 {
@@ -192,8 +199,7 @@ async fn query_npm_package(package_name: &str) -> Result<NPMPackage> {
     }
 
     let package_response: NPMPackageResponse = response
-        .json()
-        .await
+        .json().await
         .context("Failed to parse NPM package data")?;
 
     // Get the latest version from dist-tags
@@ -219,9 +225,7 @@ async fn query_npm_package(package_name: &str) -> Result<NPMPackage> {
         repository: package_response.repository.or_else(|| {
             version_data.and_then(|v| v.repository.clone())
         }),
-        author: package_response.author.or_else(|| {
-            version_data.and_then(|v| v.author.clone())
-        }),
+        author: package_response.author.or_else(|| { version_data.and_then(|v| v.author.clone()) }),
         maintainers: package_response.maintainers,
         license: package_response.license.or_else(|| {
             version_data.and_then(|v| v.license.clone())
@@ -241,18 +245,18 @@ async fn query_npm_package(package_name: &str) -> Result<NPMPackage> {
 
 fn format_npm_response(package: &NPMPackage, query: &str) -> String {
     let mut output = String::new();
-    
+
     output.push_str(&format!("NPM Package Information: {}\n", query));
     output.push_str("=".repeat(60).as_str());
     output.push('\n');
 
     output.push_str(&format!("package-name: {}\n", package.name));
     output.push_str(&format!("version: {}\n", package.version));
-    
+
     if let Some(description) = &package.description {
         output.push_str(&format!("description: {}\n", description));
     }
-    
+
     // Author information
     if let Some(author) = &package.author {
         let author_str = match author {
@@ -273,17 +277,17 @@ fn format_npm_response(package: &NPMPackage, query: &str) -> String {
         };
         output.push_str(&format!("author: {}\n", author_str));
     }
-    
+
     // License
     if let Some(license) = &package.license {
         output.push_str(&format!("license: {}\n", license));
     }
-    
+
     // Homepage
     if let Some(homepage) = &package.homepage {
         output.push_str(&format!("homepage: {}\n", homepage));
     }
-    
+
     // Repository
     if let Some(repository) = &package.repository {
         let repo_url = match repository {
@@ -295,52 +299,57 @@ fn format_npm_response(package: &NPMPackage, query: &str) -> String {
             output.push_str(&format!("repository: {}\n", repo_url));
         }
     }
-    
+
     // Keywords
     if let Some(keywords) = &package.keywords {
         if !keywords.is_empty() {
             output.push_str(&format!("keywords: {}\n", keywords.join(", ")));
         }
     }
-    
+
     // Dependencies
     if let Some(dependencies) = &package.dependencies {
         if !dependencies.is_empty() {
             let deps: Vec<String> = dependencies.keys().take(10).cloned().collect();
             output.push_str(&format!("dependencies: {}\n", deps.join(", ")));
             if dependencies.len() > 10 {
-                output.push_str(&format!("... and {} more dependencies\n", dependencies.len() - 10));
+                output.push_str(
+                    &format!("... and {} more dependencies\n", dependencies.len() - 10)
+                );
             }
         }
     }
-    
+
     // Maintainers
     if let Some(maintainers) = &package.maintainers {
         if !maintainers.is_empty() {
-            let maintainer_names: Vec<String> = maintainers.iter()
+            let maintainer_names: Vec<String> = maintainers
+                .iter()
                 .take(5)
-                .map(|m| match m {
-                    NPMAuthor::String(s) => s.clone(),
-                    NPMAuthor::Object { name: Some(name), .. } => name.clone(),
-                    NPMAuthor::Object { email: Some(email), .. } => email.clone(),
-                    _ => "Unknown".to_string(),
+                .map(|m| {
+                    match m {
+                        NPMAuthor::String(s) => s.clone(),
+                        NPMAuthor::Object { name: Some(name), .. } => name.clone(),
+                        NPMAuthor::Object { email: Some(email), .. } => email.clone(),
+                        _ => "Unknown".to_string(),
+                    }
                 })
                 .collect();
             output.push_str(&format!("maintainers: {}\n", maintainer_names.join(", ")));
         }
     }
-    
+
     // Distribution info
     if let Some(dist) = &package.dist {
         if let Some(unpacked_size) = dist.unpacked_size {
-            let size_mb = unpacked_size as f64 / 1024.0 / 1024.0;
+            let size_mb = (unpacked_size as f64) / 1024.0 / 1024.0;
             output.push_str(&format!("unpacked-size: {:.2} MB\n", size_mb));
         }
         if let Some(file_count) = dist.file_count {
             output.push_str(&format!("file-count: {}\n", file_count));
         }
     }
-    
+
     // Latest versions
     if let Some(dist_tags) = &package.dist_tags {
         if let Some(latest) = dist_tags.get("latest") {
@@ -350,7 +359,7 @@ fn format_npm_response(package: &NPMPackage, query: &str) -> String {
             output.push_str(&format!("beta-version: {}\n", beta));
         }
     }
-    
+
     // Handle scoped packages in URLs
     let encoded_for_web = if package.name.starts_with('@') {
         package.name.clone() // NPM web interface doesn't need encoding for @
@@ -362,7 +371,7 @@ fn format_npm_response(package: &NPMPackage, query: &str) -> String {
     } else {
         urlencoding::encode(&package.name).to_string()
     };
-    
+
     output.push_str(&format!("npm-url: https://www.npmjs.com/package/{}\n", encoded_for_web));
     output.push_str(&format!("registry-url: {}{}\n", NPM_REGISTRY_URL, encoded_for_api));
     output.push_str(&format!("repository: NPM Registry\n"));
@@ -370,14 +379,14 @@ fn format_npm_response(package: &NPMPackage, query: &str) -> String {
     output.push('\n');
     output.push_str("% Information retrieved from NPM registry\n");
     output.push_str("% Query processed by WHOIS server\n");
-    
+
     output
 }
 
 fn format_npm_not_found(package_name: &str) -> String {
     // Handle scoped packages in search URL
     let encoded_search = urlencoding::encode(package_name);
-    
+
     format!(
         "NPM Package Not Found: {}\n\
         No package with this name was found in NPM registry.\n\
@@ -386,7 +395,8 @@ fn format_npm_not_found(package_name: &str) -> String {
         \n\
         % Package not found in NPM registry\n\
         % Query processed by WHOIS server\n",
-        package_name, encoded_search
+        package_name,
+        encoded_search
     )
 }
 
@@ -401,7 +411,7 @@ mod tests {
         assert!(process_npm_query("@types/node").await.is_ok());
         assert!(process_npm_query("@angular/core").await.is_ok());
         assert!(process_npm_query("lodash").await.is_ok());
-        
+
         // Invalid package names
         assert!(process_npm_query("").await.is_err());
         assert!(process_npm_query("Package With Spaces").await.is_err());

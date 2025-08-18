@@ -3,17 +3,17 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 use anyhow::Result;
-use chrono::{DateTime, Utc};
-use russh::{server, Channel, ChannelId, CryptoVec};
+use chrono::{ DateTime, Utc };
+use russh::{ server, Channel, ChannelId, CryptoVec };
 use russh_keys::key;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tracing::{info, error, debug};
+use tracing::{ info, error, debug };
 
 use crate::core::process_query;
-use super::history::{SshConnectionHistory, SshConnectionRecord};
+use super::history::{ SshConnectionHistory, SshConnectionRecord };
 
 /// ANSI escape sequence parsing state
 #[derive(Debug, Clone, PartialEq)]
@@ -52,10 +52,7 @@ pub struct WhoisSshHandler {
 
 impl WhoisSshHandler {
     /// Create a new WHOIS SSH handler
-    pub fn new(
-        history: Arc<SshConnectionHistory>,
-        host_key: Arc<key::KeyPair>,
-    ) -> Self {
+    pub fn new(history: Arc<SshConnectionHistory>, host_key: Arc<key::KeyPair>) -> Self {
         Self {
             history,
             sessions: Arc::new(Mutex::new(HashMap::new())),
@@ -72,7 +69,7 @@ impl WhoisSshHandler {
     /// Process a WHOIS query and return the response
     async fn process_whois_query(&self, query: &str) -> String {
         let query = query.trim();
-        
+
         if query.is_empty() {
             return "Error: Empty query\r\n".to_string();
         }
@@ -85,7 +82,7 @@ impl WhoisSshHandler {
         // Detect query type and process
         let query_type = crate::core::analyze_query(query);
         debug!("Processing SSH WHOIS query: {} (type: {:?})", query, query_type);
-        
+
         // Use the existing query handling logic from the main server
         match process_query(query, &query_type, None).await {
             Ok(response) => {
@@ -103,7 +100,9 @@ impl WhoisSshHandler {
     async fn get_connection_history(&self) -> String {
         let client_ip = match self.client_addr {
             Some(addr) => addr.ip(),
-            None => return "Error: Unable to determine client IP\r\n".to_string(),
+            None => {
+                return "Error: Unable to determine client IP\r\n".to_string();
+            }
         };
 
         match self.history.get_history_for_ip(&client_ip) {
@@ -111,19 +110,25 @@ impl WhoisSshHandler {
                 if records.is_empty() {
                     "No connection history found for your IP address.\r\n".to_string()
                 } else {
-                    let mut response = format!("Connection history for {} ({} records):\r\n\r\n", client_ip, records.len());
-                    
+                    let mut response = format!(
+                        "Connection history for {} ({} records):\r\n\r\n",
+                        client_ip,
+                        records.len()
+                    );
+
                     for (i, record) in records.iter().enumerate() {
-                        response.push_str(&format!(
-                            "{}. {} - {} queries, {}s duration, reason: {}\r\n",
-                            i + 1,
-                            record.timestamp.format("%Y-%m-%d %H:%M:%S UTC"),
-                            record.queries_count,
-                            record.session_duration_seconds,
-                            record.disconnect_reason
-                        ));
+                        response.push_str(
+                            &format!(
+                                "{}. {} - {} queries, {}s duration, reason: {}\r\n",
+                                i + 1,
+                                record.timestamp.format("%Y-%m-%d %H:%M:%S UTC"),
+                                record.queries_count,
+                                record.session_duration_seconds,
+                                record.disconnect_reason
+                            )
+                        );
                     }
-                    
+
                     response.push_str("\r\n");
                     response
                 }
@@ -143,10 +148,10 @@ impl server::Handler for WhoisSshHandler {
     async fn channel_open_session(
         &mut self,
         channel: Channel<server::Msg>,
-        _session: &mut server::Session,
+        _session: &mut server::Session
     ) -> Result<bool, Self::Error> {
         debug!("SSH channel opened: {:?}", channel.id());
-        
+
         // Initialize session data
         let mut sessions = self.sessions.lock().await;
         sessions.insert(channel.id(), SshSession {
@@ -160,14 +165,14 @@ impl server::Handler for WhoisSshHandler {
             escape_state: EscapeState::Normal,
             escape_buffer: Vec::new(),
         });
-        
+
         Ok(true)
     }
 
     async fn auth_password(
         &mut self,
         user: &str,
-        _password: &str,
+        _password: &str
     ) -> Result<server::Auth, Self::Error> {
         // Accept only "whois" username for SSH connections
         if user != "whois" {
@@ -176,22 +181,22 @@ impl server::Handler for WhoisSshHandler {
                 proceed_with_methods: None,
             });
         }
-        
+
         info!("SSH authentication successful: user={}", user);
-        
+
         // Store username for session tracking
         let mut sessions = self.sessions.lock().await;
         for session_data in sessions.values_mut() {
             session_data.username = Some(user.to_string());
         }
-        
+
         Ok(server::Auth::Accept)
     }
 
     async fn auth_publickey(
         &mut self,
         user: &str,
-        _public_key: &key::PublicKey,
+        _public_key: &key::PublicKey
     ) -> Result<server::Auth, Self::Error> {
         // Accept only "whois" username for SSH connections
         if user != "whois" {
@@ -200,15 +205,15 @@ impl server::Handler for WhoisSshHandler {
                 proceed_with_methods: None,
             });
         }
-        
+
         info!("SSH public key authentication successful: user={}", user);
-        
+
         // Store username for session tracking
         let mut sessions = self.sessions.lock().await;
         for session_data in sessions.values_mut() {
             session_data.username = Some(user.to_string());
         }
-        
+
         Ok(server::Auth::Accept)
     }
 
@@ -216,7 +221,7 @@ impl server::Handler for WhoisSshHandler {
         &mut self,
         channel: ChannelId,
         data: &[u8],
-        session: &mut server::Session,
+        session: &mut server::Session
     ) -> Result<(), Self::Error> {
         for &byte in data {
             self.handle_byte(channel, byte, session).await?;
@@ -227,16 +232,16 @@ impl server::Handler for WhoisSshHandler {
     async fn channel_close(
         &mut self,
         channel: ChannelId,
-        _session: &mut server::Session,
+        _session: &mut server::Session
     ) -> Result<(), Self::Error> {
         debug!("SSH channel closed: {:?}", channel);
-        
+
         // Record session in history
         if let Some(client_addr) = self.client_addr {
             let mut sessions = self.sessions.lock().await;
             if let Some(session_data) = sessions.remove(&channel) {
                 let duration = Utc::now().signed_duration_since(session_data.start_time);
-                
+
                 let record = SshConnectionRecord {
                     timestamp: session_data.start_time,
                     ip_address: client_addr.ip(),
@@ -258,7 +263,7 @@ impl server::Handler for WhoisSshHandler {
     async fn channel_eof(
         &mut self,
         channel: ChannelId,
-        _session: &mut server::Session,
+        _session: &mut server::Session
     ) -> Result<(), Self::Error> {
         debug!("SSH channel EOF: {:?}", channel);
         Ok(())
@@ -273,7 +278,7 @@ impl server::Handler for WhoisSshHandler {
         _pix_width: u32,
         _pix_height: u32,
         _modes: &[(russh::Pty, u32)],
-        session: &mut server::Session,
+        session: &mut server::Session
     ) -> Result<(), Self::Error> {
         debug!("SSH PTY request for channel: {:?}", channel);
         // Accept PTY request
@@ -284,12 +289,12 @@ impl server::Handler for WhoisSshHandler {
     async fn shell_request(
         &mut self,
         channel: ChannelId,
-        session: &mut server::Session,
+        session: &mut server::Session
     ) -> Result<(), Self::Error> {
         debug!("SSH shell request for channel: {:?}", channel);
         // Accept shell request and send welcome message
         session.request_success();
-        
+
         let welcome_msg = format!(
             "┌─────────────────────────────────────────────────────────────┐\r\n\
             │              Akaere NetWorks WHOIS SSH Server               │\r\n\
@@ -314,24 +319,25 @@ impl server::Handler for WhoisSshHandler {
             \r\n\
             whois> "
         );
-        
+
         session.data(channel, CryptoVec::from_slice(welcome_msg.as_bytes()));
         Ok(())
     }
 }
 
 impl WhoisSshHandler {
-
     async fn handle_byte(
         &mut self,
         channel: ChannelId,
         byte: u8,
-        session: &mut server::Session,
+        session: &mut server::Session
     ) -> Result<(), anyhow::Error> {
         let mut sessions = self.sessions.lock().await;
         let session_data = match sessions.get_mut(&channel) {
             Some(s) => s,
-            None => return Ok(()),
+            None => {
+                return Ok(());
+            }
         };
 
         // Handle escape sequences
@@ -345,25 +351,29 @@ impl WhoisSshHandler {
 
                         if !command.is_empty() {
                             // Check for exit commands
-                            if command.eq_ignore_ascii_case("exit") 
-                                || command.eq_ignore_ascii_case("quit") 
-                                || command.eq_ignore_ascii_case("bye") {
+                            if
+                                command.eq_ignore_ascii_case("exit") ||
+                                command.eq_ignore_ascii_case("quit") ||
+                                command.eq_ignore_ascii_case("bye")
+                            {
                                 session.data(channel, CryptoVec::from_slice(b"Goodbye!\r\n"));
                                 session.close(channel);
                                 return Ok(());
                             }
 
                             // Check for clear command
-                            if command.eq_ignore_ascii_case("clear") 
-                                || command.eq_ignore_ascii_case("cls") {
+                            if
+                                command.eq_ignore_ascii_case("clear") ||
+                                command.eq_ignore_ascii_case("cls")
+                            {
                                 // Clear screen using ANSI escape sequences
                                 session.data(channel, CryptoVec::from_slice(b"\x1B[2J\x1B[H"));
-                                
+
                                 // Reset session state
                                 session_data.current_line.clear();
                                 session_data.cursor_pos = 0;
                                 session_data.history_index = None;
-                                
+
                                 session.data(channel, CryptoVec::from_slice(b"whois> "));
                                 return Ok(());
                             }
@@ -398,7 +408,7 @@ impl WhoisSshHandler {
                         if session_data.cursor_pos > 0 {
                             session_data.current_line.remove(session_data.cursor_pos - 1);
                             session_data.cursor_pos -= 1;
-                            
+
                             // Move cursor back, clear to end of line, rewrite line
                             session.data(channel, CryptoVec::from_slice(b"\x08\x1B[K"));
                             let remaining = &session_data.current_line[session_data.cursor_pos..];
@@ -422,7 +432,12 @@ impl WhoisSshHandler {
                     b'\x03' => {
                         if session_data.current_line.is_empty() {
                             // If no current input, offer to exit
-                            session.data(channel, CryptoVec::from_slice(b"^C\r\nType 'exit' to quit, or continue with queries.\r\nwhois> "));
+                            session.data(
+                                channel,
+                                CryptoVec::from_slice(
+                                    b"^C\r\nType 'exit' to quit, or continue with queries.\r\nwhois> "
+                                )
+                            );
                         } else {
                             // Clear current line
                             session.data(channel, CryptoVec::from_slice(b"^C\r\n"));
@@ -467,7 +482,8 @@ impl WhoisSshHandler {
                         let prompt_and_line = format!("whois> {}", session_data.current_line);
                         session.data(channel, CryptoVec::from_slice(prompt_and_line.as_bytes()));
                         if session_data.cursor_pos < session_data.current_line.len() {
-                            let move_back = session_data.current_line.len() - session_data.cursor_pos;
+                            let move_back =
+                                session_data.current_line.len() - session_data.cursor_pos;
                             let move_cmd = format!("\x1B[{move_back}D");
                             session.data(channel, CryptoVec::from_slice(move_cmd.as_bytes()));
                         }
@@ -486,7 +502,7 @@ impl WhoisSshHandler {
 
                         // Echo the character
                         session.data(channel, CryptoVec::from_slice(&[byte]));
-                        
+
                         // If we inserted in the middle, redraw the rest of the line
                         let remaining = &session_data.current_line[session_data.cursor_pos..];
                         if !remaining.is_empty() {
@@ -548,12 +564,14 @@ impl WhoisSshHandler {
         &mut self,
         channel: ChannelId,
         sequence: &[u8],
-        session: &mut server::Session,
+        session: &mut server::Session
     ) -> Result<(), anyhow::Error> {
         let mut sessions = self.sessions.lock().await;
         let session_data = match sessions.get_mut(&channel) {
             Some(s) => s,
-            None => return Ok(()),
+            None => {
+                return Ok(());
+            }
         };
 
         if sequence.len() >= 3 && sequence[0] == b'\x1b' && sequence[1] == b'[' {
@@ -563,17 +581,17 @@ impl WhoisSshHandler {
                     if !session_data.command_history.is_empty() {
                         let new_index = match session_data.history_index {
                             None => session_data.command_history.len() - 1,
-                            Some(idx) => if idx > 0 { idx - 1 } else { 0 },
+                            Some(idx) => if idx > 0 { idx - 1 } else { 0 }
                         };
 
                         if let Some(cmd) = session_data.command_history.get(new_index) {
                             // Clear current line
                             session.data(channel, CryptoVec::from_slice(b"\r\x1B[K"));
                             session.data(channel, CryptoVec::from_slice(b"whois> "));
-                            
+
                             // Display command from history
                             session.data(channel, CryptoVec::from_slice(cmd.as_bytes()));
-                            
+
                             session_data.current_line = cmd.clone();
                             session_data.cursor_pos = cmd.len();
                             session_data.history_index = Some(new_index);
@@ -590,10 +608,10 @@ impl WhoisSshHandler {
                                 // Clear current line
                                 session.data(channel, CryptoVec::from_slice(b"\r\x1B[K"));
                                 session.data(channel, CryptoVec::from_slice(b"whois> "));
-                                
+
                                 // Display command from history
                                 session.data(channel, CryptoVec::from_slice(cmd.as_bytes()));
-                                
+
                                 session_data.current_line = cmd.clone();
                                 session_data.cursor_pos = cmd.len();
                                 session_data.history_index = Some(new_index);
@@ -602,7 +620,7 @@ impl WhoisSshHandler {
                             // Clear line (go beyond history)
                             session.data(channel, CryptoVec::from_slice(b"\r\x1B[K"));
                             session.data(channel, CryptoVec::from_slice(b"whois> "));
-                            
+
                             session_data.current_line.clear();
                             session_data.cursor_pos = 0;
                             session_data.history_index = None;
@@ -650,7 +668,7 @@ impl WhoisSshHandler {
                 b'~' if sequence.len() >= 4 && sequence[2] == b'3' => {
                     if session_data.cursor_pos < session_data.current_line.len() {
                         session_data.current_line.remove(session_data.cursor_pos);
-                        
+
                         // Clear to end of line and redraw
                         session.data(channel, CryptoVec::from_slice(b"\x1B[K"));
                         let remaining = &session_data.current_line[session_data.cursor_pos..];
@@ -672,4 +690,3 @@ impl WhoisSshHandler {
         Ok(())
     }
 }
-

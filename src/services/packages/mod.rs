@@ -1,6 +1,6 @@
 // Package management services for various Linux distributions
 // Copyright (C) 2024 Akaere Networks
-// 
+//
 // This file is part of the WHOIS server.
 //
 // This program is free software: you can redistribute it and/or modify

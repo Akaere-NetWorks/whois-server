@@ -289,4 +289,4 @@ pub struct MeituanCityData {
     pub id: u32,
     pub detail: String,
     pub lat: f64,
-} 
+}

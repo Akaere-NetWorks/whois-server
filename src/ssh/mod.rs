@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 //! SSH server module providing WHOIS services over SSH protocol
-//! 
+//!
 //! This module implements an SSH server that listens on port 2222 and provides
 //! WHOIS query functionality directly through SSH sessions. Features include:
 //! - Fixed SSH server certificates stored in ./cache/ssh

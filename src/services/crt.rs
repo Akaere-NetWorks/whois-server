@@ -1,8 +1,8 @@
 use std::time::Duration;
 use anyhow::Result;
-use tracing::{debug, warn, error};
-use serde::{Deserialize, Serialize};
-use chrono::{DateTime, Utc, NaiveDateTime};
+use tracing::{ debug, warn, error };
+use serde::{ Deserialize, Serialize };
+use chrono::{ DateTime, Utc, NaiveDateTime };
 
 /// Certificate entry from crt.sh API
 #[derive(Debug, Deserialize, Serialize)]
@@ -48,7 +48,8 @@ impl Default for CrtService {
 impl CrtService {
     /// Create a new CRT service with default 20-second timeout
     pub fn new() -> Self {
-        let client = reqwest::Client::builder()
+        let client = reqwest::Client
+            ::builder()
             .timeout(Duration::from_secs(20))
             .user_agent("Mozilla/5.0 (WHOIS Server; Certificate Transparency Lookup)")
             .build()
@@ -64,8 +65,9 @@ impl CrtService {
     #[allow(dead_code)]
     pub fn with_timeout(timeout: Duration) -> Self {
         let timeout = std::cmp::min(timeout, Duration::from_secs(20));
-        
-        let client = reqwest::Client::builder()
+
+        let client = reqwest::Client
+            ::builder()
             .timeout(timeout)
             .user_agent("Mozilla/5.0 (WHOIS Server; Certificate Transparency Lookup)")
             .build()
@@ -82,15 +84,22 @@ impl CrtService {
             Ok(certificates) => {
                 let valid_certs = self.filter_valid_certificates(certificates);
                 let output = self.format_certificates(&valid_certs, domain);
-                debug!("CRT query completed for {}, found {} valid certificates", domain, valid_certs.len());
+                debug!(
+                    "CRT query completed for {}, found {} valid certificates",
+                    domain,
+                    valid_certs.len()
+                );
                 Ok(output)
             }
             Err(e) => {
                 error!("Failed to fetch certificates for {}: {}", domain, e);
-                Ok(format!(
-                    "Certificate Transparency Query Failed for {}\nError: {}\n\nNote: crt.sh API is known to be unstable and may timeout frequently.\nPlease try again or use alternative certificate lookup methods.\n",
-                    domain, e
-                ))
+                Ok(
+                    format!(
+                        "Certificate Transparency Query Failed for {}\nError: {}\n\nNote: crt.sh API is known to be unstable and may timeout frequently.\nPlease try again or use alternative certificate lookup methods.\n",
+                        domain,
+                        e
+                    )
+                )
             }
         }
     }
@@ -101,33 +110,44 @@ impl CrtService {
         debug!("Fetching certificates from URL: {}", url);
 
         // Set a strict timeout to prevent hanging
-        let response = tokio::time::timeout(
-            self.timeout,
-            self.client.get(&url).send()
-        ).await
-        .map_err(|_| anyhow::anyhow!("Request timeout after {} seconds - crt.sh API is unresponsive", self.timeout.as_secs()))?
-        .map_err(|e| anyhow::anyhow!("HTTP request failed: {}", e))?;
+        let response = tokio::time
+            ::timeout(self.timeout, self.client.get(&url).send()).await
+            .map_err(|_|
+                anyhow::anyhow!(
+                    "Request timeout after {} seconds - crt.sh API is unresponsive",
+                    self.timeout.as_secs()
+                )
+            )?
+            .map_err(|e| anyhow::anyhow!("HTTP request failed: {}", e))?;
 
         if !response.status().is_success() {
-            return Err(anyhow::anyhow!("HTTP error: {} - {}", 
-                response.status(), 
-                response.status().canonical_reason().unwrap_or("Unknown error")
-            ));
+            return Err(
+                anyhow::anyhow!(
+                    "HTTP error: {} - {}",
+                    response.status(),
+                    response.status().canonical_reason().unwrap_or("Unknown error")
+                )
+            );
         }
 
         // Parse JSON response with timeout
-        let json_text = tokio::time::timeout(
-            Duration::from_secs(10),
-            response.text()
-        ).await
-        .map_err(|_| anyhow::anyhow!("Response parsing timeout - crt.sh returned too much data"))?
-        .map_err(|e| anyhow::anyhow!("Failed to read response body: {}", e))?;
+        let json_text = tokio::time
+            ::timeout(Duration::from_secs(10), response.text()).await
+            .map_err(|_|
+                anyhow::anyhow!("Response parsing timeout - crt.sh returned too much data")
+            )?
+            .map_err(|e| anyhow::anyhow!("Failed to read response body: {}", e))?;
 
         if json_text.trim().is_empty() {
-            return Err(anyhow::anyhow!("Empty response from crt.sh - domain may not exist or have no certificates"));
+            return Err(
+                anyhow::anyhow!(
+                    "Empty response from crt.sh - domain may not exist or have no certificates"
+                )
+            );
         }
 
-        let certificates: Vec<CrtEntry> = serde_json::from_str(&json_text)
+        let certificates: Vec<CrtEntry> = serde_json
+            ::from_str(&json_text)
             .map_err(|e| anyhow::anyhow!("Failed to parse JSON response: {}", e))?;
 
         debug!("Successfully fetched {} certificate entries", certificates.len());
@@ -214,10 +234,10 @@ impl CrtService {
     fn parse_crt_date(&self, date_str: &str) -> Result<DateTime<Utc>> {
         // Try parsing with different formats that crt.sh might use
         let formats = [
-            "%Y-%m-%dT%H:%M:%S%.3fZ",  // With milliseconds
-            "%Y-%m-%dT%H:%M:%SZ",      // Without milliseconds
-            "%Y-%m-%dT%H:%M:%S%.f",    // With fractional seconds, no Z
-            "%Y-%m-%d %H:%M:%S",       // Space separator
+            "%Y-%m-%dT%H:%M:%S%.3fZ", // With milliseconds
+            "%Y-%m-%dT%H:%M:%SZ", // Without milliseconds
+            "%Y-%m-%dT%H:%M:%S%.f", // With fractional seconds, no Z
+            "%Y-%m-%d %H:%M:%S", // Space separator
         ];
 
         for format in &formats {
@@ -227,39 +247,38 @@ impl CrtService {
         }
 
         // If none of the formats work, try parsing as ISO 8601
-        date_str.parse::<DateTime<Utc>>()
+        date_str
+            .parse::<DateTime<Utc>>()
             .map_err(|e| anyhow::anyhow!("Unable to parse date '{}': {}", date_str, e))
     }
 
     /// Format date for display
     fn format_date_display(&self, date: &DateTime<Utc>) -> String {
-        format!("{} ({})", 
-            date.format("%Y-%m-%d %H:%M:%S UTC"), 
-            date.timestamp()
-        )
+        format!("{} ({})", date.format("%Y-%m-%d %H:%M:%S UTC"), date.timestamp())
     }
 
     /// Format certificates for display
     fn format_certificates(&self, certificates: &[CertificateEntry], domain: &str) -> String {
         if certificates.is_empty() {
-            return format!(
-                "Certificate Transparency Query Results for: {}\n\nNo valid (non-expired) certificates found in Certificate Transparency logs.\nThis could mean:\n- Domain has no certificates\n- All certificates are expired\n- Domain is not publicly accessible\n- crt.sh may not have indexed this domain yet\n",
-                domain
-            );
+            return format!("Certificate Transparency Query Results for: {}\n\nNo valid (non-expired) certificates found in Certificate Transparency logs.\nThis could mean:\n- Domain has no certificates\n- All certificates are expired\n- Domain is not publicly accessible\n- crt.sh may not have indexed this domain yet\n", domain);
         }
 
         let mut output = String::new();
         output.push_str(&format!("Certificate Transparency Query Results for: {}\n", domain));
-        output.push_str(&format!("Found {} valid (non-expired) certificates from CT logs\n", certificates.len()));
-        output.push_str("=" .repeat(80).as_str());
+        output.push_str(
+            &format!("Found {} valid (non-expired) certificates from CT logs\n", certificates.len())
+        );
+        output.push_str("=".repeat(80).as_str());
         output.push('\n');
 
         for (index, cert) in certificates.iter().enumerate() {
             output.push_str(&format!("\n[{}] Certificate #{}\n", index + 1, cert.id));
             output.push_str(&format!("Common Name: {}\n", cert.common_name));
-            
-            if cert.subject_alt_names.len() > 1 || 
-               (cert.subject_alt_names.len() == 1 && cert.subject_alt_names[0] != cert.common_name) {
+
+            if
+                cert.subject_alt_names.len() > 1 ||
+                (cert.subject_alt_names.len() == 1 && cert.subject_alt_names[0] != cert.common_name)
+            {
                 output.push_str("Subject Alternative Names:\n");
                 for san in &cert.subject_alt_names {
                     output.push_str(&format!("  - {}\n", san));
@@ -271,9 +290,9 @@ impl CrtService {
             output.push_str(&format!("Valid From: {}\n", cert.not_before));
             output.push_str(&format!("Valid Until: {}\n", cert.not_after));
             output.push_str(&format!("CT Log Entry: {}\n", cert.entry_timestamp));
-            
+
             if index < certificates.len() - 1 {
-                output.push_str("-" .repeat(40).as_str());
+                output.push_str("-".repeat(40).as_str());
                 output.push('\n');
             }
         }
@@ -304,17 +323,16 @@ impl CrtService {
 /// Process Certificate Transparency query with -CRT suffix
 pub async fn process_crt_query(query: &str) -> Result<String> {
     let crt_service = CrtService::new();
-    
+
     if let Some(domain) = CrtService::parse_crt_query(query) {
         debug!("Processing CRT query for domain: {}", domain);
         return crt_service.query_crt(&domain).await;
     }
-    
+
     error!("Invalid CRT query format: {}", query);
-    Ok(format!(
-        "Invalid Certificate Transparency query format. Use: domain-CRT\nQuery: {}\nExample: example.com-CRT\n",
-        query
-    ))
+    Ok(
+        format!("Invalid Certificate Transparency query format. Use: domain-CRT\nQuery: {}\nExample: example.com-CRT\n", query)
+    )
 }
 
 #[cfg(test)]
@@ -326,7 +344,7 @@ mod tests {
         assert!(CrtService::is_crt_query("example.com-CRT"));
         assert!(CrtService::is_crt_query("example.com-crt"));
         assert!(CrtService::is_crt_query("sub.example.com-CRT"));
-        
+
         assert!(!CrtService::is_crt_query("example.com"));
         assert!(!CrtService::is_crt_query("example.com-SSL"));
         assert!(!CrtService::is_crt_query("CRT-example.com"));
@@ -334,16 +352,13 @@ mod tests {
 
     #[test]
     fn test_crt_query_parsing() {
-        assert_eq!(
-            CrtService::parse_crt_query("example.com-CRT"),
-            Some("example.com".to_string())
-        );
-        
+        assert_eq!(CrtService::parse_crt_query("example.com-CRT"), Some("example.com".to_string()));
+
         assert_eq!(
             CrtService::parse_crt_query("sub.domain.com-CRT"),
             Some("sub.domain.com".to_string())
         );
-        
+
         assert_eq!(CrtService::parse_crt_query("example.com"), None);
     }
 
@@ -351,10 +366,10 @@ mod tests {
     async fn test_crt_service_creation() {
         let service = CrtService::new();
         assert_eq!(service.timeout, Duration::from_secs(20));
-        
+
         let custom_service = CrtService::with_timeout(Duration::from_secs(15));
         assert_eq!(custom_service.timeout, Duration::from_secs(15));
-        
+
         // Test that timeout is capped at 20 seconds
         let capped_service = CrtService::with_timeout(Duration::from_secs(30));
         assert_eq!(capped_service.timeout, Duration::from_secs(20));

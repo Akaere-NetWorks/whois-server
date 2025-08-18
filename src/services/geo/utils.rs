@@ -3,22 +3,22 @@ pub fn extract_ip_from_prefix(prefix: &str) -> String {
     // Handle IPv6 prefixes like "2a14:67c1:a024::/48"
     if prefix.contains("::") && prefix.contains("/") {
         let ip_part = prefix.split("/").next().unwrap_or(prefix);
-        
+
         // For IPv6 prefixes ending with "::", append a zero to get a valid address
         if ip_part.ends_with("::") {
-            return ip_part.to_string();  // IPinfo accepts "::" format
+            return ip_part.to_string(); // IPinfo accepts "::" format
         } else {
             return ip_part.to_string();
         }
     }
-    
+
     // Handle IPv4 prefixes like "192.168.1.0/24"
     if prefix.contains("/") {
         if let Some(ip_part) = prefix.split("/").next() {
             return ip_part.to_string();
         }
     }
-    
+
     // Return as-is if no special handling needed
     prefix.to_string()
 }
@@ -42,4 +42,4 @@ mod tests {
         assert_eq!(truncate_string("very_long_string", 10), "very_lo...");
         assert_eq!(truncate_string("exact", 5), "exact");
     }
-} 
+}

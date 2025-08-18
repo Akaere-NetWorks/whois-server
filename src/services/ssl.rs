@@ -1,12 +1,12 @@
 use std::sync::Arc;
-use std::io::{BufRead, BufReader, Write};
-use std::net::{TcpStream, ToSocketAddrs};
+use std::io::{ BufRead, BufReader, Write };
+use std::net::{ TcpStream, ToSocketAddrs };
 use std::time::Duration;
 use anyhow::Result;
-use tracing::{debug, error};
-use rustls::{ClientConfig, ClientConnection, StreamOwned};
+use tracing::{ debug, error };
+use rustls::{ ClientConfig, ClientConnection, StreamOwned };
 use x509_parser::prelude::*;
-use sha1::{Sha1, Digest};
+use sha1::{ Sha1, Digest };
 use sha2::Sha256;
 use chrono::DateTime;
 
@@ -89,10 +89,11 @@ impl SslService {
         // Connect to the server
         let addr = format!("{}:{}", domain, port);
         let tcp_stream = TcpStream::connect_timeout(
-            &addr.to_socket_addrs()?.next().ok_or_else(|| {
-                anyhow::anyhow!("Unable to resolve domain: {}", domain)
-            })?,
-            self.timeout,
+            &addr
+                .to_socket_addrs()?
+                .next()
+                .ok_or_else(|| { anyhow::anyhow!("Unable to resolve domain: {}", domain) })?,
+            self.timeout
         )?;
 
         tcp_stream.set_read_timeout(Some(self.timeout))?;
@@ -110,7 +111,8 @@ impl SslService {
         reader.read_line(&mut response)?;
 
         // Get peer certificates
-        let peer_certs = tls_stream.conn.peer_certificates()
+        let peer_certs = tls_stream.conn
+            .peer_certificates()
             .ok_or_else(|| anyhow::anyhow!("No peer certificates available"))?;
 
         if peer_certs.is_empty() {
@@ -158,17 +160,24 @@ impl SslService {
                                     16 => {
                                         let mut ipv6_parts = Vec::new();
                                         for chunk in ip.chunks(2) {
-                                            ipv6_parts.push(format!("{:02x}{:02x}", chunk[0], chunk.get(1).unwrap_or(&0)));
+                                            ipv6_parts.push(
+                                                format!(
+                                                    "{:02x}{:02x}",
+                                                    chunk[0],
+                                                    chunk.get(1).unwrap_or(&0)
+                                                )
+                                            );
                                         }
                                         format!("IP: {}", ipv6_parts.join(":"))
-                                    },
+                                    }
                                     _ => format!("IP: {:?}", ip),
                                 };
                                 san_list.push(ip_str);
-                            },
-                            GeneralName::RFC822Name(email) => san_list.push(format!("Email: {}", email)),
+                            }
+                            GeneralName::RFC822Name(email) =>
+                                san_list.push(format!("Email: {}", email)),
                             GeneralName::URI(uri) => san_list.push(format!("URI: {}", uri)),
-                            _ => {},
+                            _ => {}
                         }
                     }
                 }
@@ -181,15 +190,33 @@ impl SslService {
         for ext in cert.extensions() {
             if ext.oid == x509_parser::oid_registry::OID_X509_EXT_KEY_USAGE {
                 if let Ok((_, ku)) = KeyUsage::from_der(ext.value) {
-                    if ku.digital_signature() { key_usage.push("Digital Signature".to_string()); }
-                    if ku.non_repudiation() { key_usage.push("Non Repudiation".to_string()); }
-                    if ku.key_encipherment() { key_usage.push("Key Encipherment".to_string()); }
-                    if ku.data_encipherment() { key_usage.push("Data Encipherment".to_string()); }
-                    if ku.key_agreement() { key_usage.push("Key Agreement".to_string()); }
-                    if ku.key_cert_sign() { key_usage.push("Key Cert Sign".to_string()); }
-                    if ku.crl_sign() { key_usage.push("CRL Sign".to_string()); }
-                    if ku.encipher_only() { key_usage.push("Encipher Only".to_string()); }
-                    if ku.decipher_only() { key_usage.push("Decipher Only".to_string()); }
+                    if ku.digital_signature() {
+                        key_usage.push("Digital Signature".to_string());
+                    }
+                    if ku.non_repudiation() {
+                        key_usage.push("Non Repudiation".to_string());
+                    }
+                    if ku.key_encipherment() {
+                        key_usage.push("Key Encipherment".to_string());
+                    }
+                    if ku.data_encipherment() {
+                        key_usage.push("Data Encipherment".to_string());
+                    }
+                    if ku.key_agreement() {
+                        key_usage.push("Key Agreement".to_string());
+                    }
+                    if ku.key_cert_sign() {
+                        key_usage.push("Key Cert Sign".to_string());
+                    }
+                    if ku.crl_sign() {
+                        key_usage.push("CRL Sign".to_string());
+                    }
+                    if ku.encipher_only() {
+                        key_usage.push("Encipher Only".to_string());
+                    }
+                    if ku.decipher_only() {
+                        key_usage.push("Decipher Only".to_string());
+                    }
                 }
                 break;
             }
@@ -231,16 +258,14 @@ impl SslService {
     /// Format ASN.1 time to readable string
     fn format_asn1_time(&self, time: &ASN1Time) -> Result<String> {
         let timestamp = time.timestamp();
-        
+
         // Convert timestamp to DateTime<Utc>
-        let datetime = DateTime::from_timestamp(timestamp, 0)
-            .ok_or_else(|| anyhow::anyhow!("Invalid timestamp: {}", timestamp))?;
-        
+        let datetime = DateTime::from_timestamp(timestamp, 0).ok_or_else(||
+            anyhow::anyhow!("Invalid timestamp: {}", timestamp)
+        )?;
+
         // Format as readable string with both timestamp and UTC time
-        Ok(format!("{} ({})", 
-            datetime.format("%Y-%m-%d %H:%M:%S UTC"), 
-            timestamp
-        ))
+        Ok(format!("{} ({})", datetime.format("%Y-%m-%d %H:%M:%S UTC"), timestamp))
     }
 
     /// Generate certificate fingerprint
@@ -250,13 +275,25 @@ impl SslService {
                 let mut hasher = Sha1::new();
                 hasher.update(cert_der);
                 let result = hasher.finalize();
-                Ok(result.iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join(":"))
+                Ok(
+                    result
+                        .iter()
+                        .map(|b| format!("{:02X}", b))
+                        .collect::<Vec<_>>()
+                        .join(":")
+                )
             }
             "SHA256" => {
                 let mut hasher = Sha256::new();
                 hasher.update(cert_der);
                 let result = hasher.finalize();
-                Ok(result.iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join(":"))
+                Ok(
+                    result
+                        .iter()
+                        .map(|b| format!("{:02X}", b))
+                        .collect::<Vec<_>>()
+                        .join(":")
+                )
             }
             _ => Err(anyhow::anyhow!("Unsupported hash algorithm: {}", algorithm)),
         }
@@ -265,27 +302,27 @@ impl SslService {
     /// Format certificate information for display
     fn format_certificate_info(&self, cert: &CertificateInfo, domain: &str, port: u16) -> String {
         let mut output = String::new();
-        
+
         output.push_str(&format!("SSL Certificate Information for {}:{}\n", domain, port));
-        output.push_str("=" .repeat(60).as_str());
+        output.push_str("=".repeat(60).as_str());
         output.push('\n');
-        
+
         output.push_str(&format!("Subject: {}\n", cert.subject));
         output.push_str(&format!("Issuer: {}\n", cert.issuer));
         output.push_str(&format!("Serial Number: {}\n", cert.serial_number));
         output.push_str(&format!("Version: {}\n", cert.version));
         output.push('\n');
-        
+
         output.push_str("Validity Period:\n");
         output.push_str(&format!("  Not Before: {}\n", cert.not_before));
         output.push_str(&format!("  Not After: {}\n", cert.not_after));
         output.push('\n');
-        
+
         output.push_str("Algorithms:\n");
         output.push_str(&format!("  Signature Algorithm: {}\n", cert.signature_algorithm));
         output.push_str(&format!("  Public Key Algorithm: {}\n", cert.public_key_algorithm));
         output.push('\n');
-        
+
         if !cert.subject_alternative_names.is_empty() {
             output.push_str("Subject Alternative Names:\n");
             for san in &cert.subject_alternative_names {
@@ -293,7 +330,7 @@ impl SslService {
             }
             output.push('\n');
         }
-        
+
         if !cert.key_usage.is_empty() {
             output.push_str("Key Usage:\n");
             for usage in &cert.key_usage {
@@ -301,17 +338,17 @@ impl SslService {
             }
             output.push('\n');
         }
-        
+
         output.push_str("Certificate Properties:\n");
         output.push_str(&format!("  Is CA Certificate: {}\n", cert.is_ca));
         output.push_str(&format!("  Is Self-Signed: {}\n", cert.is_self_signed));
         output.push_str(&format!("  Certificate Chain Length: {}\n", cert.chain_length));
         output.push('\n');
-        
+
         output.push_str("Fingerprints:\n");
         output.push_str(&format!("  SHA1: {}\n", cert.fingerprint_sha1));
         output.push_str(&format!("  SHA256: {}\n", cert.fingerprint_sha256));
-        
+
         output
     }
 
@@ -327,7 +364,7 @@ impl SslService {
         }
 
         let clean_query = &query[..query.len() - 4]; // Remove "-SSL"
-        
+
         // Check for port specification
         if let Some(colon_pos) = clean_query.rfind(':') {
             let domain = clean_query[..colon_pos].to_string();
@@ -335,7 +372,7 @@ impl SslService {
                 return Some((domain, Some(port)));
             }
         }
-        
+
         Some((clean_query.to_string(), None))
     }
 }
@@ -352,7 +389,7 @@ impl rustls::client::ServerCertVerifier for AcceptAllVerifier {
         _server_name: &rustls::ServerName,
         _scts: &mut dyn Iterator<Item = &[u8]>,
         _ocsp_response: &[u8],
-        _now: std::time::SystemTime,
+        _now: std::time::SystemTime
     ) -> Result<rustls::client::ServerCertVerified, rustls::Error> {
         Ok(rustls::client::ServerCertVerified::assertion())
     }
@@ -361,12 +398,12 @@ impl rustls::client::ServerCertVerifier for AcceptAllVerifier {
 /// Process SSL certificate query with -SSL suffix
 pub async fn process_ssl_query(query: &str) -> Result<String> {
     let ssl_service = SslService::new();
-    
+
     if let Some((domain, port)) = SslService::parse_ssl_query(query) {
         debug!("Processing SSL query for domain: {}, port: {:?}", domain, port);
         return ssl_service.query_ssl_certificate(&domain, port).await;
     }
-    
+
     error!("Invalid SSL query format: {}", query);
     Ok(format!("Invalid SSL query format. Use: domain-SSL or domain:port-SSL\nQuery: {}\n", query))
 }
@@ -380,7 +417,7 @@ mod tests {
         assert!(SslService::is_ssl_query("example.com-SSL"));
         assert!(SslService::is_ssl_query("example.com-ssl"));
         assert!(SslService::is_ssl_query("sub.example.com:8443-SSL"));
-        
+
         assert!(!SslService::is_ssl_query("example.com"));
         assert!(!SslService::is_ssl_query("example.com-GEO"));
         assert!(!SslService::is_ssl_query("SSL-example.com"));
@@ -392,17 +429,17 @@ mod tests {
             SslService::parse_ssl_query("example.com-SSL"),
             Some(("example.com".to_string(), None))
         );
-        
+
         assert_eq!(
             SslService::parse_ssl_query("example.com:8443-SSL"),
             Some(("example.com".to_string(), Some(8443)))
         );
-        
+
         assert_eq!(
             SslService::parse_ssl_query("sub.domain.com:443-SSL"),
             Some(("sub.domain.com".to_string(), Some(443)))
         );
-        
+
         assert_eq!(SslService::parse_ssl_query("example.com"), None);
     }
 
@@ -410,7 +447,7 @@ mod tests {
     async fn test_ssl_service_creation() {
         let service = SslService::new();
         assert_eq!(service.timeout, Duration::from_secs(10));
-        
+
         let custom_service = SslService::with_timeout(Duration::from_secs(5));
         assert_eq!(custom_service.timeout, Duration::from_secs(5));
     }

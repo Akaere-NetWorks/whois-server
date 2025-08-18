@@ -1,9 +1,14 @@
 use anyhow::Result;
-use tracing::{debug, info, warn};
+use tracing::{ debug, info, warn };
 
-use crate::dn42::online_backend::{DN42OnlineFetcher, is_windows, get_platform_info};
-use crate::dn42::query::{DN42QueryType, format_query_response, format_ipv4_network_response, format_ipv6_network_response};
-use crate::storage::{SharedLmdbStorage, create_shared_storage};
+use crate::dn42::online_backend::{ DN42OnlineFetcher, is_windows, get_platform_info };
+use crate::dn42::query::{
+    DN42QueryType,
+    format_query_response,
+    format_ipv4_network_response,
+    format_ipv6_network_response,
+};
+use crate::storage::{ SharedLmdbStorage, create_shared_storage };
 use crate::config::DN42_LMDB_PATH;
 
 /// DN42 platform-aware manager that automatically selects Git or online mode
@@ -27,11 +32,12 @@ impl DN42Manager {
         } else {
             info!("DN42 Manager: Platform detected: {}", get_platform_info());
             info!("DN42 Manager: Using git repository mode for Unix-like systems");
-            let storage = create_shared_storage(DN42_LMDB_PATH)
-                .map_err(|e| anyhow::anyhow!("Failed to create LMDB storage: {}", e))?;
+            let storage = create_shared_storage(DN42_LMDB_PATH).map_err(|e|
+                anyhow::anyhow!("Failed to create LMDB storage: {}", e)
+            )?;
             DN42Mode::Git(storage)
         };
-        
+
         Ok(DN42Manager { mode })
     }
 
@@ -42,9 +48,11 @@ impl DN42Manager {
                 info!("DN42 Manager: Initializing online mode");
                 fetcher.initialize().await?;
                 info!("DN42 Manager: Online mode initialization completed");
-            },
+            }
             DN42Mode::Git(_storage) => {
-                info!("DN42 Manager: Git mode detected - initialization handled by existing DN42 system");
+                info!(
+                    "DN42 Manager: Git mode detected - initialization handled by existing DN42 system"
+                );
                 // Git mode initialization is handled by the existing dn42.rs system
             }
         }
@@ -54,28 +62,22 @@ impl DN42Manager {
     /// Process DN42 query and return formatted response
     pub async fn query(&mut self, query: &str) -> Result<String> {
         debug!("DN42 Manager: Processing query: {}", query);
-        
+
         match &mut self.mode {
-            DN42Mode::Online(fetcher) => {
-                DN42Manager::query_online_static(fetcher, query).await
-            },
-            DN42Mode::Git(_storage) => {
-                DN42Manager::query_git_static(query).await
-            }
+            DN42Mode::Online(fetcher) => { DN42Manager::query_online_static(fetcher, query).await }
+            DN42Mode::Git(_storage) => { DN42Manager::query_git_static(query).await }
         }
     }
 
     /// Process DN42 query and return raw data (for email processing)
     pub async fn query_raw(&mut self, query: &str) -> Result<String> {
         debug!("DN42 Manager: Processing raw query: {}", query);
-        
+
         match &mut self.mode {
             DN42Mode::Online(fetcher) => {
                 DN42Manager::query_raw_online_static(fetcher, query).await
-            },
-            DN42Mode::Git(_storage) => {
-                DN42Manager::query_raw_git_static(query).await
             }
+            DN42Mode::Git(_storage) => { DN42Manager::query_raw_git_static(query).await }
         }
     }
 
@@ -86,7 +88,7 @@ impl DN42Manager {
                 info!("DN42 Manager: Running online mode maintenance (cache cleanup)");
                 fetcher.cleanup_cache().await?;
                 info!("DN42 Manager: Online mode maintenance completed");
-            },
+            }
             DN42Mode::Git(_storage) => {
                 debug!("DN42 Manager: Git mode maintenance handled by existing DN42 system");
                 // Git mode maintenance is handled by the existing dn42.rs system
@@ -114,26 +116,26 @@ impl DN42Manager {
             DN42QueryType::IPv4Network { ip, mask } => {
                 // Fetch inetnum data
                 let inetnum_content = fetcher.find_ipv4_network("inetnum", ip, mask).await?;
-                
+
                 // Fetch route data
                 let route_content = fetcher.find_ipv4_network("route", ip, mask).await?;
-                
+
                 Ok(format_ipv4_network_response(query, inetnum_content, route_content))
-            },
+            }
             DN42QueryType::IPv6Network { ip, mask } => {
                 // Fetch inet6num data
                 let inet6num_content = fetcher.find_ipv6_network("inet6num", ip, mask).await?;
-                
+
                 // Fetch route6 data
                 let route6_content = fetcher.find_ipv6_network("route6", ip, mask).await?;
-                
+
                 Ok(format_ipv6_network_response(query, inet6num_content, route6_content))
-            },
+            }
             _ => {
                 // For other query types, fetch the object directly
                 let object_type = query_type.get_object_type();
                 let file_name = query_type.get_file_name();
-                
+
                 let content = fetcher.fetch_file(object_type, &file_name).await?;
                 Ok(format_query_response(query, content))
             }
@@ -141,7 +143,10 @@ impl DN42Manager {
     }
 
     /// Query raw data using online fetcher
-    async fn query_raw_online_static(fetcher: &mut DN42OnlineFetcher, query: &str) -> Result<String> {
+    async fn query_raw_online_static(
+        fetcher: &mut DN42OnlineFetcher,
+        query: &str
+    ) -> Result<String> {
         let query_type = DN42QueryType::parse(query);
 
         match query_type {
@@ -151,18 +156,18 @@ impl DN42Manager {
                 } else {
                     Ok(String::new())
                 }
-            },
+            }
             DN42QueryType::IPv6Network { ip, mask } => {
                 if let Some(content) = fetcher.find_ipv6_network("inet6num", ip, mask).await? {
                     Ok(content)
                 } else {
                     Ok(String::new())
                 }
-            },
+            }
             _ => {
                 let object_type = query_type.get_object_type();
                 let file_name = query_type.get_file_name();
-                
+
                 if let Some(content) = fetcher.fetch_file(object_type, &file_name).await? {
                     Ok(content)
                 } else {
@@ -175,8 +180,10 @@ impl DN42Manager {
     /// Query using git-based LMDB storage
     async fn query_git_static(query: &str) -> Result<String> {
         // For git mode, delegate to the existing DN42 system
-        warn!("DN42 Manager: Git mode query delegation not implemented - falling back to existing system");
-        
+        warn!(
+            "DN42 Manager: Git mode query delegation not implemented - falling back to existing system"
+        );
+
         // This should call the existing DN42 system
         crate::dn42::git_backend::process_dn42_query(query).await
     }
@@ -184,8 +191,10 @@ impl DN42Manager {
     /// Query raw data using git-based LMDB storage
     async fn query_raw_git_static(query: &str) -> Result<String> {
         // For git mode, delegate to the existing DN42 system
-        warn!("DN42 Manager: Git mode raw query delegation not implemented - falling back to existing system");
-        
+        warn!(
+            "DN42 Manager: Git mode raw query delegation not implemented - falling back to existing system"
+        );
+
         // This should call the existing DN42 system
         crate::dn42::git_backend::query_dn42_raw(query).await
     }

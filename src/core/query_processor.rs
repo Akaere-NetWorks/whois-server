@@ -8,25 +8,54 @@ use anyhow::Result;
 use tracing::debug;
 
 use crate::services::{
-    process_bgptool_query, process_email_search, process_geo_query, 
-    process_rir_geo_query, process_prefixes_query, process_irr_query,
-    process_looking_glass_query, process_manrs_query, process_rpki_query,
-    process_dns_query, process_traceroute_query, process_ssl_query, 
-    process_crt_query, process_minecraft_query, process_minecraft_user_query,
-    process_steam_query, process_steam_search_query, process_imdb_query, 
-    process_imdb_search_query, process_acgc_query, process_aosc_query, process_aur_query, 
-    process_debian_query, process_ubuntu_query, process_nixos_query, process_opensuse_query,
-    process_npm_query, process_pypi_query, process_cargo_query, process_github_query,
-    process_wikipedia_query, process_lyric_query, query_random_meal, query_whois, query_with_iana_referral
+    process_bgptool_query,
+    process_email_search,
+    process_geo_query,
+    process_rir_geo_query,
+    process_prefixes_query,
+    process_irr_query,
+    process_looking_glass_query,
+    process_manrs_query,
+    process_rpki_query,
+    process_dns_query,
+    process_traceroute_query,
+    process_ssl_query,
+    process_crt_query,
+    process_minecraft_query,
+    process_minecraft_user_query,
+    process_steam_query,
+    process_steam_search_query,
+    process_imdb_query,
+    process_imdb_search_query,
+    process_acgc_query,
+    process_aosc_query,
+    process_aur_query,
+    process_debian_query,
+    process_ubuntu_query,
+    process_nixos_query,
+    process_opensuse_query,
+    process_npm_query,
+    process_pypi_query,
+    process_cargo_query,
+    process_github_query,
+    process_wikipedia_query,
+    process_lyric_query,
+    query_random_meal,
+    query_whois,
+    query_with_iana_referral,
 };
-use crate::config::{RADB_WHOIS_SERVER, RADB_WHOIS_PORT};
+use crate::config::{ RADB_WHOIS_SERVER, RADB_WHOIS_PORT };
 use crate::dn42::process_dn42_query_managed;
-use crate::core::{is_private_ipv4, is_private_ipv6, QueryType, ColorScheme, Colorizer};
+use crate::core::{ is_private_ipv4, is_private_ipv6, QueryType, ColorScheme, Colorizer };
 
 /// Process a WHOIS query and return the response (for use by SSH server and other modules)
-pub async fn process_query(query: &str, query_type: &QueryType, color_scheme: Option<ColorScheme>) -> Result<String> {
+pub async fn process_query(
+    query: &str,
+    query_type: &QueryType,
+    color_scheme: Option<ColorScheme>
+) -> Result<String> {
     debug!("Processing query: {} (type: {:?})", query, query_type);
-    
+
     // Process the query based on its type
     let result = match query_type {
         QueryType::Domain(domain) => {
@@ -213,22 +242,24 @@ pub async fn process_query(query: &str, query_type: &QueryType, color_scheme: Op
             } else {
                 let public_result = query_with_iana_referral(q).await;
                 match &public_result {
-                    Ok(response) if response.trim().is_empty() 
-                        || response.contains("No entries found") 
-                        || response.contains("Not found") => {
+                    Ok(response) if
+                        response.trim().is_empty() ||
+                        response.contains("No entries found") ||
+                        response.contains("Not found")
+                    => {
                         debug!("Public query returned no results, trying DN42 for: {}", q);
                         process_dn42_query_managed(q).await
-                    },
+                    }
                     Err(_) => {
                         debug!("Public query failed, trying DN42 for: {}", q);
                         process_dn42_query_managed(q).await
-                    },
+                    }
                     _ => public_result,
                 }
             }
         }
     };
-    
+
     // Apply colorization if scheme is provided
     match result {
         Ok(response) => {
@@ -239,6 +270,6 @@ pub async fn process_query(query: &str, query_type: &QueryType, color_scheme: Op
                 Ok(response)
             }
         }
-        Err(e) => Err(e)
+        Err(e) => Err(e),
     }
 }

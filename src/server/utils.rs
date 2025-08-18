@@ -1,5 +1,5 @@
 use std::path::Path;
-use anyhow::{Context, Result};
+use anyhow::{ Context, Result };
 use tracing::info;
 
 pub fn create_dump_dir_if_needed(dump_traffic: bool, dump_dir: &str) -> Result<()> {
@@ -11,4 +11,4 @@ pub fn create_dump_dir_if_needed(dump_traffic: bool, dump_dir: &str) -> Result<(
         }
     }
     Ok(())
-} 
+}

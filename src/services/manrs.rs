@@ -10,12 +10,12 @@
 
 use anyhow::Result;
 use reqwest::Client;
-use serde::{Deserialize, Serialize};
+use serde::{ Deserialize, Serialize };
 use std::collections::HashSet;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use tracing::{debug, info, warn, error};
+use std::time::{ Duration, SystemTime, UNIX_EPOCH };
+use tracing::{ debug, info, warn, error };
 use chrono::DateTime;
-use crate::storage::{SharedLmdbStorage, create_shared_storage};
+use crate::storage::{ SharedLmdbStorage, create_shared_storage };
 
 const MANRS_API_URL: &str = "https://api.manrs.org/asns";
 const MANRS_LMDB_PATH: &str = "./cache/manrs_lmdb";
@@ -44,17 +44,18 @@ impl ManrsChecker {
     fn is_cache_expired(&self) -> Result<bool> {
         match self.storage.get(CACHE_TIMESTAMP_KEY)? {
             Some(timestamp_str) => {
-                let last_updated = timestamp_str.parse::<u64>()
+                let last_updated = timestamp_str
+                    .parse::<u64>()
                     .map_err(|_| anyhow::anyhow!("Invalid timestamp format in cache"))?;
-                
+
                 let now = SystemTime::now()
                     .duration_since(UNIX_EPOCH)
                     .unwrap_or_default()
                     .as_secs();
-                
+
                 let cache_age_seconds = now.saturating_sub(last_updated);
                 let cache_duration_seconds = CACHE_DURATION_DAYS * 24 * 60 * 60;
-                
+
                 Ok(cache_age_seconds > cache_duration_seconds)
             }
             None => Ok(true), // No cache exists
@@ -73,42 +74,34 @@ impl ManrsChecker {
 
     fn save_asns_to_cache(&self, asns: &[u64]) -> Result<()> {
         let asns_json = serde_json::to_string(asns)?;
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
-        
+        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
+
         self.storage.put(CACHE_KEY, &asns_json)?;
         self.storage.put(CACHE_TIMESTAMP_KEY, &now.to_string())?;
-        
+
         info!("Saved {} MANRS ASNs to LMDB cache", asns.len());
         Ok(())
     }
 
     async fn refresh_cache(&self) -> Result<HashSet<u64>> {
         info!("Refreshing MANRS ASN cache from API...");
-        
-        let response = self
-            .client
+
+        let response = self.client
             .get(MANRS_API_URL)
             .timeout(Duration::from_secs(30))
             .header("User-Agent", "whois-server/0.1.0")
-            .send()
-            .await?;
+            .send().await?;
 
         if !response.status().is_success() {
-            return Err(anyhow::anyhow!(
-                "MANRS API returned status: {}",
-                response.status()
-            ));
+            return Err(anyhow::anyhow!("MANRS API returned status: {}", response.status()));
         }
 
         let api_response: ManrsApiResponse = response.json().await?;
-        
+
         info!("Retrieved {} MANRS member ASNs from API", api_response.asns.len());
-        
+
         self.save_asns_to_cache(&api_response.asns)?;
-        
+
         Ok(api_response.asns.into_iter().collect())
     }
 
@@ -125,7 +118,9 @@ impl ManrsChecker {
                             warn!("Using expired MANRS cache due to API failure");
                             cached_asns
                         }
-                        None => return Ok(ManrsStatus::Unknown),
+                        None => {
+                            return Ok(ManrsStatus::Unknown);
+                        }
                     }
                 }
             }
@@ -164,7 +159,6 @@ impl ManrsChecker {
             last_updated,
         })
     }
-
 }
 
 #[derive(Debug, Clone)]
@@ -178,19 +172,13 @@ pub enum ManrsStatus {
     Unknown,
 }
 
-
 impl ManrsStatus {
     pub fn format_response(&self) -> String {
         match self {
-            ManrsStatus::Known {
-                asn,
-                is_member,
-                total_members,
-                last_updated,
-            } => {
+            ManrsStatus::Known { asn, is_member, total_members, last_updated } => {
                 let status = if *is_member { "MEMBER" } else { "NON-MEMBER" };
                 let updated_time = format_timestamp(*last_updated);
-                
+
                 format!(
                     "% MANRS (Mutually Agreed Norms for Routing Security) Information\n\
                      %\n\
@@ -218,7 +206,11 @@ impl ManrsStatus {
                      % MANRS membership status is updated periodically from the official\n\
                      % MANRS API at https://api.manrs.org/\n\
                      %\n",
-                    asn, status, asn, total_members, updated_time
+                    asn,
+                    status,
+                    asn,
+                    total_members,
+                    updated_time
                 )
             }
             ManrsStatus::Unknown => {
@@ -267,8 +259,9 @@ async fn get_manrs_checker() -> Result<&'static ManrsChecker> {
     if let Some(checker) = MANRS_CHECKER_INSTANCE.get() {
         Ok(checker)
     } else {
-        let storage = create_shared_storage(MANRS_LMDB_PATH)
-            .map_err(|e| anyhow::anyhow!("Failed to create MANRS LMDB storage: {}", e))?;
+        let storage = create_shared_storage(MANRS_LMDB_PATH).map_err(|e|
+            anyhow::anyhow!("Failed to create MANRS LMDB storage: {}", e)
+        )?;
         let checker = ManrsChecker::new(storage);
         match MANRS_CHECKER_INSTANCE.set(checker) {
             Ok(_) => Ok(MANRS_CHECKER_INSTANCE.get().unwrap()),
@@ -283,19 +276,18 @@ pub async fn process_manrs_query(query: &str) -> Result<String> {
     let asn = match parse_asn_from_query(query) {
         Some(asn) => asn,
         None => {
-            return Ok(format!(
-                "% MANRS Query Error: Invalid ASN format in query '{}'\n\
+            return Ok(
+                format!("% MANRS Query Error: Invalid ASN format in query '{}'\n\
                  % Expected format: AS<number>-MANRS or <number>-MANRS\n\
-                 % Example: AS64496-MANRS or 64496-MANRS\n",
-                query
-            ));
+                 % Example: AS64496-MANRS or 64496-MANRS\n", query)
+            );
         }
     };
 
     // Get the MANRS checker and perform the lookup
     let checker = get_manrs_checker().await?;
     let status = checker.check_asn(asn).await?;
-    
+
     Ok(status.format_response())
 }
 

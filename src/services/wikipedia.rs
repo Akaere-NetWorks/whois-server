@@ -18,8 +18,8 @@
 
 use std::time::Duration;
 use anyhow::Result;
-use serde::{Deserialize, Serialize};
-use tracing::{debug, error};
+use serde::{ Deserialize, Serialize };
+use tracing::{ debug, error };
 use regex::Regex;
 
 /// Wikipedia API response structures
@@ -83,7 +83,7 @@ pub struct WikipediaLangLink {
 }
 
 /// Wikipedia service for article information
-/// 
+///
 /// This service fetches article information from Wikipedia using MediaWiki API
 pub struct WikipediaService {
     client: reqwest::Client,
@@ -99,9 +99,12 @@ impl Default for WikipediaService {
 impl WikipediaService {
     /// Create a new Wikipedia service
     pub fn new() -> Self {
-        let client = reqwest::Client::builder()
+        let client = reqwest::Client
+            ::builder()
             .timeout(Duration::from_secs(15))
-            .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36")
+            .user_agent(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
+            )
             .build()
             .unwrap_or_else(|_| reqwest::Client::new());
 
@@ -123,7 +126,9 @@ impl WikipediaService {
                     debug!("Found article, getting details for: {}", first_result.title);
                     self.get_article_details(&first_result.title).await
                 } else {
-                    Ok(format!("Wikipedia Article Not Found: {}\nNo matching articles found on Wikipedia.\n", query))
+                    Ok(
+                        format!("Wikipedia Article Not Found: {}\nNo matching articles found on Wikipedia.\n", query)
+                    )
                 }
             }
             Err(e) => {
@@ -148,27 +153,35 @@ impl WikipediaService {
             ("utf8", "1"),
         ];
 
-        let response = self.client
-            .get(&self.base_url)
-            .query(&params)
-            .send()
-            .await?;
+        let response = self.client.get(&self.base_url).query(&params).send().await?;
 
         let status = response.status();
         debug!("Wikipedia search response status: {}", status);
-        
+
         if !status.is_success() {
-            let error_text = response.text().await.unwrap_or_else(|_| "Unable to read error response".to_string());
+            let error_text = response
+                .text().await
+                .unwrap_or_else(|_| "Unable to read error response".to_string());
             debug!("Wikipedia search error response: {}", error_text);
             return Err(anyhow::anyhow!("Search request failed: {} - {}", status, error_text));
         }
 
         let response_text = response.text().await?;
-        debug!("Wikipedia search response body: {}", &response_text[..std::cmp::min(500, response_text.len())]);
-        
-        let wiki_data: WikipediaResponse = serde_json::from_str(&response_text)
-            .map_err(|e| anyhow::anyhow!("Failed to parse Wikipedia search response: {} - Response: {}", e, &response_text[..std::cmp::min(200, response_text.len())]))?;
-        
+        debug!(
+            "Wikipedia search response body: {}",
+            &response_text[..std::cmp::min(500, response_text.len())]
+        );
+
+        let wiki_data: WikipediaResponse = serde_json
+            ::from_str(&response_text)
+            .map_err(|e|
+                anyhow::anyhow!(
+                    "Failed to parse Wikipedia search response: {} - Response: {}",
+                    e,
+                    &response_text[..std::cmp::min(200, response_text.len())]
+                )
+            )?;
+
         if let Some(query_data) = wiki_data.query {
             if let Some(search_results) = query_data.search {
                 Ok(search_results)
@@ -189,7 +202,7 @@ impl WikipediaService {
             ("format", "json"),
             ("titles", title),
             ("prop", "extracts|info|categories|langlinks"),
-            ("exintro", "1"), 
+            ("exintro", "1"),
             ("explaintext", "1"),
             ("exsectionformat", "plain"),
             ("exlimit", "1"),
@@ -199,27 +212,35 @@ impl WikipediaService {
             ("utf8", "1"),
         ];
 
-        let response = self.client
-            .get(&self.base_url)
-            .query(&params)
-            .send()
-            .await?;
+        let response = self.client.get(&self.base_url).query(&params).send().await?;
 
         let status = response.status();
         debug!("Wikipedia details response status: {}", status);
-        
+
         if !status.is_success() {
-            let error_text = response.text().await.unwrap_or_else(|_| "Unable to read error response".to_string());
+            let error_text = response
+                .text().await
+                .unwrap_or_else(|_| "Unable to read error response".to_string());
             debug!("Wikipedia details error response: {}", error_text);
             return Err(anyhow::anyhow!("Details request failed: {} - {}", status, error_text));
         }
 
         let response_text = response.text().await?;
-        debug!("Wikipedia details response body: {}", &response_text[..std::cmp::min(500, response_text.len())]);
-        
-        let wiki_data: WikipediaResponse = serde_json::from_str(&response_text)
-            .map_err(|e| anyhow::anyhow!("Failed to parse Wikipedia details response: {} - Response: {}", e, &response_text[..std::cmp::min(200, response_text.len())]))?;
-        
+        debug!(
+            "Wikipedia details response body: {}",
+            &response_text[..std::cmp::min(500, response_text.len())]
+        );
+
+        let wiki_data: WikipediaResponse = serde_json
+            ::from_str(&response_text)
+            .map_err(|e|
+                anyhow::anyhow!(
+                    "Failed to parse Wikipedia details response: {} - Response: {}",
+                    e,
+                    &response_text[..std::cmp::min(200, response_text.len())]
+                )
+            )?;
+
         if let Some(query_data) = wiki_data.query {
             if let Some(pages) = query_data.pages {
                 for (_, page) in pages {
@@ -229,7 +250,7 @@ impl WikipediaService {
                 }
             }
         }
-        
+
         Err(anyhow::anyhow!("No article details found"))
     }
 
@@ -255,11 +276,25 @@ impl WikipediaService {
 
         if let Some(touched) = &page.touched {
             // Parse and format the timestamp (try multiple formats)
-            if let Ok(parsed_time) = chrono::DateTime::parse_from_str(touched, "%Y-%m-%dT%H:%M:%SZ") {
-                output.push_str(&format!("last-modified: {}\n", parsed_time.format("%Y-%m-%d %H:%M:%S UTC")));
-            } else if let Ok(parsed_time) = chrono::NaiveDateTime::parse_from_str(touched, "%Y%m%d%H%M%S") {
-                let utc_time = chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(parsed_time, chrono::Utc);
-                output.push_str(&format!("last-modified: {}\n", utc_time.format("%Y-%m-%d %H:%M:%S UTC")));
+            if
+                let Ok(parsed_time) = chrono::DateTime::parse_from_str(
+                    touched,
+                    "%Y-%m-%dT%H:%M:%SZ"
+                )
+            {
+                output.push_str(
+                    &format!("last-modified: {}\n", parsed_time.format("%Y-%m-%d %H:%M:%S UTC"))
+                );
+            } else if
+                let Ok(parsed_time) = chrono::NaiveDateTime::parse_from_str(touched, "%Y%m%d%H%M%S")
+            {
+                let utc_time = chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(
+                    parsed_time,
+                    chrono::Utc
+                );
+                output.push_str(
+                    &format!("last-modified: {}\n", utc_time.format("%Y-%m-%d %H:%M:%S UTC"))
+                );
             } else {
                 output.push_str(&format!("last-modified: {}\n", touched));
             }
@@ -290,7 +325,7 @@ impl WikipediaService {
                     .map(|title| title.replace("Category:", ""))
                     .take(8) // Limit to 8 categories for readability
                     .collect();
-                
+
                 if !category_names.is_empty() {
                     output.push_str(&format!("categories: {}\n", category_names.join(", ")));
                 }
@@ -311,7 +346,7 @@ impl WikipediaService {
                     })
                     .take(8) // Limit to 8 languages for readability
                     .collect();
-                
+
                 if !lang_info.is_empty() {
                     output.push_str(&format!("languages: {}\n", lang_info.join(", ")));
                 }
@@ -326,7 +361,9 @@ impl WikipediaService {
         } else {
             // Construct URL from title
             let encoded_title = urlencoding::encode(&page.title);
-            output.push_str(&format!("wikipedia-url: https://en.wikipedia.org/wiki/{}\n", encoded_title));
+            output.push_str(
+                &format!("wikipedia-url: https://en.wikipedia.org/wiki/{}\n", encoded_title)
+            );
         }
 
         if let Some(edit_url) = &page.editurl {
@@ -335,53 +372,53 @@ impl WikipediaService {
 
         output.push_str("% Information retrieved from Wikipedia via MediaWiki API\n");
         output.push_str("% Query processed by WHOIS server\n");
-        
+
         output
     }
 
     /// Clean wiki markup from text
     fn clean_wiki_text(&self, text: &str) -> String {
         let mut text = text.trim().to_string();
-        
+
         // Early return for clearly invalid content
         if text.is_empty() {
             return String::new();
         }
-        
+
         // Remove MediaWiki templates and references
         if let Ok(re) = Regex::new(r"\{\{[^}]*\}\}") {
             text = re.replace_all(&text, "").to_string();
         }
-        
+
         // Remove wiki links and keep only the display text
         // Handle [[link|display]] -> display
-        if let Ok(re) = Regex::new(r"\[\[([^|\]]*\|)?([^\]]*)\]\]") { 
+        if let Ok(re) = Regex::new(r"\[\[([^|\]]*\|)?([^\]]*)\]\]") {
             text = re.replace_all(&text, "$2").to_string();
         }
-        
+
         // Remove incomplete wiki links
         if let Ok(re) = Regex::new(r"\[\[[^\]]*$") {
             text = re.replace_all(&text, "").to_string();
         }
-        
+
         // Remove bold and italic formatting
         text = text.replace("'''", "").replace("''", "");
-        
+
         // Remove HTML tags
         if let Ok(re) = Regex::new(r"<[^>]*>") {
             text = re.replace_all(&text, "").to_string();
         }
-        
+
         // Remove ref tags content
         if let Ok(re) = Regex::new(r"<ref[^>]*>.*?</ref>") {
             text = re.replace_all(&text, "").to_string();
         }
-        
+
         // Clean up multiple spaces and newlines
         if let Ok(re) = Regex::new(r"\s+") {
             text = re.replace_all(&text, " ").to_string();
         }
-        
+
         // Remove common HTML entities
         text = text.replace("&nbsp;", " ");
         text = text.replace("&lt;", "<");
@@ -389,7 +426,7 @@ impl WikipediaService {
         text = text.replace("&amp;", "&");
         text = text.replace("&quot;", "\"");
         text = text.replace("&#39;", "'");
-        
+
         text.trim().to_string()
     }
 
@@ -412,18 +449,24 @@ impl WikipediaService {
 /// Process Wikipedia query with -WIKIPEDIA suffix
 pub async fn process_wikipedia_query(query: &str) -> Result<String> {
     let wikipedia_service = WikipediaService::new();
-    
+
     if let Some(article_query) = WikipediaService::parse_wikipedia_query(query) {
         debug!("Processing Wikipedia query for: {}", article_query);
-        
+
         if article_query.is_empty() {
-            return Ok(format!("Invalid Wikipedia query. Please provide an article name.\nExample: Rust-WIKIPEDIA\n"));
+            return Ok(
+                format!(
+                    "Invalid Wikipedia query. Please provide an article name.\nExample: Rust-WIKIPEDIA\n"
+                )
+            );
         }
-        
+
         wikipedia_service.query_article_info(&article_query).await
     } else {
         error!("Invalid Wikipedia query format: {}", query);
-        Ok(format!("Invalid Wikipedia query format. Use: <article_name>-WIKIPEDIA\nExample: Rust-WIKIPEDIA\nQuery: {}\n", query))
+        Ok(
+            format!("Invalid Wikipedia query format. Use: <article_name>-WIKIPEDIA\nExample: Rust-WIKIPEDIA\nQuery: {}\n", query)
+        )
     }
 }
 
@@ -436,7 +479,7 @@ mod tests {
         assert!(WikipediaService::is_wikipedia_query("Rust-WIKIPEDIA"));
         assert!(WikipediaService::is_wikipedia_query("Python-WIKIPEDIA"));
         assert!(WikipediaService::is_wikipedia_query("Linux-wikipedia"));
-        
+
         assert!(!WikipediaService::is_wikipedia_query("Rust"));
         assert!(!WikipediaService::is_wikipedia_query("example.com-SSL"));
         assert!(!WikipediaService::is_wikipedia_query("WIKIPEDIA-Rust"));
@@ -448,29 +491,23 @@ mod tests {
             WikipediaService::parse_wikipedia_query("Rust-WIKIPEDIA"),
             Some("Rust".to_string())
         );
-        
+
         assert_eq!(
             WikipediaService::parse_wikipedia_query("Machine Learning-WIKIPEDIA"),
             Some("Machine Learning".to_string())
         );
-        
+
         assert_eq!(WikipediaService::parse_wikipedia_query("Rust"), None);
     }
 
     #[test]
     fn test_clean_wiki_text() {
         let service = WikipediaService::new();
-        
-        assert_eq!(
-            service.clean_wiki_text("'''Bold text'''"),
-            "Bold text"
-        );
-        
-        assert_eq!(
-            service.clean_wiki_text("[[Link|Display text]]"),
-            "Display text"
-        );
-        
+
+        assert_eq!(service.clean_wiki_text("'''Bold text'''"), "Bold text");
+
+        assert_eq!(service.clean_wiki_text("[[Link|Display text]]"), "Display text");
+
         assert_eq!(
             service.clean_wiki_text("Normal text with [[link]] in it"),
             "Normal text with link in it"

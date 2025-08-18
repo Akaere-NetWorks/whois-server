@@ -15,7 +15,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use serde::{Deserialize, Serialize};
+use serde::{ Deserialize, Serialize };
 use std::fmt::Write;
 use anyhow::Result;
 
@@ -121,11 +121,7 @@ pub async fn query_random_meal() -> Result<String> {
     let client = reqwest::Client::new();
     let url = "https://www.themealdb.com/api/json/v1/1/random.php";
 
-    let response = client
-        .get(url)
-        .timeout(std::time::Duration::from_secs(10))
-        .send()
-        .await?;
+    let response = client.get(url).timeout(std::time::Duration::from_secs(10)).send().await?;
 
     if !response.status().is_success() {
         return Err(anyhow::anyhow!("MealDB API returned status: {}", response.status()));

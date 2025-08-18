@@ -2,14 +2,14 @@
 // Copyright (C) 2025 Akaere Networks
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-use anyhow::{Context, Result};
-use chrono::{DateTime, Utc, Duration};
-use lmdb::{Database, Environment, Transaction, WriteFlags, Cursor, DatabaseFlags};
-use serde::{Deserialize, Serialize};
+use anyhow::{ Context, Result };
+use chrono::{ DateTime, Utc, Duration };
+use lmdb::{ Database, Environment, Transaction, WriteFlags, Cursor, DatabaseFlags };
+use serde::{ Deserialize, Serialize };
 use std::net::IpAddr;
 use std::path::Path;
 use std::sync::Arc;
-use tracing::{info, warn, debug};
+use tracing::{ info, warn, debug };
 
 /// Maximum number of history records to keep per IP address
 const MAX_RECORDS_PER_IP: usize = 100;
@@ -38,10 +38,11 @@ impl SshConnectionHistory {
     /// Create a new SSH connection history manager
     pub fn new<P: AsRef<Path>>(db_path: P) -> Result<Self> {
         let db_path = db_path.as_ref();
-        
+
         // Ensure the parent directory exists
         if let Some(parent) = db_path.parent() {
-            std::fs::create_dir_all(parent)
+            std::fs
+                ::create_dir_all(parent)
                 .with_context(|| format!("Failed to create directory {parent:?}"))?;
         }
 
@@ -56,7 +57,8 @@ impl SshConnectionHistory {
 
         // Create the LMDB directory if it doesn't exist
         if !lmdb_dir.exists() {
-            std::fs::create_dir_all(&lmdb_dir)
+            std::fs
+                ::create_dir_all(&lmdb_dir)
                 .with_context(|| format!("Failed to create LMDB directory {lmdb_dir:?}"))?;
         }
 
@@ -73,14 +75,15 @@ impl SshConnectionHistory {
             Ok(db) => db,
             Err(_) => {
                 // Database doesn't exist, create it
-                let txn = env.begin_rw_txn()
+                let txn = env
+                    .begin_rw_txn()
                     .with_context(|| "Failed to begin transaction for database creation")?;
                 let db = unsafe {
-                    txn.create_db(Some("ssh_history"), DatabaseFlags::empty())
+                    txn
+                        .create_db(Some("ssh_history"), DatabaseFlags::empty())
                         .with_context(|| "Failed to create SSH history database")?
                 };
-                txn.commit()
-                    .with_context(|| "Failed to commit database creation transaction")?;
+                txn.commit().with_context(|| "Failed to commit database creation transaction")?;
                 db
             }
         };
@@ -100,22 +103,26 @@ impl SshConnectionHistory {
 
     /// Add a new connection record
     pub fn add_record(&self, record: SshConnectionRecord) -> Result<()> {
-        let mut txn = self.env.begin_rw_txn()
-            .with_context(|| "Failed to begin write transaction")?;
+        let mut txn = self.env.begin_rw_txn().with_context(|| "Failed to begin write transaction")?;
 
         // Generate key: IP address + timestamp (for uniqueness and sorting)
-        let key = format!("{}_{}", record.ip_address, record.timestamp.timestamp_nanos_opt().unwrap_or(0));
-        
+        let key = format!(
+            "{}_{}",
+            record.ip_address,
+            record.timestamp.timestamp_nanos_opt().unwrap_or(0)
+        );
+
         // Serialize record
-        let value = serde_json::to_vec(&record)
+        let value = serde_json
+            ::to_vec(&record)
             .with_context(|| "Failed to serialize SSH connection record")?;
 
         // Store record
-        txn.put(self.db, &key, &value, WriteFlags::empty())
+        txn
+            .put(self.db, &key, &value, WriteFlags::empty())
             .with_context(|| "Failed to store SSH connection record")?;
 
-        txn.commit()
-            .with_context(|| "Failed to commit SSH connection record")?;
+        txn.commit().with_context(|| "Failed to commit SSH connection record")?;
 
         debug!("Added SSH connection record for {}", record.ip_address);
 
@@ -129,22 +136,20 @@ impl SshConnectionHistory {
 
     /// Get connection history for a specific IP address
     pub fn get_history_for_ip(&self, ip: &IpAddr) -> Result<Vec<SshConnectionRecord>> {
-        let txn = self.env.begin_ro_txn()
-            .with_context(|| "Failed to begin read transaction")?;
+        let txn = self.env.begin_ro_txn().with_context(|| "Failed to begin read transaction")?;
 
-        let mut cursor = txn.open_ro_cursor(self.db)
-            .with_context(|| "Failed to open cursor")?;
+        let mut cursor = txn.open_ro_cursor(self.db).with_context(|| "Failed to open cursor")?;
 
         let mut records = Vec::new();
         let ip_prefix = format!("{ip}_");
 
         // Iterate through records with matching IP prefix
         for (key, value) in cursor.iter() {
-            let key_str = std::str::from_utf8(key)
-                .with_context(|| "Failed to parse key as UTF-8")?;
+            let key_str = std::str::from_utf8(key).with_context(|| "Failed to parse key as UTF-8")?;
 
             if key_str.starts_with(&ip_prefix) {
-                let record: SshConnectionRecord = serde_json::from_slice(value)
+                let record: SshConnectionRecord = serde_json
+                    ::from_slice(value)
                     .with_context(|| "Failed to deserialize SSH connection record")?;
                 records.push(record);
             }
@@ -159,14 +164,16 @@ impl SshConnectionHistory {
     /// Clean up old records (older than MAX_RECORD_AGE_DAYS)
     fn cleanup_old_records(&self) -> Result<()> {
         let cutoff_time = Utc::now() - Duration::days(MAX_RECORD_AGE_DAYS);
-        let txn = self.env.begin_rw_txn()
+        let txn = self.env
+            .begin_rw_txn()
             .with_context(|| "Failed to begin write transaction for cleanup")?;
 
         let mut keys_to_delete = Vec::new();
 
         // Separate scope for cursor to avoid borrow checker issues
         {
-            let mut cursor = txn.open_ro_cursor(self.db)
+            let mut cursor = txn
+                .open_ro_cursor(self.db)
                 .with_context(|| "Failed to open cursor for cleanup")?;
 
             // Find old records
@@ -192,8 +199,7 @@ impl SshConnectionHistory {
             // For now, we'll skip deletion to avoid complexity
         }
 
-        txn.commit()
-            .with_context(|| "Failed to commit cleanup transaction")?;
+        txn.commit().with_context(|| "Failed to commit cleanup transaction")?;
 
         if deleted_count > 0 {
             info!("Cleaned up {} old SSH connection records", deleted_count);
@@ -205,12 +211,13 @@ impl SshConnectionHistory {
     /// Clean up excess records for a specific IP (keep only MAX_RECORDS_PER_IP)
     fn cleanup_ip_records(&self, ip: &IpAddr) -> Result<()> {
         let records = self.get_history_for_ip(ip)?;
-        
+
         if records.len() <= MAX_RECORDS_PER_IP {
             return Ok(());
         }
 
-        let mut txn = self.env.begin_rw_txn()
+        let mut txn = self.env
+            .begin_rw_txn()
             .with_context(|| "Failed to begin write transaction for IP cleanup")?;
 
         // Keep only the newest MAX_RECORDS_PER_IP records
@@ -218,16 +225,21 @@ impl SshConnectionHistory {
         let mut deleted_count = 0;
 
         for record in records_to_delete {
-            let key = format!("{}_{}", record.ip_address, record.timestamp.timestamp_nanos_opt().unwrap_or(0));
-            
+            let key = format!(
+                "{}_{}",
+                record.ip_address,
+                record.timestamp.timestamp_nanos_opt().unwrap_or(0)
+            );
+
             match txn.del(self.db, &key, None) {
-                Ok(_) => deleted_count += 1,
+                Ok(_) => {
+                    deleted_count += 1;
+                }
                 Err(e) => warn!("Failed to delete excess record for IP {}: {}", ip, e),
             }
         }
 
-        txn.commit()
-            .with_context(|| "Failed to commit IP cleanup transaction")?;
+        txn.commit().with_context(|| "Failed to commit IP cleanup transaction")?;
 
         if deleted_count > 0 {
             debug!("Cleaned up {} excess records for IP {}", deleted_count, ip);
@@ -239,11 +251,9 @@ impl SshConnectionHistory {
     /// Get total number of stored records
     #[allow(dead_code)]
     pub fn get_total_records(&self) -> Result<usize> {
-        let txn = self.env.begin_ro_txn()
-            .with_context(|| "Failed to begin read transaction")?;
+        let txn = self.env.begin_ro_txn().with_context(|| "Failed to begin read transaction")?;
 
-        let mut cursor = txn.open_ro_cursor(self.db)
-            .with_context(|| "Failed to open cursor")?;
+        let mut cursor = txn.open_ro_cursor(self.db).with_context(|| "Failed to open cursor")?;
 
         let count = cursor.iter().count();
         Ok(count)

@@ -27,21 +27,27 @@ mod ssh;
 
 use anyhow::Result;
 use clap::Parser;
-use tracing::{info, Level};
+use tracing::{ info, Level };
 use tracing_subscriber::fmt::format::FmtSpan;
 
 use config::Cli;
-use server::{create_dump_dir_if_needed, run_async_server, run_blocking_server};
-use core::{create_stats_state, save_stats_on_shutdown};
+use server::{ create_dump_dir_if_needed, run_async_server, run_blocking_server };
+use core::{ create_stats_state, save_stats_on_shutdown };
 use web::run_web_server;
-use dn42::{start_periodic_sync, initialize_dn42_manager, get_dn42_platform_info, is_dn42_online_mode, dn42_manager_maintenance};
-use ssh::{SshServer, server::SshServerConfig};
-use tokio::time::{interval, Duration};
+use dn42::{
+    start_periodic_sync,
+    initialize_dn42_manager,
+    get_dn42_platform_info,
+    is_dn42_online_mode,
+    dn42_manager_maintenance,
+};
+use ssh::{ SshServer, server::SshServerConfig };
+use tokio::time::{ interval, Duration };
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Cli::parse();
-    
+
     // Initialize logging
     let log_level = if args.trace {
         Level::TRACE
@@ -50,18 +56,15 @@ async fn main() -> Result<()> {
     } else {
         Level::INFO
     };
-    
-    tracing_subscriber::fmt()
-        .with_max_level(log_level)
-        .with_span_events(FmtSpan::CLOSE)
-        .init();
-    
+
+    tracing_subscriber::fmt().with_max_level(log_level).with_span_events(FmtSpan::CLOSE).init();
+
     // Create statistics state
     let stats = create_stats_state().await;
-    
+
     // Create dump directory if needed
     create_dump_dir_if_needed(args.dump_traffic, &args.dump_dir)?;
-    
+
     // Initialize DN42 manager (platform-aware)
     info!("Initializing DN42 system...");
     if let Err(e) = initialize_dn42_manager().await {
@@ -69,10 +72,15 @@ async fn main() -> Result<()> {
     } else {
         let platform_info = get_dn42_platform_info().await.unwrap_or("Unknown");
         let is_online = is_dn42_online_mode().await.unwrap_or(false);
-        info!("DN42 system initialized successfully - Platform: {}, Mode: {}", 
-              platform_info, if is_online { "Online" } else { "Git" });
+        info!("DN42 system initialized successfully - Platform: {}, Mode: {}", platform_info, if
+            is_online
+        {
+            "Online"
+        } else {
+            "Git"
+        });
     }
-    
+
     // Start DN42 sync task (Git mode) or maintenance task (Online mode)
     tokio::spawn(async move {
         if let Ok(is_online) = is_dn42_online_mode().await {
@@ -80,7 +88,7 @@ async fn main() -> Result<()> {
                 info!("Starting DN42 online mode maintenance task (every hour)");
                 let mut maintenance_interval = interval(Duration::from_secs(3600)); // 1 hour
                 maintenance_interval.tick().await; // Skip the first tick
-                
+
                 loop {
                     maintenance_interval.tick().await;
                     info!("Running scheduled DN42 online maintenance");
@@ -97,7 +105,7 @@ async fn main() -> Result<()> {
             start_periodic_sync().await;
         }
     });
-    
+
     // Start web server
     let web_stats = stats.clone();
     let web_port = args.web_port;
@@ -107,7 +115,7 @@ async fn main() -> Result<()> {
             tracing::error!("Web server error: {}", e);
         }
     });
-    
+
     // Start SSH server if enabled
     if args.enable_ssh {
         let ssh_config = SshServerConfig {
@@ -115,7 +123,7 @@ async fn main() -> Result<()> {
             port: args.ssh_port,
             cache_dir: args.ssh_cache_dir.clone(),
         };
-        
+
         tokio::spawn(async move {
             info!("Starting SSH server on port {}", ssh_config.port);
             let mut ssh_server = match SshServer::new(ssh_config) {
@@ -125,34 +133,48 @@ async fn main() -> Result<()> {
                     return;
                 }
             };
-            
+
             if let Err(e) = ssh_server.initialize().await {
                 tracing::error!("Failed to initialize SSH server: {}", e);
                 return;
             }
-            
+
             if let Err(e) = ssh_server.start().await {
                 tracing::error!("SSH server error: {}", e);
             }
         });
     }
-    
+
     // Create server address
     let addr = format!("{}:{}", args.host, args.port);
     info!("Starting WHOIS server on {}", addr);
-    
+
     if args.use_blocking {
         info!("Using blocking TCP connections (non-async)");
-        run_blocking_server(&addr, args.timeout, args.dump_traffic, &args.dump_dir, args.enable_color)?;
+        run_blocking_server(
+            &addr,
+            args.timeout,
+            args.dump_traffic,
+            &args.dump_dir,
+            args.enable_color
+        )?;
         return Ok(());
     }
-    
+
     // Start async server
-    let result = run_async_server(&addr, args.max_connections, args.timeout, args.dump_traffic, &args.dump_dir, stats.clone(), args.enable_color).await;
-    
+    let result = run_async_server(
+        &addr,
+        args.max_connections,
+        args.timeout,
+        args.dump_traffic,
+        &args.dump_dir,
+        stats.clone(),
+        args.enable_color
+    ).await;
+
     // Save stats on shutdown
     info!("Saving statistics before shutdown...");
     save_stats_on_shutdown(&stats).await;
-    
+
     result
 }

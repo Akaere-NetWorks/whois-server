@@ -18,16 +18,16 @@
 
 pub fn generate_help_response() -> String {
     let mut output = String::new();
-    
+
     output.push_str("WHOIS Server - Query Help\n");
     output.push_str("=".repeat(60).as_str());
     output.push('\n');
     output.push('\n');
-    
+
     output.push_str("This WHOIS server supports multiple query types and services.\n");
     output.push_str("Simply type your query followed by the appropriate suffix.\n");
     output.push('\n');
-    
+
     output.push_str("BASIC QUERIES:\n");
     output.push_str("-".repeat(40).as_str());
     output.push('\n');
@@ -37,7 +37,7 @@ pub fn generate_help_response() -> String {
     output.push_str("AS15169             - ASN (Autonomous System) information\n");
     output.push_str("192.168.0.0/24      - CIDR block information\n");
     output.push('\n');
-    
+
     output.push_str("ENHANCED QUERIES:\n");
     output.push_str("-".repeat(40).as_str());
     output.push('\n');
@@ -50,7 +50,7 @@ pub fn generate_help_response() -> String {
     output.push_str("AS15169-PREFIXES    - List all prefixes announced by ASN\n");
     output.push_str("example: AS15169-PREFIXES\n");
     output.push('\n');
-    
+
     output.push_str("GEO-LOCATION SERVICES:\n");
     output.push_str("-".repeat(40).as_str());
     output.push('\n');
@@ -60,7 +60,7 @@ pub fn generate_help_response() -> String {
     output.push_str("8.8.8.8-RIRGEO      - RIR geolocation (registry data)\n");
     output.push_str("example: 8.8.8.8-RIRGEO\n");
     output.push('\n');
-    
+
     output.push_str("ROUTING & REGISTRY SERVICES:\n");
     output.push_str("-".repeat(40).as_str());
     output.push('\n');
@@ -79,7 +79,7 @@ pub fn generate_help_response() -> String {
     output.push_str("AS15169-MANRS       - MANRS (routing security) compliance\n");
     output.push_str("example: AS15169-MANRS\n");
     output.push('\n');
-    
+
     output.push_str("NETWORK DIAGNOSTICS:\n");
     output.push_str("-".repeat(40).as_str());
     output.push('\n');
@@ -90,7 +90,7 @@ pub fn generate_help_response() -> String {
     output.push_str("google.com-TRACEROUTE - Alternative traceroute format\n");
     output.push_str("example: google.com-TRACE\n");
     output.push('\n');
-    
+
     output.push_str("SECURITY & CERTIFICATES:\n");
     output.push_str("-".repeat(40).as_str());
     output.push('\n');
@@ -100,7 +100,7 @@ pub fn generate_help_response() -> String {
     output.push_str("google.com-CRT      - Certificate Transparency logs\n");
     output.push_str("example: google.com-CRT\n");
     output.push('\n');
-    
+
     output.push_str("GAMING SERVICES:\n");
     output.push_str("-".repeat(40).as_str());
     output.push('\n');
@@ -114,7 +114,7 @@ pub fn generate_help_response() -> String {
     output.push_str("Counter-Strike-STEAMSEARCH - Steam game search\n");
     output.push_str("example: Counter-Strike-STEAMSEARCH\n");
     output.push('\n');
-    
+
     output.push_str("MEDIA & ENTERTAINMENT:\n");
     output.push_str("-".repeat(40).as_str());
     output.push('\n');
@@ -131,7 +131,7 @@ pub fn generate_help_response() -> String {
     output.push_str("Hatsune-WIKIPEDIA   - Wikipedia article lookup\n");
     output.push_str("example: Rust_programming_language-WIKIPEDIA\n");
     output.push('\n');
-    
+
     output.push_str("PACKAGE REPOSITORIES:\n");
     output.push_str("-".repeat(40).as_str());
     output.push('\n');
@@ -162,7 +162,7 @@ pub fn generate_help_response() -> String {
     output.push_str("htop-AOSC           - AOSC OS package information\n");
     output.push_str("example: htop-AOSC\n");
     output.push('\n');
-    
+
     output.push_str("DEVELOPMENT SERVICES:\n");
     output.push_str("-".repeat(40).as_str());
     output.push('\n');
@@ -170,7 +170,7 @@ pub fn generate_help_response() -> String {
     output.push_str("microsoft/vscode-GITHUB - GitHub repository info\n");
     output.push_str("example: torvalds-GITHUB\n");
     output.push('\n');
-    
+
     output.push_str("DN42 NETWORK QUERIES:\n");
     output.push_str("-".repeat(40).as_str());
     output.push('\n');
@@ -179,13 +179,13 @@ pub fn generate_help_response() -> String {
     output.push_str("172.20.0.0/16       - DN42 network blocks\n");
     output.push_str("fd42::/16           - DN42 IPv6 networks\n");
     output.push('\n');
-    
+
     output.push_str("SPECIAL COMMANDS:\n");
     output.push_str("-".repeat(40).as_str());
     output.push('\n');
     output.push_str("HELP                - Show this help message\n");
     output.push('\n');
-    
+
     output.push_str("WHOIS-COLOR PROTOCOL:\n");
     output.push_str("-".repeat(40).as_str());
     output.push('\n');
@@ -193,7 +193,7 @@ pub fn generate_help_response() -> String {
     output.push_str("Send 'X-WHOIS-COLOR-PROBE: 1' to detect color support.\n");
     output.push_str("Use 'X-WHOIS-COLOR: ripe' or 'X-WHOIS-COLOR: bgptools' for colored output.\n");
     output.push('\n');
-    
+
     output.push_str("EXAMPLES:\n");
     output.push_str("-".repeat(40).as_str());
     output.push('\n');
@@ -221,7 +221,7 @@ pub fn generate_help_response() -> String {
     output.push_str("echo -e \"X-WHOIS-COLOR-PROBE: 1\\r\\n\\r\\n\" | nc whois.akae.re 43\n");
     output.push_str("echo -e \"X-WHOIS-COLOR: ripe\\r\\nAS15169\\r\\n\" | nc whois.akae.re 43\n");
     output.push('\n');
-    
+
     output.push_str("WEB DASHBOARD:\n");
     output.push_str("-".repeat(40).as_str());
     output.push('\n');
@@ -230,7 +230,7 @@ pub fn generate_help_response() -> String {
     output.push_str("- Light/dark theme support\n");
     output.push_str("- Interactive query builder\n");
     output.push('\n');
-    
+
     output.push_str("SERVER INFORMATION:\n");
     output.push_str("-".repeat(40).as_str());
     output.push('\n');
@@ -241,6 +241,6 @@ pub fn generate_help_response() -> String {
     output.push('\n');
     output.push_str("% This help information is provided by WHOIS server\n");
     output.push_str("% For more information, visit the web dashboard\n");
-    
+
     output
 }

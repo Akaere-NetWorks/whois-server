@@ -23,7 +23,7 @@ pub use services::{
 #[cfg(test)]
 mod tests {
     use super::formatters::format_rir_geo_response;
-    use super::types::{RirGeoResponse, RirGeoData, RirGeoResource, RirGeoParameters};
+    use super::types::{ RirGeoResponse, RirGeoData, RirGeoResource, RirGeoParameters };
 
     #[test]
     fn test_format_rir_geo_response_empty() {
@@ -43,23 +43,23 @@ mod tests {
             status_code: 200,
             time: "2025-06-08T18:05:15.809098".to_string(),
         };
-        
+
         let formatted = format_rir_geo_response("2001:67c:2e8::/48", &response).unwrap();
         assert!(formatted.contains("% RIPE NCC STAT RIR Geographic Query"));
         assert!(formatted.contains("% Query: 2001:67c:2e8::/48"));
         assert!(formatted.contains("% No RIR geographic data available"));
     }
-    
+
     #[test]
     fn test_format_rir_geo_response_with_data() {
         let response = RirGeoResponse {
             data: Some(RirGeoData {
-                located_resources: Some(vec![
-                    RirGeoResource {
+                located_resources: Some(
+                    vec![RirGeoResource {
                         resource: "2001:67c:2e8::/48".to_string(),
                         location: "NL".to_string(),
-                    }
-                ]),
+                    }]
+                ),
                 result_time: "2025-06-07T00:00:00".to_string(),
                 parameters: RirGeoParameters {
                     resource: "2001:67c:2e8::/48".to_string(),
@@ -83,7 +83,7 @@ mod tests {
             status_code: 200,
             time: "2025-06-08T18:05:15.809098".to_string(),
         };
-        
+
         let formatted = format_rir_geo_response("2001:67c:2e8::/48", &response).unwrap();
         assert!(formatted.contains("% RIPE NCC STAT RIR Geographic Query"));
         assert!(formatted.contains("% Query: 2001:67c:2e8::/48"));
@@ -92,4 +92,4 @@ mod tests {
         assert!(formatted.contains("NL"));
         assert!(formatted.contains("% Total located resources: 1"));
     }
-} 
+}

@@ -16,16 +16,14 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-use axum::{
-    extract::State,
-    response::{Html, IntoResponse, Json},
-    routing::get,
-    Router,
-};
+use axum::{ extract::State, response::{ Html, IntoResponse, Json }, routing::get, Router };
 use tower_http::cors::CorsLayer;
-use crate::core::{StatsState, get_stats_response};
+use crate::core::{ StatsState, get_stats_response };
 
-pub async fn run_web_server(stats: StatsState, port: u16) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn run_web_server(
+    stats: StatsState,
+    port: u16
+) -> Result<(), Box<dyn std::error::Error>> {
     let app = Router::new()
         .route("/", get(dashboard))
         .route("/api/stats", get(get_stats_api))
@@ -38,7 +36,8 @@ pub async fn run_web_server(stats: StatsState, port: u16) -> Result<(), Box<dyn 
 }
 
 async fn dashboard() -> impl IntoResponse {
-    let html = r#"
+    let html =
+        r#"
 <!DOCTYPE html>
 <html lang="en" data-theme="dark" id="html-root">
 <head>
@@ -645,4 +644,4 @@ async fn get_stats_api(State(stats): State<StatsState>) -> impl IntoResponse {
     match get_stats_response(&stats).await {
         response => Json(response),
     }
-} 
+}
