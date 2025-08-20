@@ -43,6 +43,7 @@ pub enum QueryType {
     GitHub(String), // For queries ending with -GITHUB (GitHub users/repos)
     Wikipedia(String), // For queries ending with -WIKIPEDIA (Wikipedia articles)
     Lyric(String), // For queries ending with -LYRIC (Luotianyi random lyrics)
+    Desc(String), // For queries ending with -DESC (show only descr fields)
     Meal, // For meal suggestions (今天吃什么 or -MEAL)
     Help, // For HELP queries (show available query types)
     Unknown(String),
@@ -273,6 +274,12 @@ pub fn analyze_query(query: &str) -> QueryType {
     if query.to_uppercase().ends_with("-LYRIC") {
         let base_query = &query[..query.len() - 6]; // Remove "-LYRIC" suffix
         return QueryType::Lyric(base_query.to_string());
+    }
+
+    // Check if it's a description-only query
+    if query.to_uppercase().ends_with("-DESC") {
+        let base_query = &query[..query.len() - 5]; // Remove "-DESC" suffix
+        return QueryType::Desc(base_query.to_string());
     }
 
     // Check if it's a BGP Tools query

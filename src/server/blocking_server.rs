@@ -367,6 +367,14 @@ pub fn run_blocking_server(
                             "Meal suggestion queries (今天吃什么/-MEAL) are only supported on the async server.\nPlease use the main server (port 43) for meal queries.\n".to_string()
                         )
                     }
+                    QueryType::Desc(base_query) => {
+                        info!("Processing description query: {}", base_query);
+                        // Description queries require async operations
+                        // Return a notice that description queries require async server
+                        Ok(
+                            format!("Description queries (-DESC) are only supported on the async server.\nPlease use the main server (port 43) for description queries.\nQuery: {}\n", base_query)
+                        )
+                    }
                     QueryType::Help => {
                         info!("Processing HELP query");
                         Ok(crate::services::help::generate_help_response())

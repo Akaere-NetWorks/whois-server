@@ -781,6 +781,31 @@ impl Colorizer {
                             }
                         }
                     }
+                    QueryType::Desc(_) => {
+                        // Description query - highlight descriptions and headers
+                        if line.contains("Description Query Results for:") {
+                            format!("\x1b[1;96m{}\x1b[0m", line) // Bold cyan for header
+                        } else if line.contains("descriptions found") || line.contains("description found") || line.contains("remarks found") {
+                            format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for count info
+                        } else if line.contains("descr:") || line.contains("descr[") || line.contains("remarks:") || line.contains("description:") {
+                            // Extract and highlight the description value
+                            if let Some(colon_pos) = line.find(':') {
+                                let attr = &line[..=colon_pos];
+                                let value = &line[colon_pos + 1..];
+                                format!("\x1b[94m{}\x1b[92m{}\x1b[0m", attr, value) // Blue for attr, green for description
+                            } else {
+                                format!("\x1b[92m{}\x1b[0m", line) // Green for description content
+                            }
+                        } else if line.contains("Total descriptions:") || line.contains("Total fields:") {
+                            format!("\x1b[93m{}\x1b[0m", line) // Yellow for summary
+                        } else if line.contains("No description fields found") || line.contains("No description or remarks fields found") {
+                            format!("\x1b[91m{}\x1b[0m", line) // Red for no results
+                        } else if line.starts_with("%") {
+                            format!("\x1b[90m{}\x1b[0m", line) // Gray for comments
+                        } else {
+                            line.to_string()
+                        }
+                    }
                     QueryType::Meal => {
                         // Meal suggestions - food-themed colorization
                         if line.contains("Meal Information") {
@@ -1659,6 +1684,31 @@ impl Colorizer {
                             } else {
                                 line.to_string()
                             }
+                        }
+                    }
+                    QueryType::Desc(_) => {
+                        // Description query - BGPTools style with highlighted backgrounds
+                        if line.contains("Description Query Results for:") {
+                            format!("\x1b[1;46m\x1b[30m{}\x1b[0m", line) // Black text on cyan background for header
+                        } else if line.contains("descriptions found") || line.contains("description found") || line.contains("remarks found") {
+                            format!("\x1b[1;45m\x1b[37m{}\x1b[0m", line) // White text on magenta background for count info
+                        } else if line.contains("descr:") || line.contains("descr[") || line.contains("remarks:") || line.contains("description:") {
+                            // Extract and highlight the description value with background
+                            if let Some(colon_pos) = line.find(':') {
+                                let attr = &line[..=colon_pos];
+                                let value = &line[colon_pos + 1..];
+                                format!("\x1b[1;44m\x1b[37m{}\x1b[0m\x1b[1;42m\x1b[30m{}\x1b[0m", attr, value) // White on blue for attr, black on green for description
+                            } else {
+                                format!("\x1b[1;42m\x1b[30m{}\x1b[0m", line) // Black text on green background for description content
+                            }
+                        } else if line.contains("Total descriptions:") || line.contains("Total fields:") {
+                            format!("\x1b[1;43m\x1b[30m{}\x1b[0m", line) // Black text on yellow background for summary
+                        } else if line.contains("No description fields found") || line.contains("No description or remarks fields found") {
+                            format!("\x1b[1;41m\x1b[37m{}\x1b[0m", line) // White text on red background for no results
+                        } else if line.starts_with("%") {
+                            format!("\x1b[90m{}\x1b[0m", line) // Gray for comments
+                        } else {
+                            line.to_string()
                         }
                     }
                     QueryType::Meal => {

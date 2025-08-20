@@ -40,6 +40,7 @@ use crate::services::{
     process_github_query,
     process_wikipedia_query,
     process_lyric_query,
+    process_desc_query,
     query_random_meal,
     query_whois,
     query_with_iana_referral,
@@ -225,6 +226,10 @@ pub async fn process_query(
         QueryType::Lyric(base_query) => {
             debug!("Processing Luotianyi lyric query: {}", base_query);
             process_lyric_query(&format!("{}-LYRIC", base_query)).await
+        }
+        QueryType::Desc(base_query) => {
+            debug!("Processing description query: {}", base_query);
+            process_desc_query(base_query).await
         }
         QueryType::Meal => {
             debug!("Processing meal suggestion query");
