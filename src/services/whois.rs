@@ -35,20 +35,35 @@ pub async fn query_with_iana_referral(query: &str) -> Result<String> {
     match query_whois(query, &whois_server, DEFAULT_WHOIS_PORT).await {
         Ok(response) => {
             // Check if response indicates transferred/no data and try RADB fallback
-            if should_try_radb_fallback(&response) {
+            if should_try_radb_fallback(&response, query) {
                 debug!("Primary response suggests transferred resource, trying RADB fallback for: {}", query);
                 match query_whois(query, RADB_WHOIS_SERVER, RADB_WHOIS_PORT).await {
                     Ok(radb_response) => {
-                        if is_meaningful_response(&radb_response) {
+                        if is_meaningful_response(&radb_response, query) {
                             debug!("RADB provided meaningful data for: {}", query);
                             Ok(radb_response)
                         } else {
-                            Ok(response) // Return original response if RADB doesn't help
+                            debug!(
+                                "RADB response not meaningful, combining with original response"
+                            );
+                            // Combine both responses with a note about the fallback attempt
+                            let combined = format!(
+                                "{}\n\n% Additional query attempted via RADB:\n{}\n% End of RADB response\n",
+                                response.trim(),
+                                radb_response.trim()
+                            );
+                            Ok(combined)
                         }
                     }
                     Err(e) => {
                         debug!("RADB query failed for {}: {}", query, e);
-                        Ok(response) // Return original response if RADB fails
+                        // Add a note about the failed fallback attempt
+                        let enhanced = format!(
+                            "{}\n\n% Note: RADB fallback attempted but failed: {}\n",
+                            response.trim(),
+                            e
+                        );
+                        Ok(enhanced)
                     }
                 }
             } else {
@@ -270,7 +285,7 @@ pub fn extract_whois_server(response: &str) -> Option<String> {
     None
 }
 
-fn should_try_radb_fallback(response: &str) -> bool {
+fn should_try_radb_fallback(response: &str, query: &str) -> bool {
     let response_lower = response.to_lowercase();
 
     // Check for indicators that suggest transferred resources or empty responses
@@ -308,6 +323,23 @@ fn should_try_radb_fallback(response: &str) -> bool {
         return true;
     }
 
+    // Check if response lacks routing-specific information (suggests network registry vs routing registry)
+    let has_routing_info =
+        response_lower.contains("route:") ||
+        response_lower.contains("descr:") ||
+        response_lower.contains("origin:") ||
+        response_lower.contains("as-path:") ||
+        response_lower.contains("source:") ||
+        response_lower.contains("remarks:");
+
+    // If query looks like a CIDR block but response has no routing info, try RADB
+    if (query.contains('/') || query.contains('-')) && !has_routing_info {
+        debug!(
+            "Query appears to be for routing info but response lacks routing fields, suggesting RADB fallback"
+        );
+        return true;
+    }
+
     // Check for transfer indicators
     for indicator in &transfer_indicators {
         if response_lower.contains(indicator) {
@@ -319,7 +351,7 @@ fn should_try_radb_fallback(response: &str) -> bool {
     false
 }
 
-fn is_meaningful_response(response: &str) -> bool {
+fn is_meaningful_response(response: &str, query: &str) -> bool {
     let meaningful_lines: Vec<&str> = response
         .lines()
         .filter(|line| {
@@ -336,5 +368,5 @@ fn is_meaningful_response(response: &str) -> bool {
     // Consider response meaningful if it has substantive content
     meaningful_lines.len() >= 5 &&
         response.len() > 200 && // At least 200 characters of content
-        !should_try_radb_fallback(response) // And doesn't look like a transfer notice
+        !should_try_radb_fallback(response, query) // And doesn't look like a transfer notice
 }
