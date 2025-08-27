@@ -1488,6 +1488,64 @@ impl Colorizer {
                             line.to_string()
                         }
                     }
+                    QueryType::Alma(_) => {
+                        // AlmaLinux packages - RPM-based coloring
+                        if line.contains("AlmaLinux Package Information:") {
+                            format!("\x1b[1;94m{}\x1b[0m", line) // Bold blue for headers
+                        } else if line.contains("package:") {
+                            format!("\x1b[1;92m{}\x1b[0m", line) // Bold green for package name
+                        } else if line.contains("version:") || line.contains("release:") {
+                            format!("\x1b[93m{}\x1b[0m", line) // Yellow for version info
+                        } else if line.contains("architecture:") {
+                            format!("\x1b[96m{}\x1b[0m", line) // Cyan for architecture
+                        } else if line.contains("summary:") || line.contains("description:") {
+                            format!("\x1b[95m{}\x1b[0m", line) // Magenta for description
+                        } else if line.contains("license:") {
+                            format!("\x1b[94m{}\x1b[0m", line) // Blue for license
+                        } else if line.contains("size:") {
+                            format!("\x1b[91m{}\x1b[0m", line) // Red for size
+                        } else if line.contains("source-rpm:") {
+                            format!("\x1b[92m{}\x1b[0m", line) // Green for source RPM
+                        } else if line.contains("repository:") {
+                            format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for repository
+                        } else if line.starts_with("%") {
+                            format!("\x1b[90m{}\x1b[0m", line) // Gray for comments
+                        } else {
+                            line.to_string()
+                        }
+                    }
+                    QueryType::OpenWrt(_) => {
+                        // OpenWrt packages - embedded system coloring
+                        if line.contains("OpenWrt Package Information:") {
+                            format!("\x1b[1;91m{}\x1b[0m", line) // Bold red for headers
+                        } else if line.contains("package:") {
+                            format!("\x1b[1;94m{}\x1b[0m", line) // Bold blue for package name
+                        } else if line.contains("version:") {
+                            format!("\x1b[93m{}\x1b[0m", line) // Yellow for version
+                        } else if line.contains("section:") {
+                            format!("\x1b[96m{}\x1b[0m", line) // Cyan for section
+                        } else if line.contains("description:") {
+                            format!("\x1b[95m{}\x1b[0m", line) // Magenta for description
+                        } else if line.contains("architecture:") {
+                            format!("\x1b[92m{}\x1b[0m", line) // Green for architecture
+                        } else if line.contains("feed:") {
+                            format!("\x1b[94m{}\x1b[0m", line) // Blue for feed
+                        } else if line.contains("maintainer:") {
+                            format!("\x1b[95m{}\x1b[0m", line) // Magenta for maintainer
+                        } else if line.contains("license:") {
+                            format!("\x1b[91m{}\x1b[0m", line) // Red for license
+                        } else if line.contains("depends:") {
+                            format!("\x1b[93m{}\x1b[0m", line) // Yellow for dependencies
+                        } else if line.contains("size:") {
+                            format!("\x1b[96m{}\x1b[0m", line) // Cyan for size
+                        } else if line.contains("package-format:") && line.contains("IPK") {
+                            format!("\x1b[1;92m{}\x1b[0m", line) // Bright green for IPK format
+                        } else if line.starts_with("%") {
+                            format!("\x1b[90m{}\x1b[0m", line) // Gray for comments
+                        } else {
+                            line.to_string()
+                        }
+                    }
                     QueryType::Manrs(_) => {
                         // MANRS - highlight compliance status
                         if line.contains("compliant") || line.contains("implemented") {

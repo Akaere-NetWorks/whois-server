@@ -31,12 +31,14 @@ pub enum QueryType {
     Imdb(String), // For queries ending with -IMDB (IMDb movies/TV shows)
     ImdbSearch(String), // For queries ending with -IMDBSEARCH (IMDb title search)
     Acgc(String), // For queries ending with -ACGC (Anime/Comic/Game Characters)
+    Alma(String), // For queries ending with -ALMA (AlmaLinux packages)
     Aosc(String), // For queries ending with -AOSC (AOSC packages)
     Aur(String), // For queries ending with -AUR (Arch User Repository)
     Debian(String), // For queries ending with -DEBIAN (Debian packages)
     Ubuntu(String), // For queries ending with -UBUNTU (Ubuntu packages)
     NixOs(String), // For queries ending with -NIXOS (NixOS packages)
     OpenSuse(String), // For queries ending with -OPENSUSE (OpenSUSE packages)
+    OpenWrt(String), // For queries ending with -OPENWRT (OpenWrt packages)
     Npm(String), // For queries ending with -NPM (NPM packages)
     Pypi(String), // For queries ending with -PYPI (PyPI packages)
     Cargo(String), // For queries ending with -CARGO (Rust crates)
@@ -204,6 +206,12 @@ pub fn analyze_query(query: &str) -> QueryType {
         return QueryType::Acgc(base_query.to_string());
     }
 
+    // Check if it's an AlmaLinux package query
+    if query.to_uppercase().ends_with("-ALMA") {
+        let base_query = &query[..query.len() - 5]; // Remove "-ALMA" suffix
+        return QueryType::Alma(base_query.to_string());
+    }
+
     // Check if it's an AOSC package query
     if query.to_uppercase().ends_with("-AOSC") {
         let base_query = &query[..query.len() - 5]; // Remove "-AOSC" suffix
@@ -238,6 +246,12 @@ pub fn analyze_query(query: &str) -> QueryType {
     if query.to_uppercase().ends_with("-OPENSUSE") {
         let base_query = &query[..query.len() - 9]; // Remove "-OPENSUSE" suffix
         return QueryType::OpenSuse(base_query.to_string());
+    }
+
+    // Check if it's an OpenWrt package query
+    if query.to_uppercase().ends_with("-OPENWRT") {
+        let base_query = &query[..query.len() - 8]; // Remove "-OPENWRT" suffix
+        return QueryType::OpenWrt(base_query.to_string());
     }
 
     // Check if it's an NPM package query

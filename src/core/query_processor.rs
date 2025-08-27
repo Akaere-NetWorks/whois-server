@@ -28,12 +28,14 @@ use crate::services::{
     process_imdb_query,
     process_imdb_search_query,
     process_acgc_query,
+    process_alma_query,
     process_aosc_query,
     process_aur_query,
     process_debian_query,
     process_ubuntu_query,
     process_nixos_query,
     process_opensuse_query,
+    process_openwrt_query,
     process_npm_query,
     process_pypi_query,
     process_cargo_query,
@@ -179,6 +181,10 @@ pub async fn process_query(
             debug!("Processing ACGC character query: {}", base_query);
             process_acgc_query(&format!("{}-ACGC", base_query)).await
         }
+        QueryType::Alma(base_query) => {
+            debug!("Processing AlmaLinux package query: {}", base_query);
+            process_alma_query(base_query).await
+        }
         QueryType::Aosc(base_query) => {
             debug!("Processing AOSC package query: {}", base_query);
             process_aosc_query(base_query).await
@@ -202,6 +208,10 @@ pub async fn process_query(
         QueryType::OpenSuse(base_query) => {
             debug!("Processing OpenSUSE package query: {}", base_query);
             process_opensuse_query(base_query).await
+        }
+        QueryType::OpenWrt(base_query) => {
+            debug!("Processing OpenWrt package query: {}", base_query);
+            process_openwrt_query(base_query).await
         }
         QueryType::Npm(base_query) => {
             debug!("Processing NPM package query: {}", base_query);

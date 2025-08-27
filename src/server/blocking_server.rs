@@ -263,6 +263,14 @@ pub fn run_blocking_server(
                             format!("ACGC character queries are only supported on the async server.\nPlease use the main server (port 43) for ACGC queries.\nQuery: {}\n", base_query)
                         )
                     }
+                    QueryType::Alma(base_query) => {
+                        info!("Processing AlmaLinux package query: {}", base_query);
+                        // AlmaLinux queries require async HTTP operations
+                        // Return a notice that AlmaLinux queries require async server
+                        Ok(
+                            format!("AlmaLinux package queries are only supported on the async server.\nPlease use the main server (port 43) for AlmaLinux queries.\nQuery: {}\n", base_query)
+                        )
+                    }
                     QueryType::Aosc(base_query) => {
                         info!("Processing AOSC package query: {}", base_query);
                         // AOSC queries require async HTTP operations
@@ -309,6 +317,14 @@ pub fn run_blocking_server(
                         // Return a notice that OpenSUSE queries require async server
                         Ok(
                             format!("OpenSUSE package queries are only supported on the async server.\nPlease use the main server (port 43) for OpenSUSE queries.\nQuery: {}\n", base_query)
+                        )
+                    }
+                    QueryType::OpenWrt(base_query) => {
+                        info!("Processing OpenWrt package query: {}", base_query);
+                        // OpenWrt queries require async HTTP operations
+                        // Return a notice that OpenWrt queries require async server
+                        Ok(
+                            format!("OpenWrt package queries are only supported on the async server.\nPlease use the main server (port 43) for OpenWrt queries.\nQuery: {}\n", base_query)
                         )
                     }
                     QueryType::Npm(base_query) => {
