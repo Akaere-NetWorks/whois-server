@@ -31,6 +31,7 @@ use crate::services::{
     process_aosc_query,
     process_aur_query,
     process_debian_query,
+    process_epel_query,
     process_ubuntu_query,
     process_nixos_query,
     process_opensuse_query,
@@ -293,6 +294,10 @@ pub async fn handle_connection(
         QueryType::Debian(base_query) => {
             debug!("Processing Debian package query: {}", base_query);
             process_debian_query(base_query).await
+        }
+        QueryType::Epel(base_query) => {
+            debug!("Processing EPEL package query: {}", base_query);
+            process_epel_query(base_query).await
         }
         QueryType::Ubuntu(base_query) => {
             debug!("Processing Ubuntu package query: {}", base_query);

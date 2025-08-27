@@ -1488,6 +1488,36 @@ impl Colorizer {
                             line.to_string()
                         }
                     }
+                    QueryType::Epel(_) => {
+                        // EPEL packages - Enterprise Linux additional packages coloring
+                        if line.contains("EPEL Package Information:") {
+                            format!("\x1b[1;96m{}\x1b[0m", line) // Bold cyan for headers
+                        } else if line.contains("package:") {
+                            format!("\x1b[1;93m{}\x1b[0m", line) // Bold yellow for package name
+                        } else if line.contains("version:") || line.contains("release:") {
+                            format!("\x1b[92m{}\x1b[0m", line) // Green for version info
+                        } else if line.contains("architecture:") {
+                            format!("\x1b[95m{}\x1b[0m", line) // Magenta for architecture
+                        } else if line.contains("summary:") || line.contains("description:") {
+                            format!("\x1b[94m{}\x1b[0m", line) // Blue for description
+                        } else if line.contains("license:") {
+                            format!("\x1b[96m{}\x1b[0m", line) // Cyan for license
+                        } else if line.contains("size:") {
+                            format!("\x1b[91m{}\x1b[0m", line) // Red for size
+                        } else if line.contains("source-rpm:") {
+                            format!("\x1b[93m{}\x1b[0m", line) // Yellow for source RPM
+                        } else if line.contains("repository:") && line.contains("EPEL") {
+                            format!("\x1b[1;92m{}\x1b[0m", line) // Bright green for EPEL repository
+                        } else if line.contains("compatible-with:") {
+                            format!("\x1b[1;94m{}\x1b[0m", line) // Bright blue for compatibility
+                        } else if line.contains("package-format:") && line.contains("RPM") {
+                            format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for RPM format
+                        } else if line.starts_with("%") {
+                            format!("\x1b[90m{}\x1b[0m", line) // Gray for comments
+                        } else {
+                            line.to_string()
+                        }
+                    }
                     QueryType::Alma(_) => {
                         // AlmaLinux packages - RPM-based coloring
                         if line.contains("AlmaLinux Package Information:") {

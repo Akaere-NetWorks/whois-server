@@ -35,6 +35,7 @@ pub enum QueryType {
     Aosc(String), // For queries ending with -AOSC (AOSC packages)
     Aur(String), // For queries ending with -AUR (Arch User Repository)
     Debian(String), // For queries ending with -DEBIAN (Debian packages)
+    Epel(String), // For queries ending with -EPEL (EPEL packages)
     Ubuntu(String), // For queries ending with -UBUNTU (Ubuntu packages)
     NixOs(String), // For queries ending with -NIXOS (NixOS packages)
     OpenSuse(String), // For queries ending with -OPENSUSE (OpenSUSE packages)
@@ -228,6 +229,12 @@ pub fn analyze_query(query: &str) -> QueryType {
     if query.to_uppercase().ends_with("-DEBIAN") {
         let base_query = &query[..query.len() - 7]; // Remove "-DEBIAN" suffix
         return QueryType::Debian(base_query.to_string());
+    }
+
+    // Check if it's an EPEL package query
+    if query.to_uppercase().ends_with("-EPEL") {
+        let base_query = &query[..query.len() - 5]; // Remove "-EPEL" suffix
+        return QueryType::Epel(base_query.to_string());
     }
 
     // Check if it's an Ubuntu package query

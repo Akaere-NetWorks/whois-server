@@ -295,6 +295,14 @@ pub fn run_blocking_server(
                             format!("Debian package queries are only supported on the async server.\nPlease use the main server (port 43) for Debian queries.\nQuery: {}\n", base_query)
                         )
                     }
+                    QueryType::Epel(base_query) => {
+                        info!("Processing EPEL package query: {}", base_query);
+                        // EPEL queries require async HTTP operations
+                        // Return a notice that EPEL queries require async server
+                        Ok(
+                            format!("EPEL package queries are only supported on the async server.\nPlease use the main server (port 43) for EPEL queries.\nQuery: {}\n", base_query)
+                        )
+                    }
                     QueryType::Ubuntu(base_query) => {
                         info!("Processing Ubuntu package query: {}", base_query);
                         // Ubuntu queries require async HTTP operations
