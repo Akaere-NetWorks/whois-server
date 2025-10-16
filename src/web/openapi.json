@@ -1,0 +1,300 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Akaere Networks WHOIS Server API",
+    "description": "High-performance WHOIS server with 25+ query types, comprehensive DN42 support, Steam/IMDb integration, 9 package repositories, and advanced network analysis",
+    "version": "0.2.0",
+    "license": {
+      "name": "AGPL-3.0-or-later",
+      "url": "https://www.gnu.org/licenses/agpl-3.0.html"
+    },
+    "contact": {
+      "name": "Akaere Networks",
+      "url": "https://whois.akae.re"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:9999",
+      "description": "Local development server"
+    },
+    {
+      "url": "https://whois.akae.re",
+      "description": "Production server"
+    }
+  ],
+  "paths": {
+    "/api/whois": {
+      "get": {
+        "summary": "Query WHOIS information (GET)",
+        "description": "Perform a WHOIS query using GET method with query parameter",
+        "tags": ["WHOIS"],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Query string (domain, IP, AS number, or special query type)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "examples": {
+              "domain": {
+                "value": "google.com",
+                "summary": "Domain lookup"
+              },
+              "ipv4": {
+                "value": "8.8.8.8",
+                "summary": "IPv4 address"
+              },
+              "asn": {
+                "value": "AS213605",
+                "summary": "ASN information"
+              },
+              "cidr": {
+                "value": "192.0.2.0/24",
+                "summary": "CIDR block query"
+              },
+              "steam": {
+                "value": "730-STEAM",
+                "summary": "Steam game info"
+              },
+              "imdb": {
+                "value": "Inception-IMDB",
+                "summary": "Movie information"
+              },
+              "package": {
+                "value": "rust-CARGO",
+                "summary": "Package repository"
+              },
+              "github": {
+                "value": "torvalds-GITHUB",
+                "summary": "GitHub user info"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful WHOIS query",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhoisResponse"
+                },
+                "examples": {
+                  "asn_query": {
+                    "summary": "ASN Query Result",
+                    "value": {
+                      "query": "AS213605",
+                      "fields": [
+                        {"name": "aut-num", "value": "AS213605"},
+                        {"name": "as-name", "value": "AKAERE"},
+                        {"name": "descr", "value": "Akaere Networks"},
+                        {"name": "org", "value": "ORG-AN123-RIPE"}
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query parameter"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      },
+      "post": {
+        "summary": "Query WHOIS information (POST)",
+        "description": "Perform a WHOIS query using POST method with JSON body",
+        "tags": ["WHOIS"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WhoisRequest"
+              },
+              "examples": {
+                "domain": {
+                  "value": {"query": "google.com"},
+                  "summary": "Domain lookup"
+                },
+                "steam": {
+                  "value": {"query": "730-STEAM"},
+                  "summary": "Steam game info"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful WHOIS query",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhoisResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/api/stats": {
+      "get": {
+        "summary": "Get server statistics",
+        "description": "Retrieve comprehensive server usage statistics including total requests, data served, and time-series data",
+        "tags": ["Statistics"],
+        "responses": {
+          "200": {
+            "description": "Server statistics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatsResponse"
+                },
+                "examples": {
+                  "stats": {
+                    "summary": "Example statistics",
+                    "value": {
+                      "total_requests": 150000,
+                      "total_kb_served": 524288.5,
+                      "daily_stats_24h": [
+                        {"date": "00:00", "requests": 245, "kb_served": 1024.3},
+                        {"date": "01:00", "requests": 189, "kb_served": 876.2}
+                      ],
+                      "daily_stats_30d": [
+                        {"date": "2025-09-16", "requests": 5420, "kb_served": 18432.1},
+                        {"date": "2025-09-17", "requests": 6130, "kb_served": 21567.8}
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "WhoisRequest": {
+        "type": "object",
+        "required": ["query"],
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Query string (domain, IP, AS number, or special query type)",
+            "examples": ["google.com", "8.8.8.8", "AS213605", "730-STEAM"]
+          }
+        }
+      },
+      "WhoisResponse": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "The original query string"
+          },
+          "fields": {
+            "type": "array",
+            "description": "Array of WHOIS fields in original order",
+            "items": {
+              "$ref": "#/components/schemas/WhoisField"
+            }
+          }
+        }
+      },
+      "WhoisField": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Field name"
+          },
+          "value": {
+            "type": "string",
+            "description": "Field value"
+          }
+        }
+      },
+      "StatsResponse": {
+        "type": "object",
+        "properties": {
+          "total_requests": {
+            "type": "integer",
+            "description": "Total number of requests served",
+            "example": 150000
+          },
+          "total_kb_served": {
+            "type": "number",
+            "format": "float",
+            "description": "Total data served in kilobytes",
+            "example": 524288.5
+          },
+          "daily_stats_24h": {
+            "type": "array",
+            "description": "Hourly statistics for the last 24 hours",
+            "items": {
+              "$ref": "#/components/schemas/DailyStats"
+            }
+          },
+          "daily_stats_30d": {
+            "type": "array",
+            "description": "Daily statistics for the last 30 days",
+            "items": {
+              "$ref": "#/components/schemas/DailyStats"
+            }
+          }
+        }
+      },
+      "DailyStats": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "description": "Date or time label (YYYY-MM-DD for 30d, HH:00 for 24h)",
+            "examples": ["2025-09-16", "14:00"]
+          },
+          "requests": {
+            "type": "integer",
+            "description": "Number of requests",
+            "example": 5420
+          },
+          "kb_served": {
+            "type": "number",
+            "format": "float",
+            "description": "Data served in kilobytes",
+            "example": 18432.1
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "WHOIS",
+      "description": "WHOIS query operations supporting 25+ query types including domains, IPs, ASNs, Steam games, IMDb movies, package repositories, and more"
+    },
+    {
+      "name": "Statistics",
+      "description": "Server usage statistics and metrics"
+    }
+  ],
+  "externalDocs": {
+    "description": "Query Type Documentation",
+    "url": "https://whois.akae.re"
+  }
+}

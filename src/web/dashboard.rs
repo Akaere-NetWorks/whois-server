@@ -40,6 +40,8 @@ pub async fn run_web_server(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let app = Router::new()
         .route("/", get(dashboard))
+        .route("/docs", get(api_docs))
+        .route("/api/openapi.json", get(openapi_spec))
         .route("/api/stats", get(get_stats_api))
         .route("/api/whois", get(whois_api_get))
         .route("/api/whois", post(whois_api_post))
@@ -204,4 +206,19 @@ fn detect_query_type(query: &str) -> String {
     
     // 其他
     "generic".to_string()
+}
+
+// API文档页面
+async fn api_docs() -> impl IntoResponse {
+    let html = include_str!("docs_template.html");
+    Html(html)
+}
+
+// OpenAPI规范JSON
+async fn openapi_spec() -> impl IntoResponse {
+    let spec = include_str!("openapi.json");
+    (
+        [(axum::http::header::CONTENT_TYPE, "application/json")],
+        spec
+    )
 }
