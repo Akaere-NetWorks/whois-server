@@ -13,11 +13,8 @@ pub mod services;
 // Re-export public API
 pub use services::{
     process_geo_query,
-    process_geo_query_blocking,
     process_rir_geo_query,
-    process_rir_geo_query_blocking,
     process_prefixes_query,
-    process_prefixes_query_blocking,
 };
 
 #[cfg(test)]

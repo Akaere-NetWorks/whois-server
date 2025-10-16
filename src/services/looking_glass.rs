@@ -65,30 +65,6 @@ pub async fn process_looking_glass_query(resource: &str) -> Result<String> {
     format_bird_output(&lg_response.data, resource)
 }
 
-/// Process Looking Glass queries ending with -LG (blocking version)
-pub fn process_looking_glass_query_blocking(resource: &str, timeout: Duration) -> Result<String> {
-    debug!("Processing Looking Glass query (blocking) for: {}", resource);
-
-    let url = format!("{}/data/looking-glass/data.json?resource={}", RIPE_STAT_API_BASE, resource);
-    debug!("Requesting URL: {}", url);
-
-    let client = reqwest::blocking::Client::builder().timeout(timeout).build()?;
-
-    let response = client.get(&url).send()?;
-
-    if !response.status().is_success() {
-        return Err(anyhow!("API request failed with status: {}", response.status()));
-    }
-
-    let lg_response: LookingGlassResponse = response.json()?;
-
-    if lg_response.data_call_status != "supported" {
-        return Err(anyhow!("Looking Glass data call not supported"));
-    }
-
-    format_bird_output(&lg_response.data, resource)
-}
-
 /// Format Looking Glass response in BIRD-style format
 fn format_bird_output(data: &LookingGlassData, resource: &str) -> Result<String> {
     let mut output = String::new();

@@ -260,17 +260,3 @@ pub async fn is_dn42_online_mode() -> Result<bool> {
     let manager = manager_mutex.lock().await;
     Ok(manager.is_online_mode())
 }
-
-/// Blocking version of DN42 query processing (for compatibility)
-pub fn process_dn42_query_managed_blocking(query: &str) -> Result<String> {
-    tokio::task::block_in_place(|| {
-        tokio::runtime::Handle::current().block_on(process_dn42_query_managed(query))
-    })
-}
-
-/// Blocking version of DN42 raw query processing (for compatibility)
-pub fn query_dn42_raw_managed_blocking(query: &str) -> Result<String> {
-    tokio::task::block_in_place(|| {
-        tokio::runtime::Handle::current().block_on(query_dn42_raw_managed(query))
-    })
-}

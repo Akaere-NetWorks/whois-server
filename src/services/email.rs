@@ -3,7 +3,7 @@ use anyhow::Result;
 use tracing::debug;
 
 // Removed unused import
-use crate::dn42::{ query_dn42_raw_managed, query_dn42_raw_managed_blocking };
+use crate::dn42::query_dn42_raw_managed;
 
 /// Process email search queries ending with -EMAIL
 pub async fn process_email_search(base_query: &str) -> Result<String> {
@@ -110,113 +110,6 @@ pub async fn process_email_search(base_query: &str) -> Result<String> {
 }
 
 /// Process email search queries ending with -EMAIL (blocking version)
-pub fn process_email_search_blocking(
-    base_query: &str,
-    _timeout: std::time::Duration
-) -> Result<String> {
-    debug!("Processing email search (blocking) for: {}", base_query);
-
-    // First, query the base object to get references
-    let base_response = query_dn42_raw_managed_blocking(base_query)?;
-    debug!("Base response length: {} chars", base_response.len());
-
-    // Start with emails from the base object itself
-    let mut emails = HashSet::new();
-    let base_emails = extract_emails(&base_response);
-    debug!("Found {} emails in base object: {:?}", base_emails.len(), base_emails);
-    emails.extend(base_emails);
-
-    // Extract references from the base object
-    let references = extract_references(&base_response);
-    debug!("Found references: {:?}", references);
-
-    // If no references found and no emails in base, try some common related queries
-    if references.is_empty() && emails.is_empty() {
-        debug!("No references or emails found, trying related queries");
-
-        // Try querying with common suffixes if not already present
-        let mut related_queries = vec![];
-
-        if !base_query.to_uppercase().ends_with("-MNT") {
-            related_queries.push(format!("{}-MNT", base_query));
-        }
-        if !base_query.to_uppercase().ends_with("-DN42") {
-            related_queries.push(format!("{}-DN42", base_query));
-        }
-
-        for related_query in related_queries {
-            debug!("Trying related query: {}", related_query);
-            match query_dn42_raw_managed_blocking(&related_query) {
-                Ok(related_response) => {
-                    let related_emails = extract_emails(&related_response);
-                    debug!(
-                        "Found {} emails in related query {}: {:?}",
-                        related_emails.len(),
-                        related_query,
-                        related_emails
-                    );
-                    emails.extend(related_emails);
-
-                    // Also extract references from related objects
-                    let related_refs = extract_references(&related_response);
-                    for ref_name in related_refs {
-                        if !references.contains(&ref_name) {
-                            debug!(
-                                "Querying additional reference from {}: {}",
-                                related_query,
-                                ref_name
-                            );
-                            match query_dn42_raw_managed_blocking(&ref_name) {
-                                Ok(ref_response) => {
-                                    let ref_emails = extract_emails(&ref_response);
-                                    debug!(
-                                        "Found {} emails in additional reference {}: {:?}",
-                                        ref_emails.len(),
-                                        ref_name,
-                                        ref_emails
-                                    );
-                                    emails.extend(ref_emails);
-                                }
-                                Err(e) => {
-                                    debug!(
-                                        "Failed to query additional reference {}: {}",
-                                        ref_name,
-                                        e
-                                    );
-                                }
-                            }
-                        }
-                    }
-                }
-                Err(e) => {
-                    debug!("Related query {} failed: {}", related_query, e);
-                }
-            }
-        }
-    }
-
-    // Query each reference to find email addresses
-    for reference in references {
-        debug!("Querying reference: {}", reference);
-        match query_dn42_raw_managed_blocking(&reference) {
-            Ok(ref_response) => {
-                let ref_emails = extract_emails(&ref_response);
-                debug!("Found {} emails in {}: {:?}", ref_emails.len(), reference, ref_emails);
-                emails.extend(ref_emails);
-            }
-            Err(e) => {
-                debug!("Failed to query reference {}: {}", reference, e);
-            }
-        }
-    }
-
-    debug!("Total unique emails found: {}", emails.len());
-
-    // Format response
-    format_email_response(&emails)
-}
-
-/// Extract mnt-by, admin-c, and tech-c references from WHOIS response
 fn extract_references(response: &str) -> Vec<String> {
     let mut references = Vec::new();
 

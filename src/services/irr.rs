@@ -93,16 +93,6 @@ pub async fn process_irr_query(resource: &str) -> Result<String> {
     format_irr_response(resource, &response)
 }
 
-/// Process IRR Explorer queries ending with -IRR (blocking version)
-pub fn process_irr_query_blocking(resource: &str, timeout: Duration) -> Result<String> {
-    debug!("Processing IRR Explorer query (blocking) for: {}", resource);
-
-    let client = reqwest::blocking::Client::builder().timeout(timeout).build()?;
-
-    let response = query_irr_explorer_api_blocking(&client, resource)?;
-    format_irr_response(resource, &response)
-}
-
 /// Query IRR Explorer API
 async fn query_irr_explorer_api(
     client: &reqwest::Client,
@@ -124,26 +114,6 @@ async fn query_irr_explorer_api(
     Ok(json_response)
 }
 
-/// Query IRR Explorer API (blocking version)
-fn query_irr_explorer_api_blocking(
-    client: &reqwest::blocking::Client,
-    resource: &str
-) -> Result<Vec<IrrResponse>> {
-    let url = format!(
-        "https://irrexplorer.nlnog.net/api/prefixes/prefix/{}",
-        urlencoding::encode(resource)
-    );
-    debug!("IRR Explorer API URL (blocking): {}", url);
-
-    let response = client.get(&url).header("User-Agent", "akaere-whois-server/1.0").send()?;
-
-    if !response.status().is_success() {
-        return Err(anyhow::anyhow!("IRR Explorer API HTTP error: {}", response.status()));
-    }
-
-    let json_response: Vec<IrrResponse> = response.json()?;
-    Ok(json_response)
-}
 
 /// Format IRR Explorer response into RIPE-style whois format
 fn format_irr_response(resource: &str, responses: &[IrrResponse]) -> Result<String> {

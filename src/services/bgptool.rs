@@ -2,7 +2,7 @@ use anyhow::Result;
 use tracing::debug;
 
 use crate::config::DEFAULT_WHOIS_PORT;
-use super::whois::{ query_whois, blocking_query_whois };
+use super::whois::query_whois;
 
 // BGP Tools WHOIS server
 const BGPTOOLS_WHOIS_SERVER: &str = "bgp.tools";
@@ -17,29 +17,6 @@ pub async fn process_bgptool_query(base_query: &str) -> Result<String> {
 
     // Query BGP Tools WHOIS server directly
     let response = query_whois(&formatted_query, BGPTOOLS_WHOIS_SERVER, DEFAULT_WHOIS_PORT).await?;
-
-    // Format response with BGP Tools header
-    format_bgptool_response(&response)
-}
-
-/// Process BGP Tools queries ending with -BGPTOOL (blocking version)
-pub fn process_bgptool_query_blocking(
-    base_query: &str,
-    timeout: std::time::Duration
-) -> Result<String> {
-    debug!("Processing BGP Tools query (blocking) for: {}", base_query);
-
-    // Format query for BGP Tools (add -v flag as expected by bgp.tools)
-    let formatted_query = format!(" -v {}", base_query);
-    debug!("Formatted BGP Tools query (blocking): {}", formatted_query);
-
-    // Query BGP Tools WHOIS server directly
-    let response = blocking_query_whois(
-        &formatted_query,
-        BGPTOOLS_WHOIS_SERVER,
-        DEFAULT_WHOIS_PORT,
-        timeout
-    )?;
 
     // Format response with BGP Tools header
     format_bgptool_response(&response)

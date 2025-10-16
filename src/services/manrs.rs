@@ -290,14 +290,6 @@ pub async fn process_manrs_query(query: &str) -> Result<String> {
 
     Ok(status.format_response())
 }
-
-/// Blocking version for compatibility with blocking server
-pub fn process_manrs_query_blocking(query: &str) -> Result<String> {
-    tokio::task::block_in_place(|| {
-        tokio::runtime::Handle::current().block_on(process_manrs_query(query))
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

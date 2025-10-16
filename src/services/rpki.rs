@@ -67,24 +67,6 @@ pub async fn process_rpki_query(prefix: &str, asn: &str) -> Result<String> {
     format_rpki_response(prefix, asn, &rpki_response)
 }
 
-/// Process RPKI queries in format prefix-asn-RPKI (blocking version)
-pub fn process_rpki_query_blocking(prefix: &str, asn: &str, timeout: Duration) -> Result<String> {
-    debug!("Processing RPKI query (blocking) for prefix: {}, ASN: {}", prefix, asn);
-
-    let url = format!("{}/{}/{}", RPKI_API_BASE, asn, prefix);
-    debug!("Requesting RPKI API URL (blocking): {}", url);
-
-    let client = reqwest::blocking::Client::builder().timeout(timeout).build()?;
-
-    let response = client.get(&url).header("User-Agent", "akaere-whois-server/1.0").send()?;
-
-    if !response.status().is_success() {
-        return Err(anyhow!("RPKI API request failed with status: {}", response.status()));
-    }
-
-    let rpki_response: RpkiResponse = response.json()?;
-    format_rpki_response(prefix, asn, &rpki_response)
-}
 
 /// Format RPKI response in RIPE-style format
 fn format_rpki_response(prefix: &str, asn: &str, response: &RpkiResponse) -> Result<String> {

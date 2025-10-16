@@ -1,7 +1,6 @@
 use clap::Parser;
 
 // WHOIS server constants
-pub const IANA_WHOIS_SERVER: &str = "whois.iana.org";
 pub const DEFAULT_WHOIS_SERVER: &str = "whois.ripe.net";
 pub const DEFAULT_WHOIS_PORT: u16 = 43;
 pub const TIMEOUT_SECONDS: u64 = 10;

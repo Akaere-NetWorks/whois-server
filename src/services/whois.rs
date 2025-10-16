@@ -1,13 +1,10 @@
-use std::io::{ Read, Write };
-use std::net::TcpStream;
 use std::time::Duration;
-use anyhow::{ Context, Result };
+use anyhow::Result;
 use tokio::io::{ AsyncReadExt, AsyncWriteExt };
 use tokio::net::TcpStream as AsyncTcpStream;
 use tracing::{ debug, warn };
 
 use crate::config::{
-    IANA_WHOIS_SERVER,
     DEFAULT_WHOIS_SERVER,
     DEFAULT_WHOIS_PORT,
     TIMEOUT_SECONDS,
@@ -191,98 +188,6 @@ pub async fn query_whois(query: &str, server: &str, port: u16) -> Result<String>
     }
 
     Ok(response)
-}
-
-pub fn blocking_query_with_iana_referral(query: &str, timeout: Duration) -> Result<String> {
-    debug!("Blocking query with IANA referral: {}", query);
-
-    // Note: This is a blocking function, so we can't use async IANA cache directly
-    // For blocking operations, we'll query IANA directly as fallback
-    // In a future improvement, we could implement a blocking cache interface
-
-    // First query IANA
-    let iana_response = blocking_query_whois(
-        query,
-        IANA_WHOIS_SERVER,
-        DEFAULT_WHOIS_PORT,
-        timeout
-    )?;
-
-    // Extract WHOIS server from IANA response
-    let whois_server = extract_whois_server(&iana_response).unwrap_or_else(||
-        DEFAULT_WHOIS_SERVER.to_string()
-    );
-
-    debug!("IANA referred server: {}", whois_server);
-
-    // Query the actual WHOIS server
-    let response = blocking_query_whois(query, &whois_server, DEFAULT_WHOIS_PORT, timeout)?;
-
-    Ok(response)
-}
-
-pub fn blocking_query_whois(
-    query: &str,
-    server: &str,
-    port: u16,
-    timeout: Duration
-) -> Result<String> {
-    let address = format!("{}:{}", server, port);
-    debug!("Querying WHOIS server: {}", address);
-
-    // Connect to the WHOIS server with timeout
-    let mut stream = TcpStream::connect_timeout(&address.parse()?, timeout).context(
-        format!("Cannot connect to WHOIS server {}", address)
-    )?;
-
-    // Set read/write timeouts
-    stream.set_read_timeout(Some(timeout))?;
-    stream.set_write_timeout(Some(timeout))?;
-
-    // Try to disable Nagle's algorithm
-    if let Err(e) = stream.set_nodelay(true) {
-        warn!("Failed to set TCP_NODELAY: {}", e);
-    }
-
-    // Prepare and send the query - WHOIS protocol expects CRLF-terminated query
-    let query_str = format!("{}\r\n", query);
-    stream.write_all(query_str.as_bytes())?;
-    stream.flush()?;
-
-    // Read the response
-    let mut response = String::new();
-    stream.read_to_string(&mut response)?;
-
-    debug!("Received {} bytes from {}", response.len(), address);
-
-    if response.is_empty() {
-        return Err(anyhow::anyhow!("Empty response from WHOIS server"));
-    }
-
-    Ok(response)
-}
-
-pub fn extract_whois_server(response: &str) -> Option<String> {
-    for line in response.lines() {
-        let line = line.trim();
-
-        // Look for "whois:" field
-        if line.starts_with("whois:") {
-            let parts: Vec<&str> = line.splitn(2, ':').collect();
-            if parts.len() == 2 {
-                return Some(parts[1].trim().to_string());
-            }
-        }
-
-        // Also look for "refer:" field as a fallback
-        if line.starts_with("refer:") {
-            let parts: Vec<&str> = line.splitn(2, ':').collect();
-            if parts.len() == 2 {
-                return Some(parts[1].trim().to_string());
-            }
-        }
-    }
-    None
 }
 
 fn should_try_radb_fallback(response: &str, query: &str) -> bool {
