@@ -1,3 +1,5 @@
+#![allow(non_snake_case)]
+
 use anyhow::Result;
 use tracing::debug;
 

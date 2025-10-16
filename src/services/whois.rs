@@ -1,3 +1,5 @@
+#![allow(non_snake_case)]
+
 use std::time::Duration;
 use anyhow::Result;
 use tokio::io::{ AsyncReadExt, AsyncWriteExt };

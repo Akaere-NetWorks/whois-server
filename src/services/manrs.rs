@@ -7,6 +7,7 @@
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
+#![allow(non_snake_case)]
 
 use anyhow::Result;
 use reqwest::Client;
