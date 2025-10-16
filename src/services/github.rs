@@ -149,7 +149,7 @@ pub async fn process_github_query(query: &str) -> Result<String> {
 fn is_valid_github_name(name: &str) -> bool {
     !name.is_empty() &&
         name.len() <= 39 &&
-        name.chars().all(|c| (c.is_ascii_alphanumeric() || c == '-')) &&
+        name.chars().all(|c| c.is_ascii_alphanumeric() || c == '-') &&
         !name.starts_with('-') &&
         !name.ends_with('-') &&
         !name.contains("--")

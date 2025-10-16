@@ -109,7 +109,7 @@ pub async fn process_cargo_query(crate_name: &str) -> Result<String> {
     // Validate Cargo crate name format
     if
         crate_name.len() > 64 ||
-        !crate_name.chars().all(|c| (c.is_ascii_alphanumeric() || "-_".contains(c))) ||
+        !crate_name.chars().all(|c| c.is_ascii_alphanumeric() || "-_".contains(c)) ||
         crate_name.starts_with('-') ||
         crate_name.ends_with('-')
     {
@@ -352,19 +352,19 @@ fn format_timestamp(timestamp: &str) -> String {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_cargo_crate_name_validation() {
+    #[tokio::test]
+    async fn test_cargo_crate_name_validation() {
         // Valid crate names
-        assert!(process_cargo_query("serde").is_ok());
-        assert!(process_cargo_query("tokio").is_ok());
-        assert!(process_cargo_query("serde_json").is_ok());
-        assert!(process_cargo_query("my-crate").is_ok());
+        assert!(process_cargo_query("serde").await.is_ok());
+        assert!(process_cargo_query("tokio").await.is_ok());
+        assert!(process_cargo_query("serde_json").await.is_ok());
+        assert!(process_cargo_query("my-crate").await.is_ok());
 
         // Invalid crate names
-        assert!(process_cargo_query("").is_err());
-        assert!(process_cargo_query("-invalid").is_err());
-        assert!(process_cargo_query("invalid-").is_err());
-        assert!(process_cargo_query(&"a".repeat(65)).is_err());
+        assert!(process_cargo_query("").await.is_err());
+        assert!(process_cargo_query("-invalid").await.is_err());
+        assert!(process_cargo_query("invalid-").await.is_err());
+        assert!(process_cargo_query(&"a".repeat(65)).await.is_err());
     }
 
     #[tokio::test]

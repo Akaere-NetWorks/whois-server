@@ -95,7 +95,7 @@ pub async fn process_pypi_query(package_name: &str) -> Result<String> {
     // Validate PyPI package name format
     if
         package_name.len() > 214 ||
-        !package_name.chars().all(|c| (c.is_ascii_alphanumeric() || "-_.".contains(c)))
+        !package_name.chars().all(|c| c.is_ascii_alphanumeric() || "-_.".contains(c))
     {
         return Err(anyhow::anyhow!("Invalid PyPI package name format"));
     }
@@ -328,16 +328,16 @@ fn format_pypi_not_found(package_name: &str) -> String {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_pypi_package_name_validation() {
+    #[tokio::test]
+    async fn test_pypi_package_name_validation() {
         // Valid package names
-        assert!(process_pypi_query("numpy").is_ok());
-        assert!(process_pypi_query("requests").is_ok());
-        assert!(process_pypi_query("django-rest-framework").is_ok());
+        assert!(process_pypi_query("numpy").await.is_ok());
+        assert!(process_pypi_query("requests").await.is_ok());
+        assert!(process_pypi_query("django-rest-framework").await.is_ok());
 
         // Invalid package names
-        assert!(process_pypi_query("").is_err());
-        assert!(process_pypi_query(&"a".repeat(215)).is_err());
+        assert!(process_pypi_query("").await.is_err());
+        assert!(process_pypi_query(&"a".repeat(215)).await.is_err());
     }
 
     #[tokio::test]

@@ -55,7 +55,7 @@ pub async fn process_ubuntu_query(package_name: &str) -> Result<String> {
     if
         package_name.len() > 100 ||
         package_name.contains(' ') ||
-        !package_name.chars().all(|c| (c.is_ascii_alphanumeric() || "+-._".contains(c)))
+        !package_name.chars().all(|c| c.is_ascii_alphanumeric() || "+-._".contains(c))
     {
         return Err(anyhow::anyhow!("Invalid Ubuntu package name format"));
     }
@@ -204,18 +204,18 @@ fn format_ubuntu_not_found(package_name: &str) -> String {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_ubuntu_package_name_validation() {
+    #[tokio::test]
+    async fn test_ubuntu_package_name_validation() {
         // Valid package names
-        assert!(process_ubuntu_query("vim").is_ok());
-        assert!(process_ubuntu_query("python3-pip").is_ok());
-        assert!(process_ubuntu_query("lib64-dev").is_ok());
-        assert!(process_ubuntu_query("package+name").is_ok());
+        assert!(process_ubuntu_query("vim").await.is_ok());
+        assert!(process_ubuntu_query("python3-pip").await.is_ok());
+        assert!(process_ubuntu_query("lib64-dev").await.is_ok());
+        assert!(process_ubuntu_query("package+name").await.is_ok());
 
         // Invalid package names
-        assert!(process_ubuntu_query("").is_err());
-        assert!(process_ubuntu_query("package with spaces").is_err());
-        assert!(process_ubuntu_query(&"a".repeat(101)).is_err());
+        assert!(process_ubuntu_query("").await.is_err());
+        assert!(process_ubuntu_query("package with spaces").await.is_err());
+        assert!(process_ubuntu_query(&"a".repeat(101)).await.is_err());
     }
 
     #[tokio::test]

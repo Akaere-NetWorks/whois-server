@@ -16,11 +16,12 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-use anyhow::{Context, Result};
+use anyhow::{ Context, Result };
 use reqwest;
-use serde::{Deserialize, Serialize};
-use tracing::{debug, error};
+use serde::{ Deserialize, Serialize };
+use tracing::{ debug, error };
 
+#[allow(dead_code)]
 const OPENWRT_PACKAGES_API: &str = "https://downloads.openwrt.org/releases";
 const OPENWRT_PACKAGES_SEARCH: &str = "https://openwrt.org/packages";
 const OPENWRT_PACKAGE_INDEX: &str = "https://downloads.openwrt.org/releases/23.05.0/packages";
@@ -45,6 +46,7 @@ struct OpenWrtPackage {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[allow(dead_code)]
 struct OpenWrtPackageIndex {
     packages: Vec<OpenWrtPackage>,
 }
@@ -57,11 +59,10 @@ pub async fn process_openwrt_query(package_name: &str) -> Result<String> {
     }
 
     // Validate package name (OpenWrt package naming conventions)
-    if package_name.len() > 100
-        || package_name.contains(' ')
-        || !package_name
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || "+-._".contains(c))
+    if
+        package_name.len() > 100 ||
+        package_name.contains(' ') ||
+        !package_name.chars().all(|c| c.is_ascii_alphanumeric() || "+-._".contains(c))
     {
         return Err(anyhow::anyhow!("Invalid OpenWrt package name format"));
     }
@@ -82,7 +83,8 @@ pub async fn process_openwrt_query(package_name: &str) -> Result<String> {
 }
 
 async fn query_openwrt_packages(package_name: &str) -> Result<Vec<OpenWrtPackage>> {
-    let client = reqwest::Client::builder()
+    let client = reqwest::Client
+        ::builder()
         .timeout(std::time::Duration::from_secs(20))
         .user_agent("whois-server/1.0 (OpenWrt package lookup)")
         .build()
@@ -100,7 +102,7 @@ async fn query_openwrt_packages(package_name: &str) -> Result<Vec<OpenWrtPackage
 
 async fn check_openwrt_package_feeds(
     package_name: &str,
-    _client: &reqwest::Client,
+    _client: &reqwest::Client
 ) -> Result<Vec<OpenWrtPackage>> {
     // Try to check common architectures and feeds
     let architectures = ["x86_64", "aarch64", "mips", "arm"];
@@ -108,10 +110,7 @@ async fn check_openwrt_package_feeds(
 
     for arch in &architectures {
         for feed in &feeds {
-            let url = format!(
-                "{}/{}/{}/Packages.gz",
-                OPENWRT_PACKAGE_INDEX, arch, feed
-            );
+            let url = format!("{}/{}/{}/Packages.gz", OPENWRT_PACKAGE_INDEX, arch, feed);
 
             // In a real implementation, we would download and parse the Packages.gz file
             // For now, we'll provide informational response
@@ -120,25 +119,26 @@ async fn check_openwrt_package_feeds(
     }
 
     // Return a generic package info if we can't find specific details
-    Ok(vec![OpenWrtPackage {
-        name: package_name.to_string(),
-        version: Some("Available".to_string()),
-        description: Some(format!("OpenWrt package: {}", package_name)),
-        section: Some("packages".to_string()),
-        architecture: Some("multiple".to_string()),
-        maintainer: None,
-        source: None,
-        license: Some("Various".to_string()),
-        depends: None,
-        provides: None,
-        conflicts: None,
-        size: None,
-        installed_size: None,
-        filename: None,
-        feed: Some("official".to_string()),
-    }])
+    Ok(
+        vec![OpenWrtPackage {
+            name: package_name.to_string(),
+            version: Some("Available".to_string()),
+            description: Some(format!("OpenWrt package: {}", package_name)),
+            section: Some("packages".to_string()),
+            architecture: Some("multiple".to_string()),
+            maintainer: None,
+            source: None,
+            license: Some("Various".to_string()),
+            depends: None,
+            provides: None,
+            conflicts: None,
+            size: None,
+            installed_size: None,
+            filename: None,
+            feed: Some("official".to_string()),
+        }]
+    )
 }
-
 
 fn format_openwrt_response(packages: &[OpenWrtPackage], query: &str) -> String {
     let mut output = String::new();
@@ -187,7 +187,7 @@ fn format_openwrt_response(packages: &[OpenWrtPackage], query: &str) -> String {
         }
 
         if let Some(size) = package.size {
-            let size_kb = size as f64 / 1024.0;
+            let size_kb = (size as f64) / 1024.0;
             output.push_str(&format!("size: {:.2} KB\n", size_kb));
         }
 
@@ -281,7 +281,6 @@ mod tests {
         assert!(result.contains("OpenWrt"));
         assert!(result.contains("opkg"));
     }
-
 
     #[tokio::test]
     async fn test_openwrt_service_creation() {

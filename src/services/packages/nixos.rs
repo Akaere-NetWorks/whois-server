@@ -342,16 +342,16 @@ fn format_nixos_not_found(package_name: &str) -> String {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_nixos_package_name_validation() {
+    #[tokio::test]
+    async fn test_nixos_package_name_validation() {
         // Valid package names
-        assert!(process_nixos_query("vim").is_ok());
-        assert!(process_nixos_query("python3Packages.pip").is_ok());
-        assert!(process_nixos_query("haskellPackages.pandoc").is_ok());
+        assert!(process_nixos_query("vim").await.is_ok());
+        assert!(process_nixos_query("python3Packages.pip").await.is_ok());
+        assert!(process_nixos_query("haskellPackages.pandoc").await.is_ok());
 
         // Invalid package names
-        assert!(process_nixos_query("").is_err());
-        assert!(process_nixos_query(&"a".repeat(201)).is_err());
+        assert!(process_nixos_query("").await.is_err());
+        assert!(process_nixos_query(&"a".repeat(201)).await.is_err());
     }
 
     #[tokio::test]

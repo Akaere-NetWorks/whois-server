@@ -65,7 +65,7 @@ pub async fn process_aosc_query(package_name: &str) -> Result<String> {
     if
         package_name.len() > 100 ||
         package_name.contains(' ') ||
-        !package_name.chars().all(|c| (c.is_ascii_alphanumeric() || "+-._".contains(c)))
+        !package_name.chars().all(|c| c.is_ascii_alphanumeric() || "+-._".contains(c))
     {
         return Err(anyhow::anyhow!("Invalid AOSC package name format"));
     }
@@ -421,18 +421,18 @@ fn format_aosc_not_found(package_name: &str) -> String {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_aosc_package_name_validation() {
+    #[tokio::test]
+    async fn test_aosc_package_name_validation() {
         // Valid package names
-        assert!(process_aosc_query("vim").is_ok());
-        assert!(process_aosc_query("python-3").is_ok());
-        assert!(process_aosc_query("lib64-dev").is_ok());
-        assert!(process_aosc_query("package+name").is_ok());
+        assert!(process_aosc_query("vim").await.is_ok());
+        assert!(process_aosc_query("python-3").await.is_ok());
+        assert!(process_aosc_query("lib64-dev").await.is_ok());
+        assert!(process_aosc_query("package+name").await.is_ok());
 
         // Invalid package names
-        assert!(process_aosc_query("").is_err());
-        assert!(process_aosc_query("package with spaces").is_err());
-        assert!(process_aosc_query(&"a".repeat(101)).is_err());
+        assert!(process_aosc_query("").await.is_err());
+        assert!(process_aosc_query("package with spaces").await.is_err());
+        assert!(process_aosc_query(&"a".repeat(101)).await.is_err());
     }
 
     #[tokio::test]

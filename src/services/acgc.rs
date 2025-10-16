@@ -432,7 +432,7 @@ impl AcgcService {
         // Remove trailing incomplete content that might cause issues
         if let Ok(re) = Regex::new(r"[{<[].*$") {
             if text.len() > 20 && re.is_match(&text) {
-                if let Some(pos) = text.find(|c| (c == '{' || c == '<' || c == '[')) {
+                if let Some(pos) = text.find(|c| c == '{' || c == '<' || c == '[') {
                     if pos > 10 {
                         // Keep some content before the incomplete markup
                         text = text[..pos].to_string();

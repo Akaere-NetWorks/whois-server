@@ -751,7 +751,7 @@ pub async fn process_minecraft_user_query(query: &str) -> Result<String> {
         if
             username.len() < 3 ||
             username.len() > 16 ||
-            !username.chars().all(|c| (c.is_alphanumeric() || c == '_'))
+            !username.chars().all(|c| c.is_alphanumeric() || c == '_')
         {
             return Ok(
                 format!("Invalid Minecraft username format. Usernames must be 3-16 characters, alphanumeric and underscores only.\nQuery: {}\n", username)

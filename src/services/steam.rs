@@ -110,12 +110,14 @@ pub struct SteamUserResponse {
 
 /// Steam search API response
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct SteamSearchResponse {
     pub success: bool,
     pub data: Option<SteamSearchData>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct SteamSearchData {
     pub query: String,
     pub results: Vec<SteamSearchResult>,
@@ -123,6 +125,7 @@ pub struct SteamSearchData {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct SteamSearchResult {
     pub appid: u32,
     pub name: String,
@@ -142,6 +145,7 @@ pub struct SteamSearchResult {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct SteamSearchPlatforms {
     pub windows: bool,
     pub mac: bool,
@@ -149,6 +153,7 @@ pub struct SteamSearchPlatforms {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct SteamVRSupport {
     pub vrhmd: Option<bool>,
     pub vrhmd_only: Option<bool>,

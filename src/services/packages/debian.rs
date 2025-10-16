@@ -32,6 +32,7 @@ struct DebianVersion {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[allow(dead_code)]
 struct DebianPackageInfo {
     package: String,
     version: String,
@@ -62,7 +63,7 @@ pub async fn process_debian_query(package_name: &str) -> Result<String> {
     if
         package_name.len() > 100 ||
         package_name.contains(' ') ||
-        !package_name.chars().all(|c| (c.is_ascii_alphanumeric() || "+-._".contains(c)))
+        !package_name.chars().all(|c| c.is_ascii_alphanumeric() || "+-._".contains(c))
     {
         return Err(anyhow::anyhow!("Invalid Debian package name format"));
     }

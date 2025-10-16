@@ -596,7 +596,7 @@ impl DnsService {
             }
 
             // Check for valid domain characters (letters, numbers, hyphens)
-            if !part.chars().all(|c| (c.is_ascii_alphanumeric() || c == '-')) {
+            if !part.chars().all(|c| c.is_ascii_alphanumeric() || c == '-') {
                 return false;
             }
 

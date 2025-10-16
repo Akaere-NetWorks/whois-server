@@ -7,6 +7,7 @@
 [![RFC 3912](https://img.shields.io/badge/RFC-3912-green.svg)](https://datatracker.ietf.org/doc/html/rfc3912)
 [![DN42](https://img.shields.io/badge/DN42-Compatible-blueviolet)](https://dn42.eu/)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/Akaere-NetWorks/whois-server)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FAkaere-NetWorks%2Fwhois-server.svg?type=small)](https://app.fossa.com/projects/git%2Bgithub.com%2FAkaere-NetWorks%2Fwhois-server?ref=badge_small)
 
 **A high-performance WHOIS server with DN42 support, geo-location services, and comprehensive query capabilities.**
 
