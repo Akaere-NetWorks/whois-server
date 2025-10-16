@@ -71,6 +71,10 @@
                 "value": "sodium-MODRINTH",
                 "summary": "Modrinth mod/resource pack"
               },
+              "curseforge": {
+                "value": "238222-CURSEFORGE",
+                "summary": "CurseForge mod (by ID or name)"
+              },
               "github": {
                 "value": "torvalds-GITHUB",
                 "summary": "GitHub user info"

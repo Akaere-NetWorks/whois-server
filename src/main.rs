@@ -46,6 +46,9 @@ use tokio::time::{ interval, Duration };
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // Load environment variables from .env file
+    dotenv::dotenv().ok();
+    
     let args = Cli::parse();
 
     // Initialize logging

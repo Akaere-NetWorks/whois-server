@@ -373,6 +373,36 @@ whois -h whois.akae.re jei-MODRINTH         # Just Enough Items
 whois -h whois.akae.re rei-MODRINTH         # Roughly Enough Items
 ```
 
+### CurseForge Integration (`-CURSEFORGE` suffix)
+
+The CurseForge integration provides access to the extensive CurseForge mod database, featuring millions of Minecraft mods and addons.
+
+**Features:**
+- Project information with download counts and popularity metrics
+- Category classification and tags
+- Latest file versions with dependencies
+- Screenshots and project gallery
+- Author information and links
+- Support for both project ID and search queries
+
+**API Key Setup:**
+```bash
+# Get your API key from https://console.curseforge.com/
+export CURSEFORGE_API_KEY="your-api-key-here"
+```
+
+**Popular Queries:**
+```bash
+# Query by project ID
+whois -h whois.akae.re 238222-CURSEFORGE    # Just Enough Items (JEI)
+whois -h whois.akae.re 223794-CURSEFORGE    # Tinkers Construct
+
+# Query by project name (search)
+whois -h whois.akae.re jei-CURSEFORGE       # Search for JEI
+whois -h whois.akae.re optifine-CURSEFORGE  # Search for OptiFine
+whois -h whois.akae.re biomes-CURSEFORGE    # Search for Biomes O' Plenty
+```
+
 > 📘 **Detailed Documentation**: For comprehensive technical documentation of all advanced features, including API details, implementation specifics, and usage examples, see [ADVANCED_FEATURES.md](ADVANCED_FEATURES.md).
 
 ## 📊 Statistics and Monitoring

@@ -165,6 +165,9 @@ pub fn generate_help_response() -> String {
     output.push_str("sodium-MODRINTH     - Modrinth mod/resource pack information\n");
     output.push_str("example: sodium-MODRINTH\n");
     output.push('\n');
+    output.push_str("jei-CURSEFORGE      - CurseForge mod information (requires API key)\n");
+    output.push_str("example: jei-CURSEFORGE or 238222-CURSEFORGE\n");
+    output.push('\n');
 
     output.push_str("DEVELOPMENT SERVICES:\n");
     output.push_str("-".repeat(40).as_str());

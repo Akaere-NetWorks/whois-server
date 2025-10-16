@@ -40,6 +40,7 @@ use crate::services::{
     process_pypi_query,
     process_cargo_query,
     query_modrinth,
+    query_curseforge,
     process_github_query,
     process_wikipedia_query,
     process_lyric_query,
@@ -331,6 +332,10 @@ pub async fn handle_connection(
         QueryType::Modrinth(base_query) => {
             debug!("Processing Modrinth mod/resource pack query: {}", base_query);
             query_modrinth(base_query).await
+        }
+        QueryType::CurseForge(base_query) => {
+            debug!("Processing CurseForge mod query: {}", base_query);
+            query_curseforge(base_query).await
         }
         QueryType::GitHub(base_query) => {
             debug!("Processing GitHub user/repository query: {}", base_query);

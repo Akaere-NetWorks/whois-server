@@ -44,6 +44,7 @@ pub enum QueryType {
     Pypi(String), // For queries ending with -PYPI (PyPI packages)
     Cargo(String), // For queries ending with -CARGO (Rust crates)
     Modrinth(String), // For queries ending with -MODRINTH (Modrinth mods/resource packs)
+    CurseForge(String), // For queries ending with -CURSEFORGE (CurseForge mods)
     GitHub(String), // For queries ending with -GITHUB (GitHub users/repos)
     Wikipedia(String), // For queries ending with -WIKIPEDIA (Wikipedia articles)
     Lyric(String), // For queries ending with -LYRIC (Luotianyi random lyrics)
@@ -284,6 +285,12 @@ pub fn analyze_query(query: &str) -> QueryType {
     if query.to_uppercase().ends_with("-MODRINTH") {
         let base_query = &query[..query.len() - 9]; // Remove "-MODRINTH" suffix
         return QueryType::Modrinth(base_query.to_string());
+    }
+
+    // Check if it's a CurseForge mod query
+    if query.to_uppercase().ends_with("-CURSEFORGE") {
+        let base_query = &query[..query.len() - 11]; // Remove "-CURSEFORGE" suffix
+        return QueryType::CurseForge(base_query.to_string());
     }
 
     // Check if it's a GitHub user/repository query
