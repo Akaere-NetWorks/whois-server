@@ -131,6 +131,12 @@ pub fn generate_help_response() -> String {
     output.push_str("Hatsune-WIKIPEDIA   - Wikipedia article lookup\n");
     output.push_str("example: Rust_programming_language-WIKIPEDIA\n");
     output.push('\n');
+    output.push_str("今天吃什么          - Random meal suggestion (TheMealDB)\n");
+    output.push_str("example: 今天吃什么 or -MEAL\n");
+    output.push('\n');
+    output.push_str("今天吃什么中国      - Random Chinese recipe (HowToCook)\n");
+    output.push_str("example: 今天吃什么中国 or -MEAL-CN\n");
+    output.push('\n');
 
     output.push_str("PACKAGE REPOSITORIES:\n");
     output.push_str("-".repeat(40).as_str());

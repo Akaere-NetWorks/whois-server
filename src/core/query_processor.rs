@@ -47,6 +47,7 @@ use crate::services::{
     process_lyric_query,
     process_desc_query,
     query_random_meal,
+    query_random_chinese_meal,
     query_whois,
     query_with_iana_referral,
 };
@@ -259,6 +260,10 @@ pub async fn process_query(
         QueryType::Meal => {
             debug!("Processing meal suggestion query");
             query_random_meal().await
+        }
+        QueryType::MealCN => {
+            debug!("Processing Chinese meal suggestion query");
+            query_random_chinese_meal().await
         }
         QueryType::Help => {
             debug!("Processing HELP query");

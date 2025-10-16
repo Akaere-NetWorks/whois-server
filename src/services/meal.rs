@@ -18,6 +18,8 @@
 use serde::{ Deserialize, Serialize };
 use std::fmt::Write;
 use anyhow::Result;
+use std::collections::HashMap;
+use rand::seq::SliceRandom;
 
 #[derive(Debug, Deserialize, Serialize)]
 struct MealResponse {
@@ -201,5 +203,117 @@ fn format_meal_info(meal: &Meal) -> String {
     writeln!(result, "% Query: 今天吃什么 or -MEAL").unwrap();
     writeln!(result, "% Powered by TheMealDB API").unwrap();
 
+    result
+}
+
+#[derive(Debug, Deserialize)]
+struct ChineseRecipe {
+    #[serde(rename = "描述")]
+    description: Option<Vec<String>>,
+    #[serde(rename = "预估烹饪难度")]
+    difficulty: Option<u8>,
+    #[serde(rename = "原料和工具")]
+    ingredients_tools: Option<Vec<String>>,
+    #[serde(rename = "食材计算")]
+    ingredient_amounts: Option<Vec<String>>,
+    #[serde(rename = "操作步骤")]
+    steps: Option<Vec<String>>,
+    #[serde(rename = "附加内容")]
+    additional: Option<Vec<String>>,
+}
+
+pub async fn query_random_chinese_meal() -> Result<String> {
+    // 读取 recipes.json 文件
+    let recipes_content = include_str!("../../data/recipes.json");
+    let recipes: HashMap<String, HashMap<String, ChineseRecipe>> = serde_json::from_str(recipes_content)?;
+    
+    // 收集所有菜谱
+    let mut all_recipes = Vec::new();
+    for (category, category_recipes) in recipes.iter() {
+        for (name, recipe) in category_recipes.iter() {
+            all_recipes.push((category.clone(), name.clone(), recipe));
+        }
+    }
+    
+    if all_recipes.is_empty() {
+        return Err(anyhow::anyhow!("No recipes found in recipes.json"));
+    }
+    
+    // 随机选择一个菜谱
+    let mut rng = rand::thread_rng();
+    let (category, name, recipe) = all_recipes.choose(&mut rng)
+        .ok_or_else(|| anyhow::anyhow!("Failed to select random recipe"))?;
+    
+    Ok(format_chinese_meal_info(category, name, recipe))
+}
+
+fn format_chinese_meal_info(category: &str, name: &str, recipe: &ChineseRecipe) -> String {
+    let mut result = String::new();
+    
+    writeln!(result, "% 中国菜谱 - Chinese Recipe").unwrap();
+    writeln!(result, "% 数据来源：程序员做饭指南").unwrap();
+    writeln!(result, "").unwrap();
+    
+    writeln!(result, "dish-name:         {}", name).unwrap();
+    writeln!(result, "category:          {}", category).unwrap();
+    
+    if let Some(difficulty) = recipe.difficulty {
+        writeln!(result, "difficulty:        {} / 10", difficulty).unwrap();
+    }
+    
+    if let Some(descriptions) = &recipe.description {
+        if !descriptions.is_empty() {
+            writeln!(result, "").unwrap();
+            writeln!(result, "% 描述 (Description)").unwrap();
+            for desc in descriptions {
+                writeln!(result, "description:       {}", desc).unwrap();
+            }
+        }
+    }
+    
+    if let Some(ingredients) = &recipe.ingredients_tools {
+        if !ingredients.is_empty() {
+            writeln!(result, "").unwrap();
+            writeln!(result, "% 原料和工具 (Ingredients & Tools)").unwrap();
+            for (i, ingredient) in ingredients.iter().enumerate() {
+                writeln!(result, "ingredient-{}:      {}", i + 1, ingredient).unwrap();
+            }
+        }
+    }
+    
+    if let Some(amounts) = &recipe.ingredient_amounts {
+        if !amounts.is_empty() {
+            writeln!(result, "").unwrap();
+            writeln!(result, "% 食材用量 (Ingredient Amounts)").unwrap();
+            for (i, amount) in amounts.iter().enumerate() {
+                writeln!(result, "amount-{}:          {}", i + 1, amount).unwrap();
+            }
+        }
+    }
+    
+    if let Some(steps) = &recipe.steps {
+        if !steps.is_empty() {
+            writeln!(result, "").unwrap();
+            writeln!(result, "% 操作步骤 (Cooking Steps)").unwrap();
+            for (i, step) in steps.iter().enumerate() {
+                writeln!(result, "step-{}:            {}", i + 1, step).unwrap();
+            }
+        }
+    }
+    
+    if let Some(additional) = &recipe.additional {
+        if !additional.is_empty() {
+            writeln!(result, "").unwrap();
+            writeln!(result, "% 附加信息 (Additional Info)").unwrap();
+            for info in additional {
+                writeln!(result, "info:              {}", info).unwrap();
+            }
+        }
+    }
+    
+    writeln!(result, "").unwrap();
+    writeln!(result, "% Query: 今天吃什么中国 or -MEAL-CN").unwrap();
+    writeln!(result, "% Source: 程序员做饭指南 https://github.com/Anduin2017/HowToCook").unwrap();
+    
     result
 }

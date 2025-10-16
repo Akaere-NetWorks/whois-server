@@ -50,11 +50,17 @@ pub enum QueryType {
     Lyric(String), // For queries ending with -LYRIC (Luotianyi random lyrics)
     Desc(String), // For queries ending with -DESC (show only descr fields)
     Meal, // For meal suggestions (今天吃什么 or -MEAL)
+    MealCN, // For Chinese meal suggestions (今天吃什么中国 or -MEAL-CN)
     Help, // For HELP queries (show available query types)
     Unknown(String),
 }
 
 pub fn analyze_query(query: &str) -> QueryType {
+    // Check if it's a Chinese meal suggestion query
+    if query == "今天吃什么中国" || query.to_uppercase().ends_with("-MEAL-CN") {
+        return QueryType::MealCN;
+    }
+    
     // Check if it's a meal suggestion query (Chinese phrase or -MEAL suffix)
     if query == "今天吃什么" || query.to_uppercase().ends_with("-MEAL") {
         return QueryType::Meal;
