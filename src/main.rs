@@ -31,7 +31,7 @@ use tracing::{ info, Level };
 use tracing_subscriber::fmt::format::FmtSpan;
 
 use config::Cli;
-use server::{ create_dump_dir_if_needed, run_async_server, run_blocking_server };
+use server::{ create_dump_dir_if_needed, run_async_server };
 use core::{ create_stats_state, save_stats_on_shutdown };
 use web::run_web_server;
 use dn42::{
@@ -148,18 +148,6 @@ async fn main() -> Result<()> {
     // Create server address
     let addr = format!("{}:{}", args.host, args.port);
     info!("Starting WHOIS server on {}", addr);
-
-    if args.use_blocking {
-        info!("Using blocking TCP connections (non-async)");
-        run_blocking_server(
-            &addr,
-            args.timeout,
-            args.dump_traffic,
-            &args.dump_dir,
-            args.enable_color
-        )?;
-        return Ok(());
-    }
 
     // Start async server
     let result = run_async_server(

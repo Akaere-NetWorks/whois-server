@@ -67,7 +67,6 @@
 - **🛠️ Development Tools** - GitHub user/repository information and built-in help system
 - **📈 Real-time Statistics** - Comprehensive usage tracking and monitoring
 - **🌐 Web Dashboard** - Modern web interface for statistics and testing
-- **⚡ Dual Operation Modes** - Both async and blocking network operations
 - **🔒 Robust Error Handling** - Graceful handling of network issues and timeouts
 - **📋 Traffic Logging** - Optional query/response dumping for debugging
 - **🌈 IPv4 & IPv6 Support** - Complete dual-stack implementation
@@ -193,9 +192,6 @@ cargo run --release -- --debug
 # With specific listen address
 cargo run --release -- --host 127.0.0.1 
 
-# Run in blocking mode (better for some environments)
-cargo run --release -- --use-blocking
-
 # Enable traffic dumping for debugging
 cargo run --release -- --dump-traffic --dump-dir ./logs
 ```
@@ -213,7 +209,6 @@ Options:
       --timeout <SECONDS>        Connection timeout in seconds [default: 10]
       --dump-traffic             Write raw queries and responses to files for debugging
       --dump-dir <DIR>           Dump traffic directory [default: dumps]
-      --use-blocking             Use blocking (non-async) network operations
       --help                     Print help
       --version                  Print version
 ```
@@ -375,8 +370,7 @@ src/
 │   ├── stats.rs     # Real-time statistics collection and persistence  
 │   └── utils.rs     # Shared utility functions
 ├── server/          # TCP server implementations
-│   ├── async_server.rs     # Tokio-based async server (default)
-│   ├── blocking_server.rs  # Blocking server (compatibility)
+│   ├── async_server.rs     # Tokio-based async server
 │   ├── connection.rs       # Connection handling and query processing
 │   └── utils.rs     # Server utility functions
 ├── services/        # External service integrations
@@ -433,7 +427,7 @@ src/
 
 - **Query Engine** - Intelligent query parsing and type detection with 25+ query types
 - **Platform-Aware DN42** - Automatic Windows/Unix backend selection with LMDB caching
-- **Dual Server Architecture** - Both async (Tokio) and blocking server implementations
+- **Async Server Architecture** - High-performance Tokio-based server implementation
 - **Modular Services** - Clean separation of external service integrations
 - **Web Interface** - Axum-based REST API and dashboard with real-time updates
 - **Statistics Engine** - Real-time metrics collection with 24h/30d historical data
