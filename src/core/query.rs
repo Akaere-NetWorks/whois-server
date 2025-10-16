@@ -43,6 +43,7 @@ pub enum QueryType {
     Npm(String), // For queries ending with -NPM (NPM packages)
     Pypi(String), // For queries ending with -PYPI (PyPI packages)
     Cargo(String), // For queries ending with -CARGO (Rust crates)
+    Modrinth(String), // For queries ending with -MODRINTH (Modrinth mods/resource packs)
     GitHub(String), // For queries ending with -GITHUB (GitHub users/repos)
     Wikipedia(String), // For queries ending with -WIKIPEDIA (Wikipedia articles)
     Lyric(String), // For queries ending with -LYRIC (Luotianyi random lyrics)
@@ -277,6 +278,12 @@ pub fn analyze_query(query: &str) -> QueryType {
     if query.to_uppercase().ends_with("-CARGO") {
         let base_query = &query[..query.len() - 6]; // Remove "-CARGO" suffix
         return QueryType::Cargo(base_query.to_string());
+    }
+
+    // Check if it's a Modrinth mod/resource pack query
+    if query.to_uppercase().ends_with("-MODRINTH") {
+        let base_query = &query[..query.len() - 9]; // Remove "-MODRINTH" suffix
+        return QueryType::Modrinth(base_query.to_string());
     }
 
     // Check if it's a GitHub user/repository query

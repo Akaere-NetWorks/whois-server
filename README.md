@@ -36,6 +36,7 @@
     - [IRR Explorer Integration (`-IRR` suffix)](#irr-explorer-integration--irr-suffix)
     - [Looking Glass Services (`-LG` suffix)](#looking-glass-services--lg-suffix)
     - [RADB Direct Access (`-RADB` suffix)](#radb-direct-access--radb-suffix)
+    - [Modrinth Integration (`-MODRINTH` suffix)](#modrinth-integration--modrinth-suffix)
   - [📊 Statistics and Monitoring](#-statistics-and-monitoring)
   - [🏗️ Architecture](#️-architecture)
     - [Key Components](#key-components)
@@ -62,7 +63,8 @@
 - **🎮 Minecraft Integration** - Server status and user profile queries using Server List Ping protocol
 - **🎮 Steam Integration** - Game information, user profiles, and game search with price display
 - **🎬 IMDb Integration** - Movie and TV show information with ratings, cast, and search functionality
-- **📦 Package Repository Support** - Comprehensive package queries for 9 major repositories (Cargo, NPM, PyPI, GitHub, AUR, Debian, Ubuntu, NixOS, OpenSUSE, AOSC)
+- **📦 Package Repository Support** - Comprehensive package queries for 10 major repositories (Cargo, NPM, PyPI, GitHub, AUR, Debian, Ubuntu, NixOS, OpenSUSE, AOSC, Modrinth)
+- **🎮 Modrinth Integration** - Minecraft mods, resource packs, datapacks, and shaders information with downloads statistics
 - **🎭 Entertainment Services** - Wikipedia articles, anime/comic/game character database, and Luotianyi lyrics
 - **🛠️ Development Tools** - GitHub user/repository information and built-in help system
 - **📈 Real-time Statistics** - Comprehensive usage tracking and monitoring
@@ -136,6 +138,10 @@ whois -h whois.akae.re Inception-IMDB
 whois -h whois.akae.re rust-CARGO
 whois -h whois.akae.re express-NPM
 whois -h whois.akae.re requests-PYPI
+
+# Modrinth (Minecraft mods/resource packs)
+whois -h whois.akae.re sodium-MODRINTH
+whois -h whois.akae.re iris-MODRINTH
 
 # Entertainment services
 whois -h whois.akae.re "Linux-WIKIPEDIA"
@@ -267,6 +273,7 @@ telnet localhost 43
 | **-CARGO** | `rust-CARGO` | Rust crate information |
 | **-NPM** | `express-NPM` | NPM package information |
 | **-PYPI** | `requests-PYPI` | Python package information |
+| **-MODRINTH** | `sodium-MODRINTH` | Modrinth mods/resource packs for Minecraft |
 | **-AUR** | `firefox-AUR` | Arch User Repository packages |
 | **-DEBIAN** | `nginx-DEBIAN` | Debian package information |
 | **-UBUNTU** | `vim-UBUNTU` | Ubuntu package information |
@@ -338,6 +345,32 @@ Direct queries to the Routing Assets Database (RADB) for AS-SET expansions, rout
 **Example:**
 ```bash
 whois -h whois.akae.re AS-SET:AS-EXAMPLE-RADB
+```
+
+### Modrinth Integration (`-MODRINTH` suffix)
+
+The Modrinth integration provides comprehensive information about Minecraft mods, resource packs, datapacks, and shaders from [modrinth.com](https://modrinth.com).
+
+**Features:**
+- Project information with download statistics and follower counts
+- Compatibility details (client/server side, mod loaders, Minecraft versions)
+- License information and project links
+- Gallery images and donation links
+- Available versions and update history
+- Smart search when exact project slug is not provided
+
+**Popular Queries:**
+```bash
+# Performance optimization mods
+whois -h whois.akae.re sodium-MODRINTH      # Sodium rendering optimization
+whois -h whois.akae.re lithium-MODRINTH     # Lithium server optimization
+
+# Shaders
+whois -h whois.akae.re iris-MODRINTH        # Iris Shaders
+
+# Utility mods
+whois -h whois.akae.re jei-MODRINTH         # Just Enough Items
+whois -h whois.akae.re rei-MODRINTH         # Roughly Enough Items
 ```
 
 > 📘 **Detailed Documentation**: For comprehensive technical documentation of all advanced features, including API details, implementation specifics, and usage examples, see [ADVANCED_FEATURES.md](ADVANCED_FEATURES.md).

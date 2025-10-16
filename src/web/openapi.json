@@ -67,6 +67,10 @@
                 "value": "rust-CARGO",
                 "summary": "Package repository"
               },
+              "modrinth": {
+                "value": "sodium-MODRINTH",
+                "summary": "Modrinth mod/resource pack"
+              },
               "github": {
                 "value": "torvalds-GITHUB",
                 "summary": "GitHub user info"
