@@ -168,6 +168,8 @@ The server includes a modern web dashboard accessible at `http://your-server:999
 
 ## 🚀 Installation
 
+### As a Standalone Server
+
 Ensure you have Rust and Cargo installed, then:
 
 ```bash
@@ -180,6 +182,39 @@ cargo build --release
 
 # The executable will be available at target/release/whois-server
 ```
+
+### As a Rust Library
+
+Add to your `Cargo.toml`:
+
+```toml
+[dependencies]
+whois-server = { git = "https://github.com/Akaere-NetWorks/whois-server.git" }
+tokio = { version = "1.35", features = ["full"] }
+anyhow = "1.0"
+```
+
+Then use it in your code:
+
+```rust
+use whois_server::query;
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    // Query any resource just like the whois command
+    let result = query("example.com").await?;
+    println!("{}", result);
+    
+    // Works with all query types
+    let result = query("AS13335").await?;
+    let result = query("1.1.1.1-GEO").await?;
+    let result = query("example.com-DNS").await?;
+    
+    Ok(())
+}
+```
+
+**📚 For detailed library usage examples and API documentation, see [LIBRARY_USAGE.md](LIBRARY_USAGE.md)**
 
 ## 🔧 Usage
 

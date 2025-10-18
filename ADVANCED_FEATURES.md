@@ -669,6 +669,37 @@ Serves the web dashboard with real-time statistics and query testing interface.
 
 ## 🔧 Technical Implementation
 
+### Using as a Rust Library
+
+The whois-server can be used as a library in other Rust projects. Simply add it as a dependency:
+
+```toml
+[dependencies]
+whois-server = { git = "https://github.com/Akaere-NetWorks/whois-server.git" }
+```
+
+Then use the simple API:
+
+```rust
+use whois_server::query;
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    // Query any resource just like the whois command
+    let result = query("example.com").await?;
+    println!("{}", result);
+    
+    // Works with all query types
+    let result = query("AS13335").await?;
+    let result = query("1.1.1.1-GEO").await?;
+    let result = query("example.com-DNS").await?;
+    
+    Ok(())
+}
+```
+
+For more details and examples, see [LIBRARY_USAGE.md](LIBRARY_USAGE.md).
+
 ### Dependencies
 - **reqwest**: HTTP client for external API calls
 - **serde**: JSON serialization/deserialization
