@@ -32,7 +32,7 @@ use tracing_subscriber::fmt::format::FmtSpan;
 
 use config::Cli;
 use server::{ create_dump_dir_if_needed, run_async_server };
-use core::{ create_stats_state, save_stats_on_shutdown };
+use core::{ create_stats_state, save_stats_on_shutdown, init_patches, get_patches_count };
 use web::run_web_server;
 use dn42::{
     start_periodic_sync,
@@ -48,7 +48,7 @@ use tokio::time::{ interval, Duration };
 async fn main() -> Result<()> {
     // Load environment variables from .env file
     dotenv::dotenv().ok();
-    
+
     let args = Cli::parse();
 
     // Initialize logging
@@ -67,6 +67,18 @@ async fn main() -> Result<()> {
 
     // Create dump directory if needed
     create_dump_dir_if_needed(args.dump_traffic, &args.dump_dir)?;
+
+    // Initialize patch system
+    info!("Loading response patches from ./patches directory...");
+    match init_patches("./patches") {
+        Ok(_count) => {
+            let (files, rules) = get_patches_count();
+            info!("Loaded {} patch files with {} rules total", files, rules);
+        }
+        Err(e) => {
+            tracing::warn!("Failed to load patches: {} (continuing without patches)", e);
+        }
+    }
 
     // Initialize DN42 manager (platform-aware)
     info!("Initializing DN42 system...");

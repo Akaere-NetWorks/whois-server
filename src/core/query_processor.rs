@@ -78,7 +78,14 @@ use crate::config::{
     TC_WHOIS_PORT,
 };
 use crate::dn42::process_dn42_query_managed;
-use crate::core::{ is_private_ipv4, is_private_ipv6, QueryType, ColorScheme, Colorizer };
+use crate::core::{
+    is_private_ipv4,
+    is_private_ipv6,
+    QueryType,
+    ColorScheme,
+    Colorizer,
+    apply_response_patches,
+};
 
 /// Process a WHOIS query and return the response (for use by SSH server and other modules)
 pub async fn process_query(
@@ -364,15 +371,20 @@ pub async fn process_query(
         }
     };
 
-    // Apply colorization if scheme is provided
+    // Apply colorization if scheme is provided, then apply patches
     match result {
         Ok(response) => {
-            if let Some(scheme) = color_scheme {
+            // First apply colorization if requested
+            let colored_response = if let Some(scheme) = color_scheme {
                 let colorizer = Colorizer::new(scheme);
-                Ok(colorizer.colorize_response(&response, query_type))
+                colorizer.colorize_response(&response, query_type)
             } else {
-                Ok(response)
-            }
+                response
+            };
+
+            // Then apply response patches
+            let patched_response = apply_response_patches(query, colored_response);
+            Ok(patched_response)
         }
         Err(e) => Err(e),
     }

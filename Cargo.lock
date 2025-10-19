@@ -3063,6 +3063,7 @@ dependencies = [
  "der-parser 9.0.0",
  "dotenv",
  "lmdb",
+ "once_cell",
  "rand",
  "rayon",
  "regex",

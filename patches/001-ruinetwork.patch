@@ -1,0 +1,65 @@
+# RuiNetwork branding replacements
+# This patch handles automatic text replacement for RuiNetwork/AS211575 queries
+# Ensures consistent branding: RuiNetwork → Ruifeng Enterprise Transit Network
+
+# Rule 1: When query contains "RuiNetwork" or "AS211575" (case-insensitive)
+# Replace the netname field specifically and change source to MoeDove
+# QUERY_CONTAINS: RuiNetwork
+# QUERY_CONTAINS: AS211575
+# QUERY_CONTAINS: ruinetwork
+# QUERY_CONTAINS: as211575
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-netname:        RuiNetwork
++netname:        Ruifeng Enterprise Transit Network
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-source:         
++source:         MoeDove
+
+# Rule 2: When response contains "RuiNetwork" in any form
+# Replace all occurrences (case-insensitive by using multiple conditions)
+# Also change source to MoeDove
+# RESPONSE_CONTAINS: RuiNetwork
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-RuiNetwork
++Ruifeng Enterprise Transit Network
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-source:         
++source:         MoeDove
+
+# RESPONSE_CONTAINS: ruinetwork
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-ruinetwork
++Ruifeng Enterprise Transit Network
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-source:         
++source:         MoeDove
+
+# RESPONSE_CONTAINS: RUINETWORK
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-RUINETWORK
++Ruifeng Enterprise Transit Network
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-source:         
++source:         MoeDove
+
