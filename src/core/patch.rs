@@ -193,8 +193,15 @@ impl PatchManager {
 
         info!("Fetching patch metadata from: {}", url);
 
-        // Download patches.json (async)
-        let response = reqwest::get(url).await?;
+        // Download patches.json (async) with cache-busting
+        let client = reqwest::Client::new();
+        let response = client
+            .get(url)
+            .header("Cache-Control", "no-cache, no-store, must-revalidate")
+            .header("Pragma", "no-cache")
+            .header("Expires", "0")
+            .send()
+            .await?;
         let metadata: PatchMetadata = response.json().await?;
 
         let mut output = String::new();
@@ -299,8 +306,15 @@ impl PatchManager {
 
         debug!("Downloading patch: {}", patch_info.name);
 
-        // Download patch content (async)
-        let response = reqwest::get(&patch_info.url).await?;
+        // Download patch content (async) with cache-busting
+        let client = reqwest::Client::new();
+        let response = client
+            .get(&patch_info.url)
+            .header("Cache-Control", "no-cache, no-store, must-revalidate")
+            .header("Pragma", "no-cache")
+            .header("Expires", "0")
+            .send()
+            .await?;
         let content = response.text().await?;
 
         // Calculate SHA1
