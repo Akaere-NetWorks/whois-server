@@ -15,9 +15,20 @@ pub enum QueryType {
     Geo(String), // For queries ending with -GEO
     RirGeo(String), // For queries ending with -RIRGEO
     Prefixes(String), // For queries ending with -PREFIXES
+    // Internet Routing Registry (IRR) databases
     Radb(String), // For queries ending with -RADB
     Altdb(String), // For queries ending with -ALTDB
-    Irr(String), // For queries ending with -IRR
+    Afrinic(String), // For queries ending with -AFRINIC
+    Apnic(String), // For queries ending with -APNIC
+    ArinIrr(String), // For queries ending with -ARIN (IRR, not regular ARIN WHOIS)
+    Bell(String), // For queries ending with -BELL
+    Jpirr(String), // For queries ending with -JPIRR
+    Lacnic(String), // For queries ending with -LACNIC
+    Level3(String), // For queries ending with -LEVEL3
+    Nttcom(String), // For queries ending with -NTTCOM
+    RipeIrr(String), // For queries ending with -RIPE (IRR)
+    Tc(String), // For queries ending with -TC
+    Irr(String), // For queries ending with -IRR (general IRR Explorer)
     LookingGlass(String), // For queries ending with -LG
     Rpki(String, String), // For queries in format prefix-asn-RPKI (prefix, asn)
     Manrs(String), // For queries ending with -MANRS
@@ -136,6 +147,66 @@ pub fn analyze_query(query: &str) -> QueryType {
     if query.to_uppercase().ends_with("-ALTDB") {
         let base_query = &query[..query.len() - 6]; // Remove "-ALTDB" suffix
         return QueryType::Altdb(base_query.to_string());
+    }
+
+    // Check if it's an AFRINIC IRR query
+    if query.to_uppercase().ends_with("-AFRINIC") {
+        let base_query = &query[..query.len() - 8]; // Remove "-AFRINIC" suffix
+        return QueryType::Afrinic(base_query.to_string());
+    }
+
+    // Check if it's an APNIC IRR query
+    if query.to_uppercase().ends_with("-APNIC") {
+        let base_query = &query[..query.len() - 6]; // Remove "-APNIC" suffix
+        return QueryType::Apnic(base_query.to_string());
+    }
+
+    // Check if it's an ARIN IRR query
+    if query.to_uppercase().ends_with("-ARIN") {
+        let base_query = &query[..query.len() - 5]; // Remove "-ARIN" suffix
+        return QueryType::ArinIrr(base_query.to_string());
+    }
+
+    // Check if it's a BELL IRR query
+    if query.to_uppercase().ends_with("-BELL") {
+        let base_query = &query[..query.len() - 5]; // Remove "-BELL" suffix
+        return QueryType::Bell(base_query.to_string());
+    }
+
+    // Check if it's a JPIRR query
+    if query.to_uppercase().ends_with("-JPIRR") {
+        let base_query = &query[..query.len() - 6]; // Remove "-JPIRR" suffix
+        return QueryType::Jpirr(base_query.to_string());
+    }
+
+    // Check if it's a LACNIC IRR query
+    if query.to_uppercase().ends_with("-LACNIC") {
+        let base_query = &query[..query.len() - 7]; // Remove "-LACNIC" suffix
+        return QueryType::Lacnic(base_query.to_string());
+    }
+
+    // Check if it's a LEVEL3 IRR query
+    if query.to_uppercase().ends_with("-LEVEL3") {
+        let base_query = &query[..query.len() - 7]; // Remove "-LEVEL3" suffix
+        return QueryType::Level3(base_query.to_string());
+    }
+
+    // Check if it's an NTTCOM IRR query
+    if query.to_uppercase().ends_with("-NTTCOM") {
+        let base_query = &query[..query.len() - 7]; // Remove "-NTTCOM" suffix
+        return QueryType::Nttcom(base_query.to_string());
+    }
+
+    // Check if it's a RIPE IRR query
+    if query.to_uppercase().ends_with("-RIPE") {
+        let base_query = &query[..query.len() - 5]; // Remove "-RIPE" suffix
+        return QueryType::RipeIrr(base_query.to_string());
+    }
+
+    // Check if it's a TC IRR query
+    if query.to_uppercase().ends_with("-TC") {
+        let base_query = &query[..query.len() - 3]; // Remove "-TC" suffix
+        return QueryType::Tc(base_query.to_string());
     }
 
     // Check if it's a MANRS query

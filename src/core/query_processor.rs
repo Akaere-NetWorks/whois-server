@@ -51,7 +51,32 @@ use crate::services::{
     query_whois,
     query_with_iana_referral,
 };
-use crate::config::{ RADB_WHOIS_SERVER, RADB_WHOIS_PORT, ALTDB_WHOIS_SERVER, ALTDB_WHOIS_PORT };
+use crate::config::{
+    RADB_WHOIS_SERVER,
+    RADB_WHOIS_PORT,
+    ALTDB_WHOIS_SERVER,
+    ALTDB_WHOIS_PORT,
+    AFRINIC_WHOIS_SERVER,
+    AFRINIC_WHOIS_PORT,
+    APNIC_WHOIS_SERVER,
+    APNIC_WHOIS_PORT,
+    ARIN_WHOIS_SERVER,
+    ARIN_WHOIS_PORT,
+    BELL_WHOIS_SERVER,
+    BELL_WHOIS_PORT,
+    JPIRR_WHOIS_SERVER,
+    JPIRR_WHOIS_PORT,
+    LACNIC_WHOIS_SERVER,
+    LACNIC_WHOIS_PORT,
+    LEVEL3_WHOIS_SERVER,
+    LEVEL3_WHOIS_PORT,
+    NTTCOM_WHOIS_SERVER,
+    NTTCOM_WHOIS_PORT,
+    RIPE_WHOIS_SERVER,
+    RIPE_WHOIS_PORT,
+    TC_WHOIS_SERVER,
+    TC_WHOIS_PORT,
+};
 use crate::dn42::process_dn42_query_managed;
 use crate::core::{ is_private_ipv4, is_private_ipv6, QueryType, ColorScheme, Colorizer };
 
@@ -128,6 +153,46 @@ pub async fn process_query(
         QueryType::Altdb(resource) => {
             debug!("Processing ALTDB query: {}", resource);
             query_whois(resource, ALTDB_WHOIS_SERVER, ALTDB_WHOIS_PORT).await
+        }
+        QueryType::Afrinic(resource) => {
+            debug!("Processing AFRINIC query: {}", resource);
+            query_whois(resource, AFRINIC_WHOIS_SERVER, AFRINIC_WHOIS_PORT).await
+        }
+        QueryType::Apnic(resource) => {
+            debug!("Processing APNIC query: {}", resource);
+            query_whois(resource, APNIC_WHOIS_SERVER, APNIC_WHOIS_PORT).await
+        }
+        QueryType::ArinIrr(resource) => {
+            debug!("Processing ARIN IRR query: {}", resource);
+            query_whois(resource, ARIN_WHOIS_SERVER, ARIN_WHOIS_PORT).await
+        }
+        QueryType::Bell(resource) => {
+            debug!("Processing BELL query: {}", resource);
+            query_whois(resource, BELL_WHOIS_SERVER, BELL_WHOIS_PORT).await
+        }
+        QueryType::Jpirr(resource) => {
+            debug!("Processing JPIRR query: {}", resource);
+            query_whois(resource, JPIRR_WHOIS_SERVER, JPIRR_WHOIS_PORT).await
+        }
+        QueryType::Lacnic(resource) => {
+            debug!("Processing LACNIC query: {}", resource);
+            query_whois(resource, LACNIC_WHOIS_SERVER, LACNIC_WHOIS_PORT).await
+        }
+        QueryType::Level3(resource) => {
+            debug!("Processing LEVEL3 query: {}", resource);
+            query_whois(resource, LEVEL3_WHOIS_SERVER, LEVEL3_WHOIS_PORT).await
+        }
+        QueryType::Nttcom(resource) => {
+            debug!("Processing NTTCOM query: {}", resource);
+            query_whois(resource, NTTCOM_WHOIS_SERVER, NTTCOM_WHOIS_PORT).await
+        }
+        QueryType::RipeIrr(resource) => {
+            debug!("Processing RIPE IRR query: {}", resource);
+            query_whois(resource, RIPE_WHOIS_SERVER, RIPE_WHOIS_PORT).await
+        }
+        QueryType::Tc(resource) => {
+            debug!("Processing TC query: {}", resource);
+            query_whois(resource, TC_WHOIS_SERVER, TC_WHOIS_PORT).await
         }
         QueryType::Irr(resource) => {
             debug!("Processing IRR Explorer query: {}", resource);

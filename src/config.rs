@@ -7,10 +7,32 @@ pub const TIMEOUT_SECONDS: u64 = 10;
 // DN42 registry configuration
 pub const DN42_REGISTRY_PATH: &str = "./cache/dn42-registry";
 pub const DN42_LMDB_PATH: &str = "./cache/dn42-lmdb";
+
+// Internet Routing Registry (IRR) servers
 pub const RADB_WHOIS_SERVER: &str = "whois.radb.net";
 pub const RADB_WHOIS_PORT: u16 = 43;
 pub const ALTDB_WHOIS_SERVER: &str = "whois.altdb.net";
 pub const ALTDB_WHOIS_PORT: u16 = 43;
+pub const AFRINIC_WHOIS_SERVER: &str = "whois.afrinic.net";
+pub const AFRINIC_WHOIS_PORT: u16 = 43;
+pub const APNIC_WHOIS_SERVER: &str = "whois.apnic.net";
+pub const APNIC_WHOIS_PORT: u16 = 43;
+pub const ARIN_WHOIS_SERVER: &str = "rr.arin.net";
+pub const ARIN_WHOIS_PORT: u16 = 43;
+pub const BELL_WHOIS_SERVER: &str = "whois.in.bell.ca";
+pub const BELL_WHOIS_PORT: u16 = 43;
+pub const JPIRR_WHOIS_SERVER: &str = "jpirr.nic.ad.jp";
+pub const JPIRR_WHOIS_PORT: u16 = 43;
+pub const LACNIC_WHOIS_SERVER: &str = "irr.lacnic.net";
+pub const LACNIC_WHOIS_PORT: u16 = 43;
+pub const LEVEL3_WHOIS_SERVER: &str = "rr.level3.net";
+pub const LEVEL3_WHOIS_PORT: u16 = 43;
+pub const NTTCOM_WHOIS_SERVER: &str = "rr.ntt.net";
+pub const NTTCOM_WHOIS_PORT: u16 = 43;
+pub const RIPE_WHOIS_SERVER: &str = "whois.ripe.net";
+pub const RIPE_WHOIS_PORT: u16 = 43;
+pub const TC_WHOIS_SERVER: &str = "whois.bgp.net.br";
+pub const TC_WHOIS_PORT: u16 = 43;
 
 // Server identification banner
 pub const SERVER_BANNER: &str = "% Akaere NetWorks Whois Server";

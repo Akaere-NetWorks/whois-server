@@ -8,6 +8,8 @@ This document provides detailed technical information about the advanced feature
 - [IRR Explorer Integration](#irr-explorer-integration)
 - [Looking Glass Services](#looking-glass-services)
 - [RADB Direct Access](#radb-direct-access)
+- [ALTDB Direct Access](#altdb-direct-access)
+- [IRR (Internet Routing Registry) Direct Access](#irr-internet-routing-registry-direct-access)
 - [RPKI Validation](#rpki-validation)
 - [MANRS Integration](#manrs-integration)
 - [DNS Resolution Service](#dns-resolution-service)
@@ -213,7 +215,139 @@ whois -h whois.akae.re MAINT-EXAMPLE-ALTDB
 - **Alternative Sources**: Access routing information from ALTDB
 - **Registry Verification**: Cross-reference routing data
 
-## �🔐 RPKI Validation
+## 🌍 IRR (Internet Routing Registry) Direct Access
+
+### Overview
+Direct access to multiple Internet Routing Registry databases for comprehensive routing information queries.
+
+### Supported Registries
+
+#### AFRINIC IRR
+African Network Information Centre routing registry.
+
+**Format**: `<resource>-AFRINIC`
+
+**Examples**:
+```bash
+whois -h whois.akae.re AS37271-AFRINIC
+whois -h whois.akae.re 197.155.0.0/16-AFRINIC
+```
+
+#### APNIC IRR
+Asia-Pacific Network Information Centre routing registry.
+
+**Format**: `<resource>-APNIC`
+
+**Examples**:
+```bash
+whois -h whois.akae.re AS4134-APNIC
+whois -h whois.akae.re 202.12.28.0/24-APNIC
+```
+
+#### ARIN IRR
+American Registry for Internet Numbers routing registry.
+
+**Format**: `<resource>-ARIN`
+
+**Examples**:
+```bash
+whois -h whois.akae.re AS7018-ARIN
+whois -h whois.akae.re 8.8.8.0/24-ARIN
+```
+
+#### BELL IRR
+Bell Canada routing registry.
+
+**Format**: `<resource>-BELL`
+
+**Examples**:
+```bash
+whois -h whois.akae.re AS577-BELL
+whois -h whois.akae.re AS-BELL-BELL
+```
+
+#### JPIRR
+Japan Internet Routing Registry.
+
+**Format**: `<resource>-JPIRR`
+
+**Examples**:
+```bash
+whois -h whois.akae.re AS2497-JPIRR
+whois -h whois.akae.re AS-JPNIC-JPIRR
+```
+
+#### LACNIC IRR
+Latin America and Caribbean Network Information Centre routing registry.
+
+**Format**: `<resource>-LACNIC`
+
+**Examples**:
+```bash
+whois -h whois.akae.re AS27715-LACNIC
+whois -h whois.akae.re 200.0.0.0/8-LACNIC
+```
+
+#### LEVEL3 IRR
+Level3/CenturyLink routing registry.
+
+**Format**: `<resource>-LEVEL3`
+
+**Examples**:
+```bash
+whois -h whois.akae.re AS3356-LEVEL3
+whois -h whois.akae.re AS-LEVEL3-LEVEL3
+```
+
+#### NTTCOM IRR
+NTT Communications routing registry.
+
+**Format**: `<resource>-NTTCOM`
+
+**Examples**:
+```bash
+whois -h whois.akae.re AS2914-NTTCOM
+whois -h whois.akae.re AS-NTTCOM-NTTCOM
+```
+
+#### RIPE IRR
+Réseaux IP Européens Network Coordination Centre routing registry.
+
+**Format**: `<resource>-RIPE`
+
+**Examples**:
+```bash
+whois -h whois.akae.re AS3333-RIPE
+whois -h whois.akae.re 193.0.0.0/8-RIPE
+```
+
+#### TC (Telecom) IRR
+Brazilian Telecom routing registry.
+
+**Format**: `<resource>-TC`
+
+**Examples**:
+```bash
+whois -h whois.akae.re AS262589-TC
+whois -h whois.akae.re 200.160.0.0/20-TC
+```
+
+### Features
+- **Multi-Registry Support**: Query 12+ major Internet Routing Registries
+- **Global Coverage**: Access regional registries (AFRINIC, APNIC, ARIN, LACNIC, RIPE)
+- **ISP-Specific Registries**: Query Bell, Level3, NTTCOM, and TC registries
+- **AS-SET Queries**: Retrieve Autonomous System sets and routing policies
+- **Route Objects**: Query route object information from specific registries
+- **Maintainer Information**: Access contact and administrative data
+
+### Use Cases
+- **Multi-Registry Validation**: Cross-reference routing data across multiple IRRs
+- **Regional Analysis**: Query region-specific routing information
+- **ISP Policy Research**: Access ISP-maintained routing registries
+- **Route Origin Validation**: Verify route origins in different registries
+- **Network Planning**: Research AS-SETs and routing policies
+
+## � RPKI Validation
 
 ### Overview
 RPKI (Resource Public Key Infrastructure) validation provides cryptographic verification of IP address and ASN bindings to prevent route hijacking and improve routing security.

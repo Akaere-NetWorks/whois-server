@@ -39,6 +39,7 @@
     - [Looking Glass Services (`-LG` suffix)](#looking-glass-services--lg-suffix)
     - [RADB Direct Access (`-RADB` suffix)](#radb-direct-access--radb-suffix)
     - [ALTDB Direct Access (`-ALTDB` suffix)](#altdb-direct-access--altdb-suffix)
+    - [IRR Direct Access (Multiple registries)](#irr-direct-access-multiple-registries)
     - [Modrinth Integration (`-MODRINTH` suffix)](#modrinth-integration--modrinth-suffix)
     - [CurseForge Integration (`-CURSEFORGE` suffix)](#curseforge-integration--curseforge-suffix)
   - [📊 Statistics and Monitoring](#-statistics-and-monitoring)
@@ -296,6 +297,16 @@ telnet localhost 43
 | **-PREFIXES** | `AS213605-PREFIXES` | List all prefixes announced by ASN |
 | **-RADB** | `1.1.1.0-RADB` | Query RADB (Routing Assets Database) directly |
 | **-ALTDB** | `1.1.1.0-ALTDB` | Query ALTDB (Alternative Database) routing registry |
+| **-AFRINIC** | `AS37271-AFRINIC` | Query AFRINIC IRR (African region) |
+| **-APNIC** | `AS4134-APNIC` | Query APNIC IRR (Asia-Pacific region) |
+| **-ARIN** | `AS7018-ARIN` | Query ARIN IRR (North American region) |
+| **-BELL** | `AS577-BELL` | Query BELL IRR (Bell Canada) |
+| **-JPIRR** | `AS2497-JPIRR` | Query JPIRR (Japan Internet Routing Registry) |
+| **-LACNIC** | `AS27715-LACNIC` | Query LACNIC IRR (Latin America region) |
+| **-LEVEL3** | `AS3356-LEVEL3` | Query LEVEL3 IRR (Level3/CenturyLink) |
+| **-NTTCOM** | `AS2914-NTTCOM` | Query NTTCOM IRR (NTT Communications) |
+| **-RIPE** | `AS3333-RIPE` | Query RIPE IRR (European region) |
+| **-TC** | `AS262589-TC` | Query TC IRR (Brazilian Telecom) |
 | **-IRR** | `192.0.2.0/24-IRR` | IRR Explorer - comprehensive routing registry analysis |
 | **-LG** | `1.1.1.0-LG` | Looking Glass - RIPE RIS BGP routing data in BIRD format |
 | **-RPKI** | `192.0.2.0/24-AS213605-RPKI` | RPKI validation for prefix-ASN combinations |
@@ -396,6 +407,52 @@ Direct queries to the ALTDB (Alternative Database) routing registry for route ob
 whois -h whois.akae.re AS-EXAMPLE-ALTDB
 whois -h whois.akae.re 192.0.2.0/24-ALTDB
 ```
+
+### IRR Direct Access (Multiple registries)
+
+The server supports direct queries to 12+ major Internet Routing Registries (IRRs) worldwide, providing comprehensive access to routing information across different regions and ISPs.
+
+**Supported Registries:**
+
+- **-AFRINIC**: African Network Information Centre IRR
+- **-APNIC**: Asia-Pacific Network Information Centre IRR
+- **-ARIN**: American Registry for Internet Numbers IRR
+- **-BELL**: Bell Canada routing registry
+- **-JPIRR**: Japan Internet Routing Registry
+- **-LACNIC**: Latin America and Caribbean Network Information Centre IRR
+- **-LEVEL3**: Level3/CenturyLink routing registry
+- **-NTTCOM**: NTT Communications routing registry
+- **-RIPE**: Réseaux IP Européens Network Coordination Centre IRR
+- **-TC**: Brazilian Telecom routing registry
+
+**Examples:**
+```bash
+# Query AFRINIC IRR for African networks
+whois -h whois.akae.re AS37271-AFRINIC
+
+# Query APNIC IRR for Asia-Pacific networks
+whois -h whois.akae.re AS4134-APNIC
+
+# Query ARIN IRR for North American networks
+whois -h whois.akae.re AS7018-ARIN
+
+# Query RIPE IRR for European networks
+whois -h whois.akae.re AS3333-RIPE
+
+# Query LACNIC IRR for Latin American networks
+whois -h whois.akae.re AS27715-LACNIC
+
+# Query ISP-specific registries
+whois -h whois.akae.re AS3356-LEVEL3
+whois -h whois.akae.re AS2914-NTTCOM
+```
+
+**Use Cases:**
+- Multi-registry validation and cross-referencing
+- Regional routing information analysis
+- ISP-specific routing policy research
+- Route origin validation across different registries
+- Network planning and AS-SET management
 
 **Use Cases:**
 - Multi-registry comparison
