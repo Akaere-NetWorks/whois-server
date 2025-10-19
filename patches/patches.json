@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "version": "1.0.0",
+  "description": "WHOIS Server Patch Metadata - For online updates and integrity verification",
+  "repository": "https://github.com/Akaere-NetWorks/whois-server",
+  "last_updated": "2025-10-19T18:03:45+08:00",
+  "patches": [
+    {
+      "name": "001-ruinetwork.patch",
+      "description": "This patch handles automatic text replacement for RuiNetwork/AS211575 queries",
+      "url": "https://raw.githubusercontent.com/Akaere-NetWorks/whois-server/refs/heads/main/patches/001-ruinetwork.patch",
+      "sha1": "4b6d69ddc59b8f45e54aae67e3d6a45f26f26ee4",
+      "size": 2700,
+      "enabled": true,
+      "priority": 1,
+      "modified": "2025-10-19T17:55:17+08:00"
+    }
+  ],
+  "metadata": {
+    "format_version": "1.0",
+    "checksum_algorithm": "SHA1",
+    "update_url": "https://raw.githubusercontent.com/Akaere-NetWorks/whois-server/refs/heads/main/patches/patches.json",
+    "documentation": "https://github.com/Akaere-NetWorks/whois-server/blob/main/patches/README.md"
+  }
+}

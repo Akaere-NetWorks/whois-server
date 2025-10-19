@@ -13,6 +13,8 @@ This directory contains patch files for automatic text replacement in WHOIS quer
 7. [Best Practices](#best-practices)
 8. [Debugging](#debugging)
 9. [Advanced Usage](#advanced-usage)
+10. [Patch Metadata (patches.json)](#patch-metadata-patchesjson)
+11. [Online Updates](#online-updates)
 
 ---
 
@@ -1197,6 +1199,257 @@ For issues or questions:
 -RuiNetwork
 +Ruifeng Enterprise Transit Network (RETN)
 ```
+
+---
+
+## Patch Metadata (patches.json)
+
+### Overview
+
+The `patches.json` file contains metadata about all available patch files, including URLs, checksums, and versioning information. This file is designed to support:
+
+- **Online updates**: Download patches from remote repositories
+- **Integrity verification**: Verify patch files haven't been tampered with
+- **Version management**: Track patch versions and dependencies
+- **Automated deployment**: Enable automated patch distribution
+
+### File Structure
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "version": "1.0.0",
+  "description": "WHOIS Server Patch Metadata",
+  "repository": "https://github.com/Akaere-NetWorks/whois-server",
+  "last_updated": "2025-10-19T18:03:45+08:00",
+  "patches": [
+    {
+      "name": "001-ruinetwork.patch",
+      "description": "RuiNetwork branding replacements",
+      "url": "https://raw.githubusercontent.com/.../001-ruinetwork.patch",
+      "sha1": "4b6d69ddc59b8f45e54aae67e3d6a45f26f26ee4",
+      "size": 2700,
+      "enabled": true,
+      "priority": 1,
+      "modified": "2025-10-19T17:55:17+08:00"
+    }
+  ],
+  "metadata": {
+    "format_version": "1.0",
+    "checksum_algorithm": "SHA1",
+    "update_url": "https://raw.githubusercontent.com/.../patches.json",
+    "documentation": "https://github.com/.../README.md"
+  }
+}
+```
+
+### Field Descriptions
+
+#### Root Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `$schema` | String | JSON Schema URI for validation |
+| `version` | String | Metadata format version (semver) |
+| `description` | String | Human-readable description |
+| `repository` | String | Source repository URL |
+| `last_updated` | String | ISO 8601 timestamp of last update |
+| `patches` | Array | List of patch metadata objects |
+| `metadata` | Object | System metadata |
+
+#### Patch Object Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | String | ✓ | Patch filename (must match actual file) |
+| `description` | String | ✓ | Brief description of patch purpose |
+| `url` | String | ✓ | Direct download URL (raw GitHub content) |
+| `sha1` | String | ✓ | SHA1 checksum for integrity verification |
+| `size` | Integer | ✓ | File size in bytes |
+| `enabled` | Boolean | ✓ | Whether patch is active (default: true) |
+| `priority` | Integer | ✓ | Execution order (1 = first) |
+| `modified` | String | ✓ | ISO 8601 timestamp of last modification |
+| `version` | String | ✗ | Patch version (semver) |
+| `author` | String | ✗ | Author/maintainer name |
+| `tags` | Array | ✗ | Tags for categorization |
+| `dependencies` | Array | ✗ | Required patches (by name) |
+
+#### Metadata Object Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `format_version` | String | patches.json format version |
+| `checksum_algorithm` | String | Hash algorithm used (SHA1, SHA256, etc.) |
+| `update_url` | String | URL to fetch latest patches.json |
+| `documentation` | String | URL to documentation |
+
+### Updating patches.json
+
+#### Automatic Update Script
+
+Use the provided script to automatically regenerate `patches.json`:
+
+```bash
+cd patches/
+./update-patches-json.sh
+```
+
+The script will:
+1. Scan for all `*.patch` files
+2. Calculate SHA1 checksums
+3. Extract file sizes and modification times
+4. Generate updated `patches.json`
+
+#### Manual Update
+
+To manually add a new patch entry:
+
+1. **Calculate SHA1 checksum:**
+   ```bash
+   sha1sum 002-new-patch.patch
+   ```
+
+2. **Get file size:**
+   ```bash
+   wc -c < 002-new-patch.patch
+   ```
+
+3. **Add to patches.json:**
+   ```json
+   {
+     "name": "002-new-patch.patch",
+     "description": "Description of what this patch does",
+     "url": "https://raw.githubusercontent.com/Akaere-NetWorks/whois-server/refs/heads/main/patches/002-new-patch.patch",
+     "sha1": "abc123...",
+     "size": 1234,
+     "enabled": true,
+     "priority": 2,
+     "modified": "2025-10-19T18:00:00+08:00"
+   }
+   ```
+
+4. **Update `last_updated` field:**
+   ```bash
+   date -Iseconds
+   ```
+
+### Integrity Verification
+
+To verify a patch file's integrity:
+
+```bash
+# Calculate current checksum
+sha1sum 001-ruinetwork.patch
+
+# Compare with patches.json
+grep -A 5 "001-ruinetwork.patch" patches.json | grep sha1
+```
+
+If checksums don't match, the file may have been modified or corrupted.
+
+---
+
+## Online Updates
+
+### Future Implementation
+
+The `patches.json` file is designed to support future online update features:
+
+#### Planned Features
+
+1. **Automatic Update Checking**
+   - Periodically fetch `patches.json` from `update_url`
+   - Compare checksums with local files
+   - Notify admin of available updates
+
+2. **Automatic Patch Download**
+   - Download patches from URLs in metadata
+   - Verify checksums before applying
+   - Backup old patches before replacing
+
+3. **Version Management**
+   - Track patch versions
+   - Support rollback to previous versions
+   - Handle dependencies between patches
+
+4. **Selective Updates**
+   - Enable/disable specific patches
+   - Update only specific patches by name
+   - Respect `enabled` flag in metadata
+
+### Update Workflow (Planned)
+
+```
+1. Server fetches patches.json from update_url
+2. Compare local vs. remote checksums
+3. If differences found:
+   a. Download changed patches
+   b. Verify SHA1 checksums
+   c. Backup old patches
+   d. Replace with new patches
+   e. Reload patch system
+4. Log update results
+```
+
+### Manual Update Process
+
+Until automatic updates are implemented, use this manual process:
+
+```bash
+# 1. Backup current patches
+cp -r patches/ patches.backup/
+
+# 2. Download latest patches.json
+curl -o patches.json.new \
+  https://raw.githubusercontent.com/Akaere-NetWorks/whois-server/refs/heads/main/patches/patches.json
+
+# 3. Check for updates
+diff patches.json patches.json.new
+
+# 4. Download updated patches
+cd patches/
+curl -O https://raw.githubusercontent.com/Akaere-NetWorks/whois-server/refs/heads/main/patches/001-ruinetwork.patch
+
+# 5. Verify checksum
+sha1sum 001-ruinetwork.patch
+# Compare with patches.json
+
+# 6. Restart server to reload patches
+systemctl restart whois-server
+```
+
+### Security Considerations
+
+⚠️ **Important Security Notes:**
+
+1. **HTTPS Only**: Always use HTTPS URLs for downloads
+2. **Checksum Verification**: Always verify SHA1 before using downloaded patches
+3. **Source Trust**: Only download from trusted repositories
+4. **Backup First**: Always backup before updating
+5. **Test Updates**: Test in development before production
+
+### Repository Structure
+
+For online updates to work, maintain this GitHub structure:
+
+```
+whois-server/
+├── patches/
+│   ├── patches.json          ← Metadata index
+│   ├── 001-ruinetwork.patch  ← Patch files
+│   ├── 002-example.patch
+│   ├── README.md             ← This documentation
+│   └── update-patches-json.sh ← Update script
+└── ...
+```
+
+**Update workflow for maintainers:**
+
+1. Create/modify patch files
+2. Run `./update-patches-json.sh`
+3. Commit both patches and `patches.json`
+4. Push to GitHub
+5. Users can now fetch updates
 
 ---
 

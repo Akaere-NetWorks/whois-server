@@ -5,3 +5,10 @@ cache
 .env
 
 stats.json
+
+# Patch backups
+patches/*.backup
+patches.backup/
+patches/*.bak
+patches/*.old
+patches/*.tmp
