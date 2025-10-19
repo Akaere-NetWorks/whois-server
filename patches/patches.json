@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "WHOIS Server Patch Metadata - For online updates and integrity verification",
   "repository": "https://github.com/Akaere-NetWorks/whois-server",
-  "last_updated": "2025-10-19T19:58:13+08:00",
+  "last_updated": "2025-10-19T20:05:38+08:00",
   "patches": [
     {
       "name": "001-ruinetwork.patch",
@@ -14,6 +14,16 @@
       "enabled": true,
       "priority": 1,
       "modified": "2025-10-19T19:57:05+08:00"
+    },
+    {
+      "name": "002-egg.patch",
+      "description": "When someone queries egg, replace response with colorful egg art",
+      "url": "https://raw.githubusercontent.com/Akaere-NetWorks/whois-server/refs/heads/main/patches/002-egg.patch",
+      "sha1": "1efb15b91124b887bb51b410ce2dbb0000638d2a",
+      "size": 2823,
+      "enabled": true,
+      "priority": 2,
+      "modified": "2025-10-19T20:05:37+08:00"
     }
   ],
   "metadata": {

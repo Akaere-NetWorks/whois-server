@@ -1,0 +1,175 @@
+# Easter Egg Patch - Colorful Eggs
+# When someone queries egg, replace response with colorful egg art
+# 🥚🌈
+
+# Match queries containing "egg" (case-insensitive)
+# QUERY_CONTAINS: egg
+# QUERY_CONTAINS: EGG
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-^% This is the RIPE Database query service.
++%        🥚  🥚  🥚  🥚  🥚
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-% The objects are in RPSL format.
++%      🔴🟠🟡🟢🔵🟣
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-% The RIPE Database is subject to Terms and Conditions.
++%
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-% See https://docs.db.ripe.net/terms-conditions.html
++%   别看了,这里只有彩色的蛋 🌈
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-% Note: this output has been filtered.
++%   (Don't look, there are only colorful eggs here)
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-%       To receive output for a database update, use the "-B" flag.
++%
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-% Information related to
++% 真正的WHOIS查询请使用更具体的关键词
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-% Abuse contact for
++% For real WHOIS queries, use more specific keywords
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-^inetnum:
++
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-^netname:
++
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-^descr:
++
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-^country:
++
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-^admin-c:
++
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-^tech-c:
++
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-^status:
++
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-^mnt-by:
++
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-^created:
++
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-^last-modified:
++
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-^source:
++
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-^role:
++
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-^address:
++
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-^phone:
++
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-^fax-no:
++
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-^nic-hdl:
++
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-^abuse-mailbox:
++
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-^person:
++
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-EGG
++
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-% This query was served by the RIPE Database Query Service
++
