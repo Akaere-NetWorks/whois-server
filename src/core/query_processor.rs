@@ -345,6 +345,14 @@ pub async fn process_query(
             debug!("Processing HELP query");
             Ok(crate::services::help::generate_help_response())
         }
+        QueryType::UpdatePatch => {
+            debug!("Processing UPDATE-PATCH query");
+            use crate::core::patch::process_update_patch_query;
+            match process_update_patch_query().await {
+                Ok(output) => Ok(output),
+                Err(e) => Ok(format!("% Error: {}\n", e)),
+            }
+        }
         QueryType::Unknown(q) => {
             debug!("Unknown query type: {}", q);
             if q.to_uppercase().ends_with("-DN42") || q.to_uppercase().ends_with("-MNT") {

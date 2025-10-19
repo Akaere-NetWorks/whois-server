@@ -72,7 +72,13 @@
 - **🎮 Modrinth Integration** - Minecraft mods, resource packs, datapacks, and shaders information with downloads statistics
 - **🎭 Entertainment Services** - Wikipedia articles, anime/comic/game character database, and Luotianyi lyrics
 - **🛠️ Development Tools** - GitHub user/repository information and built-in help system
-- **📈 Real-time Statistics** - Comprehensive usage tracking and monitoring
+- **� Response Patch System** - Remote-managed response customization with automatic updates from GitHub
+  - Context-aware text replacement with line-based rules
+  - SHA1 checksum verification for integrity
+  - LMDB storage for persistence and fast loading
+  - Online updates via `UPDATE-PATCH` command
+  - Detailed documentation in [patches/README.md](patches/README.md)
+- **�📈 Real-time Statistics** - Comprehensive usage tracking and monitoring
 - **🌐 Web Dashboard** - Modern web interface for statistics and testing
 - **🔒 Robust Error Handling** - Graceful handling of network issues and timeouts
 - **📋 Traffic Logging** - Optional query/response dumping for debugging

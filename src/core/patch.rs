@@ -12,12 +12,11 @@
 //!
 //! Patches use standard unified diff format for compatibility and readability.
 
-use std::fs;
-use std::path::Path;
 use regex::Regex;
-use tracing::{ debug, warn, error, info };
+use tracing::{ debug, error, info, warn };
 use once_cell::sync::Lazy;
 use std::sync::RwLock;
+use serde::{ Deserialize, Serialize };
 
 /// Strip ANSI color codes from a string
 fn strip_ansi_codes(s: &str) -> String {
@@ -99,14 +98,48 @@ pub struct PatchCondition {
 /// Type of condition
 #[derive(Debug, Clone, PartialEq)]
 pub enum ConditionType {
-    /// Query must contain keyword
+    /// Query contains this string
     QueryContains,
-    /// Response must contain keyword
+    /// Response contains this string
     ResponseContains,
-    /// Query must match regex
+    /// Query matches this regex
     QueryMatches,
-    /// Response must match regex
+    /// Response matches this regex
     ResponseMatches,
+}
+
+/// Metadata for patch updates from remote repository
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PatchMetadata {
+    pub version: String,
+    pub last_updated: String,
+    pub repository: String,
+    pub patches: Vec<PatchInfo>,
+    pub metadata: MetadataInfo,
+}
+
+/// Information about a single patch file
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PatchInfo {
+    pub name: String,
+    pub description: String,
+    pub url: String,
+    pub sha1: String,
+    pub size: u64,
+    pub priority: i32,
+    pub enabled: bool,
+    pub modified: String,
+}
+
+/// Metadata information
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MetadataInfo {
+    pub format_version: String,
+    pub update_url: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub checksum_algorithm: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub documentation: Option<String>,
 }
 
 /// Collection of patches from a single file
@@ -125,6 +158,7 @@ static PATCH_MANAGER: Lazy<RwLock<PatchManager>> = Lazy::new(|| {
 pub struct PatchManager {
     patch_files: Vec<PatchFile>,
     loaded: bool,
+    storage: Option<crate::storage::lmdb::LmdbStorage>,
 }
 
 impl PatchManager {
@@ -133,68 +167,251 @@ impl PatchManager {
         PatchManager {
             patch_files: Vec::new(),
             loaded: false,
+            storage: None,
         }
     }
 
-    /// Load all patch files from the patches directory
-    pub fn load_patches(&mut self, patches_dir: &str) -> Result<usize, Box<dyn std::error::Error>> {
-        let path = Path::new(patches_dir);
-
-        if !path.exists() {
-            warn!("Patches directory does not exist: {}", patches_dir);
-            return Ok(0);
+    /// Initialize LMDB storage for patches
+    fn init_storage(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        if self.storage.is_none() {
+            let storage = crate::storage::lmdb::LmdbStorage::new("./cache/patches_cache")?;
+            self.storage = Some(storage);
         }
+        Ok(())
+    }
+
+    /// Download and update patches from remote repository (async)
+    pub async fn update_patches_from_remote(
+        &mut self,
+        update_url: Option<&str>
+    ) -> Result<String, Box<dyn std::error::Error>> {
+        self.init_storage()?;
+
+        let url = update_url.unwrap_or(
+            "https://raw.githubusercontent.com/Akaere-NetWorks/whois-server/refs/heads/main/patches/patches.json"
+        );
+
+        info!("Fetching patch metadata from: {}", url);
+
+        // Download patches.json (async)
+        let response = reqwest::get(url).await?;
+        let metadata: PatchMetadata = response.json().await?;
+
+        let mut output = String::new();
+        output.push_str(&format!("% Patch Update Report\n"));
+        output.push_str(&format!("% Downloaded from: {}\n", url));
+        output.push_str(&format!("% Last Updated: {}\n", metadata.last_updated));
+        output.push_str(&format!("% Format Version: {}\n", metadata.metadata.format_version));
+        output.push_str(&format!("%\n"));
+
+        let mut success_count = 0;
+        let mut failed_count = 0;
+        let mut skipped_count = 0;
+
+        for patch_info in &metadata.patches {
+            if !patch_info.enabled {
+                debug!("Skipping disabled patch: {}", patch_info.name);
+                continue;
+            }
+
+            output.push_str(&format!("\npatch:           {}\n", patch_info.name));
+            output.push_str(&format!("description:     {}\n", patch_info.description));
+            output.push_str(&format!("url:             {}\n", patch_info.url));
+            output.push_str(&format!("sha1-expected:   {}\n", patch_info.sha1));
+            output.push_str(&format!("size-expected:   {} bytes\n", patch_info.size));
+            output.push_str(&format!("priority:        {}\n", patch_info.priority));
+            output.push_str(&format!("modified:        {}\n", patch_info.modified));
+
+            match self.download_and_verify_patch(&patch_info).await {
+                Ok((actual_sha1, was_updated)) => {
+                    output.push_str(&format!("sha1-actual:     {}\n", actual_sha1));
+
+                    if actual_sha1 == patch_info.sha1 {
+                        if was_updated {
+                            output.push_str(&format!("status:          ✓ VERIFIED (downloaded)\n"));
+                            success_count += 1;
+                        } else {
+                            output.push_str(&format!("status:          ✓ UP-TO-DATE (skipped)\n"));
+                            skipped_count += 1;
+                        }
+                    } else {
+                        output.push_str(&format!("status:          ✗ SHA1 MISMATCH\n"));
+                        failed_count += 1;
+                    }
+                }
+                Err(e) => {
+                    output.push_str(&format!("status:          ✗ FAILED\n"));
+                    output.push_str(&format!("error:           {}\n", e));
+                    failed_count += 1;
+                }
+            }
+        }
+
+        output.push_str(&format!("\n% Summary\n"));
+        output.push_str(&format!("% Total patches: {}\n", metadata.patches.len()));
+        output.push_str(&format!("% Downloaded: {}\n", success_count));
+        output.push_str(&format!("% Up-to-date (skipped): {}\n", skipped_count));
+        output.push_str(&format!("% Failed: {}\n", failed_count));
+        output.push_str(&format!("%\n"));
+
+        // Reload patches from LMDB into memory
+        // Reload patches from LMDB into memory if any patches were processed
+        if success_count > 0 || skipped_count > 0 {
+            info!("Reloading patches from LMDB storage...");
+            match self.load_patches_from_storage() {
+                Ok(count) => {
+                    output.push_str(&format!("% Patches reloaded: {} patch files loaded into memory\n", count));
+                    info!("Successfully reloaded {} patch files", count);
+                }
+                Err(e) => {
+                    output.push_str(&format!("% Warning: Failed to reload patches: {}\n", e));
+                    warn!("Failed to reload patches after update: {}", e);
+                }
+            }
+        }
+        output.push_str(&format!("%\n"));
+        output.push_str(&format!("% Run 'whois help' for more information\n"));
+
+        Ok(output)
+    }
+
+    /// Download a patch file and verify its SHA1 (async)
+    /// Returns: (actual_sha1, was_updated)
+    async fn download_and_verify_patch(
+        &mut self,
+        patch_info: &PatchInfo
+    ) -> Result<(String, bool), Box<dyn std::error::Error>> {
+        // Check if patch already exists in LMDB with same SHA1
+        if let Some(storage) = &self.storage {
+            let meta_key = format!("meta:{}", patch_info.name);
+            if let Ok(Some(existing_meta_json)) = storage.get(&meta_key) {
+                if let Ok(existing_info) = serde_json::from_str::<PatchInfo>(&existing_meta_json) {
+                    if existing_info.sha1 == patch_info.sha1 {
+                        debug!("Patch {} already exists with same SHA1, skipping download", patch_info.name);
+                        return Ok((patch_info.sha1.clone(), false));
+                    } else {
+                        debug!("Patch {} exists but SHA1 changed: {} -> {}", 
+                               patch_info.name, existing_info.sha1, patch_info.sha1);
+                    }
+                }
+            }
+        }
+
+        debug!("Downloading patch: {}", patch_info.name);
+
+        // Download patch content (async)
+        let response = reqwest::get(&patch_info.url).await?;
+        let content = response.text().await?;
+
+        // Calculate SHA1
+        let actual_sha1 = self.calculate_sha1(&content);
+
+        // Store in LMDB if verification passes
+        if actual_sha1 == patch_info.sha1 {
+            if let Some(storage) = &self.storage {
+                let key = format!("patch:{}", patch_info.name);
+                storage.put(&key, &content)?;
+
+                // Store metadata
+                let meta_key = format!("meta:{}", patch_info.name);
+                let meta_json = serde_json::to_string(&patch_info)?;
+                storage.put(&meta_key, &meta_json)?;
+
+                debug!("Stored patch {} in LMDB", patch_info.name);
+            }
+            Ok((actual_sha1, true))
+        } else {
+            Ok((actual_sha1, false))
+        }
+    }
+
+    /// Calculate SHA1 checksum
+    fn calculate_sha1(&self, content: &str) -> String {
+        use sha1::{ Sha1, Digest };
+        let mut hasher = Sha1::new();
+        hasher.update(content.as_bytes());
+        format!("{:x}", hasher.finalize())
+    }
+
+    /// Load all patches from LMDB storage
+    pub fn load_patches_from_storage(&mut self) -> Result<usize, Box<dyn std::error::Error>> {
+        self.init_storage()?;
+
+        let storage = self.storage.as_ref().ok_or("Storage not initialized")?;
 
         self.patch_files.clear();
         let mut total_patches = 0;
 
-        // Read and sort patch files by filename (001-, 002-, etc.)
-        let mut entries: Vec<_> = fs
-            ::read_dir(path)?
-            .filter_map(|e| e.ok())
-            .filter(|e| {
-                e
-                    .path()
-                    .extension()
-                    .and_then(|s| s.to_str()) == Some("patch")
-            })
-            .collect();
+        // List all patch keys
+        let mut patch_names = Vec::new();
 
-        entries.sort_by_key(|e| e.file_name());
+        // Try to read patch metadata to get list of patches
+        // For now, we'll try reading patches in order
+        for i in 1..=100 {
+            let name = format!("{:03}-", i);
+            let key = format!("meta:{}", name);
 
-        for entry in entries {
-            let file_path = entry.path();
+            // Try to find any patch starting with this number
+            if let Ok(Some(meta_str)) = storage.get(&key) {
+                if let Ok(patch_info) = serde_json::from_str::<PatchInfo>(&meta_str) {
+                    patch_names.push(patch_info.name.clone());
+                }
+            }
+        }
 
-            match self.load_patch_file(&file_path) {
-                Ok(patch_file) => {
-                    debug!(
-                        "Loaded patch file: {} ({} patches)",
-                        patch_file.filename,
-                        patch_file.patches.len()
-                    );
-                    total_patches += patch_file.patches.len();
-                    self.patch_files.push(patch_file);
+        // Also try common names
+        let common_names = vec!["001-ruinetwork.patch"];
+        for name in common_names {
+            let meta_key = format!("meta:{}", name);
+            if storage.get(&meta_key).is_ok() {
+                if !patch_names.contains(&name.to_string()) {
+                    patch_names.push(name.to_string());
+                }
+            }
+        }
+
+        debug!("Found {} patches in storage", patch_names.len());
+
+        for name in patch_names {
+            let key = format!("patch:{}", name);
+            match storage.get(&key) {
+                Ok(Some(content)) => {
+                    match self.parse_patch_content(&name, &content) {
+                        Ok(patch_file) => {
+                            debug!(
+                                "Loaded patch from storage: {} ({} patches)",
+                                patch_file.filename,
+                                patch_file.patches.len()
+                            );
+                            total_patches += patch_file.patches.len();
+                            self.patch_files.push(patch_file);
+                        }
+                        Err(e) => {
+                            error!("Failed to parse patch {}: {}", name, e);
+                        }
+                    }
+                }
+                #[allow(non_snake_case)]
+                Ok(None) => {
+                    debug!("Patch {} not found in storage", name);
                 }
                 Err(e) => {
-                    error!("Failed to load patch file {:?}: {}", file_path, e);
+                    debug!("Could not read patch {}: {}", name, e);
                 }
             }
         }
 
         self.loaded = true;
-        info!("Loaded {} patch files with {} total patches", self.patch_files.len(), total_patches);
+        info!("Loaded {} patches from LMDB storage", total_patches);
         Ok(total_patches)
     }
 
-    /// Load a single patch file
-    fn load_patch_file(&self, path: &Path) -> Result<PatchFile, Box<dyn std::error::Error>> {
-        let content = fs::read_to_string(path)?;
-        let filename = path
-            .file_name()
-            .and_then(|s| s.to_str())
-            .unwrap_or("unknown")
-            .to_string();
-
+    /// Parse patch content from string
+    fn parse_patch_content(
+        &self,
+        filename: &str,
+        content: &str
+    ) -> Result<PatchFile, Box<dyn std::error::Error>> {
         let lines: Vec<&str> = content.lines().collect();
         let mut patches = Vec::new();
         let mut current_conditions: Vec<PatchCondition> = Vec::new();
@@ -381,7 +598,10 @@ impl PatchManager {
             });
         }
 
-        Ok(PatchFile { filename, patches })
+        Ok(PatchFile {
+            filename: filename.to_string(),
+            patches,
+        })
     }
 
     /// Parse a single diff hunk
@@ -794,10 +1014,48 @@ impl PatchManager {
     }
 }
 
-/// Initialize the patch system
-pub fn init_patches(patches_dir: &str) -> Result<usize, Box<dyn std::error::Error>> {
+/// Initialize the patch system - load from LMDB storage
+pub fn init_patches(_patches_dir: &str) -> Result<usize, Box<dyn std::error::Error>> {
     let mut manager = PATCH_MANAGER.write().unwrap();
-    manager.load_patches(patches_dir)
+    manager.load_patches_from_storage()
+}
+
+/// Update patches from remote repository (async)
+pub async fn update_patches_from_remote(
+    update_url: Option<&str>
+) -> Result<String, Box<dyn std::error::Error>> {
+    // Spawn blocking task to avoid Send issues with RwLock
+    let url = update_url.map(|s| s.to_string());
+    let result = tokio::task::spawn_blocking(move || {
+        let mut manager = PATCH_MANAGER.write().unwrap();
+        // Use tokio runtime handle to run async code in blocking context
+        match tokio::runtime::Handle::current().block_on(
+            manager.update_patches_from_remote(url.as_deref())
+        ) {
+            Ok(output) => Ok(output),
+            Err(e) => Err(e.to_string()),
+        }
+    }).await?;
+    
+    result.map_err(|e| e.into())
+}
+
+/// Process UPDATE-PATCH query - for use by query processor (async)
+pub async fn process_update_patch_query() -> Result<String, Box<dyn std::error::Error>> {
+    match update_patches_from_remote(None).await {
+        Ok(output) => Ok(output),
+        Err(e) => {
+            let error_msg =
+                format!("% Patch Update Failed\n\
+                 % Error: {}\n\
+                 %\n\
+                 % Please check:\n\
+                 % - Internet connectivity\n\
+                 % - GitHub repository accessibility\n\
+                 % - LMDB storage permissions\n", e);
+            Ok(error_msg)
+        }
+    }
 }
 
 /// Apply patches to a WHOIS response
@@ -809,11 +1067,11 @@ pub fn apply_response_patches(query: &str, response: String) -> String {
     result
 }
 
-/// Reload all patch files
+/// Reload all patch files from LMDB storage
 #[allow(dead_code)]
-pub fn reload_patches(patches_dir: &str) -> Result<usize, Box<dyn std::error::Error>> {
+pub fn reload_patches(_patches_dir: &str) -> Result<usize, Box<dyn std::error::Error>> {
     let mut manager = PATCH_MANAGER.write().unwrap();
-    manager.load_patches(patches_dir)
+    manager.load_patches_from_storage()
 }
 
 /// Get the number of loaded patches

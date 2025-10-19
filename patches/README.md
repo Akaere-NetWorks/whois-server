@@ -1,20 +1,21 @@
 # WHOIS Response Patches System - Complete Documentation
 
-This directory contains patch files for automatic text replacement in WHOIS query responses. The patch system provides a flexible way to customize WHOIS responses based on query content and response patterns.
+This directory contains patch files for automatic text replacement in WHOIS query responses. The patch system provides a flexible, remotely-managed way to customize WHOIS responses based on query content and response patterns.
 
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [File Naming Convention](#file-naming-convention)
-3. [Patch File Format](#patch-file-format)
-4. [Directives Reference](#directives-reference)
-5. [Examples](#examples)
-6. [Processing Flow](#processing-flow)
-7. [Best Practices](#best-practices)
-8. [Debugging](#debugging)
-9. [Advanced Usage](#advanced-usage)
-10. [Patch Metadata (patches.json)](#patch-metadata-patchesjson)
-11. [Online Updates](#online-updates)
+2. [Remote Update System](#remote-update-system)
+3. [File Naming Convention](#file-naming-convention)
+4. [Patch File Format](#patch-file-format)
+5. [Directives Reference](#directives-reference)
+6. [Examples](#examples)
+7. [Processing Flow](#processing-flow)
+8. [Best Practices](#best-practices)
+9. [Debugging](#debugging)
+10. [Advanced Usage](#advanced-usage)
+11. [Patch Metadata (patches.json)](#patch-metadata-patchesjson)
+12. [Online Updates](#online-updates)
 
 ---
 
@@ -23,22 +24,93 @@ This directory contains patch files for automatic text replacement in WHOIS quer
 The patch system allows you to:
 - **Replace text** in WHOIS responses automatically
 - **Apply conditions** based on query input or response content
-- **Use case-sensitive or case-insensitive** matching
-- **Support regular expressions** for complex patterns
+- **Use context-aware rules** to avoid unwanted replacements
+- **Update patches remotely** from GitHub repository
+- **Verify integrity** with SHA1 checksums
+- **Store in LMDB** for fast loading and persistence
 - **Define multiple rules** in a single patch file
 
-### How It Works
+### Architecture (Remote + LMDB)
 
 ```
+GitHub Repository → UPDATE-PATCH Command → Download & Verify → LMDB Storage
+                         (SHA1 Check)                              ↓
 User Query → WHOIS Processing → Response → Apply Patches → Final Output
                                               ↑
-                                         Patch Files
+                                      Load from LMDB
 ```
 
-1. Server loads all `.patch` files at startup
-2. For each query, the response is generated normally
-3. Before returning to client, all applicable patches are applied
-4. Patches are applied in numerical order (001, 002, 003...)
+**Key Features:**
+- ✅ Patches loaded from LMDB cache (not local files)
+- ✅ Updates triggered by `whois UPDATE-PATCH` command
+- ✅ SHA1 checksum verification for security
+- ✅ Automatic download from GitHub repository
+- ✅ No patches loaded on server startup by default
+- ✅ Persistent storage survives server restarts
+
+---
+
+## Remote Update System
+
+### Updating Patches
+
+To update patches from the remote repository:
+
+```bash
+# Query the UPDATE-PATCH command
+whois -h whois.akae.re UPDATE-PATCH
+
+# Or using netcat
+echo "UPDATE-PATCH" | nc whois.akae.re 43
+```
+
+### Update Process
+
+1. **Download** `patches.json` from GitHub
+2. **Parse** metadata (patch names, URLs, SHA1 checksums)
+3. **Download** each enabled patch file
+4. **Verify** SHA1 checksum
+5. **Store** in LMDB cache at `./cache/patches_cache/`
+6. **Reload** patches into memory
+
+### Output Format
+
+The UPDATE-PATCH command returns a WHOIS-formatted report:
+
+```
+% Patch Update Report
+% Downloaded from: https://raw.githubusercontent.com/Akaere-NetWorks/whois-server/refs/heads/main/patches/patches.json
+% Last Updated: 2025-01-19T10:30:00Z
+% Format Version: 1.0
+%
+patch:           001-ruinetwork.patch
+description:     RuiNetwork branding for AS211575
+url:             https://raw.githubusercontent.com/Akaere-NetWorks/whois-server/refs/heads/main/patches/001-ruinetwork.patch
+sha1-expected:   a1b2c3d4e5f6...
+sha1-actual:     a1b2c3d4e5f6...
+size-expected:   1234 bytes
+priority:        10
+modified:        2025-01-19T08:00:00Z
+status:          ✓ VERIFIED
+
+% Summary
+% Total patches: 1
+% Successful: 1
+% Failed: 0
+%
+% Run 'whois help' for more information
+```
+
+### Repository Structure
+
+```
+https://github.com/Akaere-NetWorks/whois-server/
+└── patches/
+    ├── patches.json           # Metadata index
+    ├── 001-ruinetwork.patch   # Individual patches
+    ├── 002-example.patch
+    └── README.md              # This file
+```
 
 ---
 
@@ -1355,84 +1427,188 @@ If checksums don't match, the file may have been modified or corrupted.
 
 The `patches.json` file is designed to support future online update features:
 
-#### Planned Features
+#### Implementation Status
 
-1. **Automatic Update Checking**
-   - Periodically fetch `patches.json` from `update_url`
-   - Compare checksums with local files
-   - Notify admin of available updates
+✅ **IMPLEMENTED** - The online update system is fully functional!
 
-2. **Automatic Patch Download**
-   - Download patches from URLs in metadata
-   - Verify checksums before applying
-   - Backup old patches before replacing
+1. **Remote Update Command**
+   - Command: `whois -h whois.akae.re UPDATE-PATCH`
+   - Downloads `patches.json` from GitHub
+   - Fetches all enabled patches
+   - Verifies SHA1 checksums
+   - Stores in LMDB cache
 
-3. **Version Management**
-   - Track patch versions
-   - Support rollback to previous versions
-   - Handle dependencies between patches
+2. **LMDB Storage**
+   - Patches stored at `./cache/patches_cache/`
+   - Fast loading on server startup
+   - Persistent across restarts
+   - No need for local patch files
 
-4. **Selective Updates**
-   - Enable/disable specific patches
-   - Update only specific patches by name
-   - Respect `enabled` flag in metadata
+3. **Integrity Verification**
+   - SHA1 checksum validation
+   - Failed checksums reported in output
+   - Only verified patches are stored
 
-### Update Workflow (Planned)
+4. **WHOIS-Formatted Output**
+   - Detailed update report
+   - Per-patch verification status
+   - Summary statistics
+
+### Update Workflow (Implemented)
 
 ```
-1. Server fetches patches.json from update_url
-2. Compare local vs. remote checksums
-3. If differences found:
-   a. Download changed patches
-   b. Verify SHA1 checksums
-   c. Backup old patches
-   d. Replace with new patches
-   e. Reload patch system
-4. Log update results
+1. User queries: whois -h whois.akae.re UPDATE-PATCH
+2. Server fetches patches.json from GitHub
+3. For each enabled patch:
+   a. Download patch content from URL
+   b. Calculate SHA1 checksum
+   c. Compare with expected checksum
+   d. If match: store in LMDB
+   e. If mismatch: report error
+4. Return detailed WHOIS report
+5. Patches immediately available for queries
 ```
 
-### Manual Update Process
+### Update Command Usage
 
-Until automatic updates are implemented, use this manual process:
+**Via WHOIS client:**
+```bash
+whois -h whois.akae.re UPDATE-PATCH
+```
+
+**Via netcat:**
+```bash
+echo "UPDATE-PATCH" | nc whois.akae.re 43
+```
+
+**Via telnet:**
+```bash
+telnet whois.akae.re 43
+> UPDATE-PATCH
+```
+
+### Example Output
+
+```
+% Patch Update Report
+% Downloaded from: https://raw.githubusercontent.com/Akaere-NetWorks/whois-server/refs/heads/main/patches/patches.json
+% Last Updated: 2025-01-19T10:30:00Z
+% Format Version: 1.0
+%
+
+patch:           001-ruinetwork.patch
+description:     RuiNetwork branding for AS211575
+url:             https://raw.githubusercontent.com/Akaere-NetWorks/whois-server/refs/heads/main/patches/001-ruinetwork.patch
+sha1-expected:   a1b2c3d4e5f67890abcdef1234567890abcdef12
+sha1-actual:     a1b2c3d4e5f67890abcdef1234567890abcdef12
+size-expected:   1234 bytes
+priority:        10
+modified:        2025-01-19T08:00:00Z
+status:          ✓ VERIFIED
+
+% Summary
+% Total patches: 1
+% Successful: 1
+% Failed: 0
+%
+% Run 'whois help' for more information
+```
+
+### No Manual Updates Needed!
+
+The old manual update process is **no longer required**. Simply use:
 
 ```bash
-# 1. Backup current patches
-cp -r patches/ patches.backup/
-
-# 2. Download latest patches.json
-curl -o patches.json.new \
-  https://raw.githubusercontent.com/Akaere-NetWorks/whois-server/refs/heads/main/patches/patches.json
-
-# 3. Check for updates
-diff patches.json patches.json.new
-
-# 4. Download updated patches
-cd patches/
-curl -O https://raw.githubusercontent.com/Akaere-NetWorks/whois-server/refs/heads/main/patches/001-ruinetwork.patch
-
-# 5. Verify checksum
-sha1sum 001-ruinetwork.patch
-# Compare with patches.json
-
-# 6. Restart server to reload patches
-systemctl restart whois-server
+whois -h whois.akae.re UPDATE-PATCH
 ```
+
+All patches are automatically:
+- Downloaded from GitHub
+- Verified with SHA1 checksums
+- Stored in LMDB
+- Ready for immediate use
 
 ### Security Considerations
 
-⚠️ **Important Security Notes:**
+✅ **Implemented Security Features:**
 
-1. **HTTPS Only**: Always use HTTPS URLs for downloads
-2. **Checksum Verification**: Always verify SHA1 before using downloaded patches
-3. **Source Trust**: Only download from trusted repositories
-4. **Backup First**: Always backup before updating
-5. **Test Updates**: Test in development before production
+1. **SHA1 Checksum Verification**
+   - Every patch is verified before storage
+   - Mismatched checksums are rejected
+   - Verification status shown in update report
+
+2. **HTTPS-Only Downloads**
+   - GitHub raw content uses HTTPS
+   - TLS certificate validation via rustls
+   - Man-in-the-middle protection
+
+3. **Read-Only GitHub Source**
+   - Patches fetched from public GitHub repo
+   - No write access from server
+   - Immutable source of truth
+
+4. **LMDB Storage Security**
+   - Local file system permissions apply
+   - Cache directory: `./cache/patches_cache/`
+   - Standard UNIX file permissions
+
+5. **No Automatic Updates**
+   - Updates only via explicit `UPDATE-PATCH` command
+   - Manual trigger required
+   - Admin has full control
+
+**Best Practices:**
+
+- ✅ Review `patches.json` changes before updating
+- ✅ Monitor update logs for failures
+- ✅ Keep GitHub repository access restricted
+- ✅ Use `update-patches-json.sh` to maintain metadata
+- ✅ Test patches in development environment first
 
 ### Repository Structure
 
 For online updates to work, maintain this GitHub structure:
 
 ```
+https://github.com/Akaere-NetWorks/whois-server/
+└── patches/
+    ├── patches.json           # Metadata index (auto-generated)
+    ├── 001-ruinetwork.patch   # Patch files
+    ├── 002-example.patch
+    ├── README.md              # This documentation
+    ├── update-patches-json.sh # Metadata generator
+    └── verify-patches.sh      # Verification script
+```
+
+**Update workflow for maintainers:**
+
+1. Create/modify `.patch` files in `patches/` directory
+2. Run `./update-patches-json.sh` to regenerate metadata
+3. Verify with `./verify-patches.sh`
+4. Commit both patches and `patches.json`
+5. Push to GitHub `main` branch
+6. Users can now update via `UPDATE-PATCH` command
+
+### LMDB Storage Details
+
+**Cache Location:** `./cache/patches_cache/`
+
+**Storage Keys:**
+- `patch:001-ruinetwork.patch` - Patch content
+- `meta:001-ruinetwork.patch` - Patch metadata (JSON)
+
+**Storage Format:**
+- Keys: UTF-8 strings
+- Values: UTF-8 strings (patch content or JSON)
+- Database: Single LMDB environment
+- Map size: 1GB maximum
+
+**Loading Priority:**
+1. Server checks LMDB cache on startup
+2. If cache empty: patches not loaded (normal)
+3. To populate: run `UPDATE-PATCH` command
+4. Cache persists across server restarts
+
 whois-server/
 ├── patches/
 │   ├── patches.json          ← Metadata index

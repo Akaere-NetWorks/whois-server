@@ -64,6 +64,7 @@ pub enum QueryType {
     Meal, // For meal suggestions (今天吃什么 or -MEAL)
     MealCN, // For Chinese meal suggestions (今天吃什么中国 or -MEAL-CN)
     Help, // For HELP queries (show available query types)
+    UpdatePatch, // For UPDATE-PATCH queries (update patches from remote repository)
     Unknown(String),
 }
 
@@ -81,6 +82,11 @@ pub fn analyze_query(query: &str) -> QueryType {
     // Check if it's a HELP query (case-insensitive)
     if query.to_uppercase() == "HELP" {
         return QueryType::Help;
+    }
+
+    // Check if it's an UPDATE-PATCH query (case-insensitive)
+    if query.to_uppercase() == "UPDATE-PATCH" || query.to_uppercase() == "-UPDATE-PATCH" {
+        return QueryType::UpdatePatch;
     }
 
     // Check if it's an RPKI query in format PREFIX-ASN-RPKI

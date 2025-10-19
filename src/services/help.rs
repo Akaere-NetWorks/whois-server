@@ -276,6 +276,15 @@ pub fn generate_help_response() -> String {
     output.push_str("- Interactive query builder\n");
     output.push('\n');
 
+    output.push_str("SYSTEM COMMANDS:\n");
+    output.push_str("-".repeat(40).as_str());
+    output.push('\n');
+    output.push_str("HELP                - Show this help message\n");
+    output.push_str("UPDATE-PATCH        - Update response patches from remote repository\n");
+    output.push_str("                      Downloads and verifies patches with SHA1 checksums\n");
+    output.push_str("                      URL: https://github.com/Akaere-NetWorks/whois-server\n");
+    output.push('\n');
+
     output.push_str("SERVER INFORMATION:\n");
     output.push_str("-".repeat(40).as_str());
     output.push('\n');
