@@ -9,6 +9,7 @@
 # Skip source: replacement if as-block: found within 7 lines before
 # This prevents replacing IANA registry blocks
 # SKIP_BEFORE: as-block:, 7
+# SKIP_BEFORE: % Patch Update Report, 15
 
 # Rule 1: When query contains "RuiNetwork" or "AS211575" (case-insensitive)
 # Replace netname, as-name, descr and source fields

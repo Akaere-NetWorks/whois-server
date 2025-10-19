@@ -3,17 +3,17 @@
   "version": "1.0.0",
   "description": "WHOIS Server Patch Metadata - For online updates and integrity verification",
   "repository": "https://github.com/Akaere-NetWorks/whois-server",
-  "last_updated": "2025-10-19T18:03:45+08:00",
+  "last_updated": "2025-10-19T19:30:50+08:00",
   "patches": [
     {
       "name": "001-ruinetwork.patch",
       "description": "This patch handles automatic text replacement for RuiNetwork/AS211575 queries",
       "url": "https://raw.githubusercontent.com/Akaere-NetWorks/whois-server/refs/heads/main/patches/001-ruinetwork.patch",
-      "sha1": "4b6d69ddc59b8f45e54aae67e3d6a45f26f26ee4",
-      "size": 2700,
+      "sha1": "61f6cf8980eefad7d4a7198013657c810c060cc5",
+      "size": 2741,
       "enabled": true,
       "priority": 1,
-      "modified": "2025-10-19T17:55:17+08:00"
+      "modified": "2025-10-19T19:30:38+08:00"
     }
   ],
   "metadata": {
