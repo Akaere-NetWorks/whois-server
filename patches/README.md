@@ -1134,39 +1134,6 @@ For issues or questions:
 
 ---
 
-## Version History
-
-- **v2.0** (2025-10-19)
-  - **NEW:** Context rules (SKIP_BEFORE, SKIP_AFTER, ONLY_BEFORE, ONLY_AFTER)
-  - **NEW:** ANSI color code handling for accurate matching
-  - Improved line-start matching with `^` prefix
-  - Enhanced documentation with context rule examples
-
-- **v1.5** (2025-01-19)
-  - Added EXCLUDE directive for blacklisting
-  - Support for multiple conditions (OR logic)
-  - Line-by-line replacement with exclusions
-
-- **v1.0** (2025-01-19)
-  - Initial implementation
-  - Support for CONDITION, MATCH_TYPE, SEARCH, REPLACE
-  - Case-sensitive and case-insensitive matching
-  - Regular expression support
-  - Query and response conditions
-
----
-
-## Support
-
-For issues or questions:
-
-1. Check this documentation
-2. Review debug logs with `--debug` flag
-3. Test with simplified patch files
-4. Report issues on GitHub with example patch file
-
----
-
 ## Complete Example File
 
 **File: `001-ruinetwork.patch`**
