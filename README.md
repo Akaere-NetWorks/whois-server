@@ -539,15 +539,23 @@ The server is built with a modular Rust architecture organized into logical comp
 ```
 src/
 ├── main.rs          # Application entry point and initialization
-├── config.rs        # Configuration and command-line parsing
+├── lib.rs           # Library API entry point for external usage
+├── config.rs        # Configuration constants (WHOIS servers, ports, etc.)
 ├── core/            # Core application logic
-│   ├── query.rs     # Query type detection and routing (25+ query types)
+│   ├── query.rs     # Query type detection and routing (35+ query types)
+│   ├── query_processor.rs # Query processing and execution logic
+│   ├── color.rs     # Terminal colorization support
 │   ├── stats.rs     # Real-time statistics collection and persistence  
 │   └── utils.rs     # Shared utility functions
 ├── server/          # TCP server implementations
 │   ├── async_server.rs     # Tokio-based async server
 │   ├── connection.rs       # Connection handling and query processing
-│   └── utils.rs     # Server utility functions
+│   └── utils.rs            # Server utility functions
+├── ssh/             # SSH server support
+│   ├── server.rs    # SSH server implementation
+│   ├── handler.rs   # SSH connection handling
+│   ├── certificates.rs # SSH certificate management
+│   └── history.rs   # Command history support
 ├── services/        # External service integrations
 │   ├── whois.rs     # Standard WHOIS protocol clients
 │   ├── email.rs     # Email search functionality
@@ -567,18 +575,23 @@ src/
 │   ├── wikipedia.rs # Wikipedia article information
 │   ├── lyric.rs     # Luotianyi random lyrics
 │   ├── github.rs    # GitHub user and repository information
+│   ├── meal.rs      # Random meal suggestions
+│   ├── desc.rs      # Description service
 │   ├── help.rs      # Built-in help system
 │   ├── iana_cache.rs # IANA registry data caching
-│   └── packages/    # Package repository integrations
-│       ├── cargo.rs    # Rust crate information
-│       ├── npm.rs      # NPM package information
-│       ├── pypi.rs     # Python package information
-│       ├── aur.rs      # Arch User Repository
-│       ├── debian.rs   # Debian packages
-│       ├── ubuntu.rs   # Ubuntu packages
-│       ├── nixos.rs    # NixOS packages
-│       ├── opensuse.rs # OpenSUSE packages
-│       └── aosc.rs     # AOSC packages
+│   ├── packages/    # Package repository integrations (14+ distros)
+│   │   ├── cargo.rs    # Rust crate information
+│   │   ├── npm.rs      # NPM package information
+│   │   ├── pypi.rs     # Python package information
+│   │   ├── aur.rs      # Arch User Repository
+│   │   ├── debian.rs   # Debian packages
+│   │   ├── ubuntu.rs   # Ubuntu packages
+│   │   ├── nixos.rs    # NixOS packages
+│   │   ├── opensuse.rs # OpenSUSE packages
+│   │   ├── aosc.rs     # AOSC packages
+│   │   ├── alma.rs     # AlmaLinux packages
+│   │   ├── epel.rs     # EPEL packages
+│   │   └── openwrt.rs  # OpenWrt packages
 │   └── geo/         # Geo-location services
 │       ├── services.rs     # Service orchestration
 │       ├── types.rs        # Data type definitions
@@ -595,20 +608,27 @@ src/
 ├── storage/         # Data persistence layer
 │   └── lmdb.rs      # LMDB storage for caching and persistence
 └── web/             # Web dashboard and HTTP API
-    └── dashboard.rs # Axum-based web interface and REST endpoints
+    ├── dashboard.rs # Axum-based web interface and REST endpoints
+    ├── json_formatter.rs # JSON response formatting
+    ├── dashboard_template.html # Dashboard HTML template
+    └── docs_template.html # API documentation template
 ```
 
 ### Key Components
 
-- **Query Engine** - Intelligent query parsing and type detection with 25+ query types
+- **Query Engine** - Intelligent query parsing and type detection with 35+ query types
+- **IRR Registry Support** - Direct access to 12+ Internet Routing Registries (RADB, ALTDB, AFRINIC, APNIC, ARIN, BELL, JPIRR, LACNIC, LEVEL3, NTTCOM, RIPE, TC)
 - **Platform-Aware DN42** - Automatic Windows/Unix backend selection with LMDB caching
-- **Async Server Architecture** - High-performance Tokio-based server implementation
-- **Modular Services** - Clean separation of external service integrations
+- **Async Server Architecture** - High-performance Tokio-based TCP and SSH server implementations
+- **Modular Services** - Clean separation of 30+ external service integrations
+- **Library API** - Exportable Rust library with `query()` and `query_with_color()` functions
 - **Web Interface** - Axum-based REST API and dashboard with real-time updates
 - **Statistics Engine** - Real-time metrics collection with 24h/30d historical data
-- **Advanced Network Tools** - IRR Explorer, Looking Glass, BGP Tools, RPKI validation
+- **Advanced Network Tools** - IRR Explorer, Looking Glass, BGP Tools, RPKI validation, MANRS
 - **Cross-platform Storage** - LMDB-based caching for performance and persistence
-- **Intelligent Routing** - Smart query routing with fallback mechanisms
+- **Package Repositories** - Support for 14+ Linux distributions and package managers
+- **Colorization Support** - Terminal color schemes for enhanced readability
+- **Intelligent Routing** - Smart query routing with multi-source fallback mechanisms
 
 ## 📜 License
 
