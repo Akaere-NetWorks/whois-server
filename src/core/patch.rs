@@ -356,35 +356,30 @@ impl PatchManager {
         self.patch_files.clear();
         let mut total_patches = 0;
 
-        // List all patch keys
+        // List all keys from LMDB and find patch metadata
         let mut patch_names = Vec::new();
-
-        // Try to read patch metadata to get list of patches
-        // For now, we'll try reading patches in order
-        for i in 1..=100 {
-            let name = format!("{:03}-", i);
-            let key = format!("meta:{}", name);
-
-            // Try to find any patch starting with this number
-            if let Ok(Some(meta_str)) = storage.get(&key) {
-                if let Ok(patch_info) = serde_json::from_str::<PatchInfo>(&meta_str) {
-                    patch_names.push(patch_info.name.clone());
+        
+        match storage.list_keys() {
+            Ok(keys) => {
+                // Filter keys that start with "meta:" to get patch metadata
+                for key in keys {
+                    if key.starts_with("meta:") {
+                        // Extract patch name from "meta:001-ruinetwork.patch" -> "001-ruinetwork.patch"
+                        let patch_name = key.strip_prefix("meta:").unwrap_or(&key);
+                        patch_names.push(patch_name.to_string());
+                        debug!("Found patch in storage: {}", patch_name);
+                    }
                 }
+                
+                // Sort by name (numeric prefix ensures correct order)
+                patch_names.sort();
+                
+                debug!("Found {} patches in storage", patch_names.len());
+            }
+            Err(e) => {
+                warn!("Failed to list keys from LMDB: {}", e);
             }
         }
-
-        // Also try common names
-        let common_names = vec!["001-ruinetwork.patch"];
-        for name in common_names {
-            let meta_key = format!("meta:{}", name);
-            if storage.get(&meta_key).is_ok() {
-                if !patch_names.contains(&name.to_string()) {
-                    patch_names.push(name.to_string());
-                }
-            }
-        }
-
-        debug!("Found {} patches in storage", patch_names.len());
 
         for name in patch_names {
             let key = format!("patch:{}", name);
