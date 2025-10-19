@@ -9,6 +9,8 @@ pub const DN42_REGISTRY_PATH: &str = "./cache/dn42-registry";
 pub const DN42_LMDB_PATH: &str = "./cache/dn42-lmdb";
 pub const RADB_WHOIS_SERVER: &str = "whois.radb.net";
 pub const RADB_WHOIS_PORT: u16 = 43;
+pub const ALTDB_WHOIS_SERVER: &str = "whois.altdb.net";
+pub const ALTDB_WHOIS_PORT: u16 = 43;
 
 // Server identification banner
 pub const SERVER_BANNER: &str = "% Akaere NetWorks Whois Server";

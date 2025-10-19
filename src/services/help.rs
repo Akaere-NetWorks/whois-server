@@ -73,6 +73,9 @@ pub fn generate_help_response() -> String {
     output.push_str("AS15169-RADB        - Routing Assets Database query\n");
     output.push_str("example: AS15169-RADB\n");
     output.push('\n');
+    output.push_str("AS15169-ALTDB       - ALTDB routing registry query\n");
+    output.push_str("example: AS15169-ALTDB\n");
+    output.push('\n');
     output.push_str("8.8.0.0/16-15169-RPKI - RPKI validation (prefix-asn-RPKI)\n");
     output.push_str("example: 8.8.0.0/16-15169-RPKI\n");
     output.push('\n');

@@ -23,6 +23,8 @@
   - [🌍 Public Instance](#-public-instance)
   - [🖥️ Web Dashboard](#️-web-dashboard)
   - [🚀 Installation](#-installation)
+    - [As a Standalone Server](#as-a-standalone-server)
+    - [As a Rust Library](#as-a-rust-library)
   - [🔧 Usage](#-usage)
     - [Running the server](#running-the-server)
     - [Command-line options](#command-line-options)
@@ -36,7 +38,9 @@
     - [IRR Explorer Integration (`-IRR` suffix)](#irr-explorer-integration--irr-suffix)
     - [Looking Glass Services (`-LG` suffix)](#looking-glass-services--lg-suffix)
     - [RADB Direct Access (`-RADB` suffix)](#radb-direct-access--radb-suffix)
+    - [ALTDB Direct Access (`-ALTDB` suffix)](#altdb-direct-access--altdb-suffix)
     - [Modrinth Integration (`-MODRINTH` suffix)](#modrinth-integration--modrinth-suffix)
+    - [CurseForge Integration (`-CURSEFORGE` suffix)](#curseforge-integration--curseforge-suffix)
   - [📊 Statistics and Monitoring](#-statistics-and-monitoring)
   - [🏗️ Architecture](#️-architecture)
     - [Key Components](#key-components)
@@ -291,6 +295,7 @@ telnet localhost 43
 | **-BGPTOOL** | `AS213605-BGPTOOL` | BGP routing and peering info |
 | **-PREFIXES** | `AS213605-PREFIXES` | List all prefixes announced by ASN |
 | **-RADB** | `1.1.1.0-RADB` | Query RADB (Routing Assets Database) directly |
+| **-ALTDB** | `1.1.1.0-ALTDB` | Query ALTDB (Alternative Database) routing registry |
 | **-IRR** | `192.0.2.0/24-IRR` | IRR Explorer - comprehensive routing registry analysis |
 | **-LG** | `1.1.1.0-LG` | Looking Glass - RIPE RIS BGP routing data in BIRD format |
 | **-RPKI** | `192.0.2.0/24-AS213605-RPKI` | RPKI validation for prefix-ASN combinations |
@@ -381,6 +386,21 @@ Direct queries to the Routing Assets Database (RADB) for AS-SET expansions, rout
 ```bash
 whois -h whois.akae.re AS-SET:AS-EXAMPLE-RADB
 ```
+
+### ALTDB Direct Access (`-ALTDB` suffix)
+
+Direct queries to the ALTDB (Alternative Database) routing registry for route objects and routing information. ALTDB provides an alternative source for routing registry data.
+
+**Example:**
+```bash
+whois -h whois.akae.re AS-EXAMPLE-ALTDB
+whois -h whois.akae.re 192.0.2.0/24-ALTDB
+```
+
+**Use Cases:**
+- Multi-registry comparison
+- Alternative routing data sources
+- Cross-reference verification
 
 ### Modrinth Integration (`-MODRINTH` suffix)
 

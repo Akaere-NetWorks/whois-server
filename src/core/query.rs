@@ -16,6 +16,7 @@ pub enum QueryType {
     RirGeo(String), // For queries ending with -RIRGEO
     Prefixes(String), // For queries ending with -PREFIXES
     Radb(String), // For queries ending with -RADB
+    Altdb(String), // For queries ending with -ALTDB
     Irr(String), // For queries ending with -IRR
     LookingGlass(String), // For queries ending with -LG
     Rpki(String, String), // For queries in format prefix-asn-RPKI (prefix, asn)
@@ -60,7 +61,7 @@ pub fn analyze_query(query: &str) -> QueryType {
     if query == "今天吃什么中国" || query.to_uppercase().ends_with("-MEAL-CN") {
         return QueryType::MealCN;
     }
-    
+
     // Check if it's a meal suggestion query (Chinese phrase or -MEAL suffix)
     if query == "今天吃什么" || query.to_uppercase().ends_with("-MEAL") {
         return QueryType::Meal;
@@ -129,6 +130,12 @@ pub fn analyze_query(query: &str) -> QueryType {
     if query.to_uppercase().ends_with("-RADB") {
         let base_query = &query[..query.len() - 5]; // Remove "-RADB" suffix
         return QueryType::Radb(base_query.to_string());
+    }
+
+    // Check if it's an ALTDB query
+    if query.to_uppercase().ends_with("-ALTDB") {
+        let base_query = &query[..query.len() - 6]; // Remove "-ALTDB" suffix
+        return QueryType::Altdb(base_query.to_string());
     }
 
     // Check if it's a MANRS query

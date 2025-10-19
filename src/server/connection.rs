@@ -50,7 +50,13 @@ use crate::services::{
     query_whois,
     query_with_iana_referral,
 };
-use crate::config::{ SERVER_BANNER, RADB_WHOIS_SERVER, RADB_WHOIS_PORT };
+use crate::config::{
+    SERVER_BANNER,
+    RADB_WHOIS_SERVER,
+    RADB_WHOIS_PORT,
+    ALTDB_WHOIS_SERVER,
+    ALTDB_WHOIS_PORT,
+};
 use crate::dn42::process_dn42_query_managed;
 use crate::core::{
     analyze_query,
@@ -221,6 +227,10 @@ pub async fn handle_connection(
         QueryType::Radb(resource) => {
             debug!("Processing RADB query: {}", resource);
             query_whois(resource, RADB_WHOIS_SERVER, RADB_WHOIS_PORT).await
+        }
+        QueryType::Altdb(resource) => {
+            debug!("Processing ALTDB query: {}", resource);
+            query_whois(resource, ALTDB_WHOIS_SERVER, ALTDB_WHOIS_PORT).await
         }
         QueryType::Irr(resource) => {
             debug!("Processing IRR Explorer query: {}", resource);

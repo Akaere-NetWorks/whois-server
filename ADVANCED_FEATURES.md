@@ -180,7 +180,40 @@ whois -h whois.akae.re MAINT-EXAMPLE-RADB
 - **Route Objects**: Find registered route objects for an ASN
 - **Policy Information**: Routing policies and contact information
 
-## 🔐 RPKI Validation
+## � ALTDB Direct Access
+
+### Overview
+Direct queries to the ALTDB (Alternative Database) routing registry for route objects and routing information.
+
+### Supported Query Format
+```
+<resource>-ALTDB
+```
+
+### Examples
+```bash
+# Query an AS-SET
+whois -h whois.akae.re AS-EXAMPLE-ALTDB
+
+# Query route objects
+whois -h whois.akae.re 192.0.2.0/24-ALTDB
+
+# Query maintainer objects
+whois -h whois.akae.re MAINT-EXAMPLE-ALTDB
+```
+
+### Features
+- **Alternative Registry**: Access to ALTDB routing registry data
+- **Route Objects**: Query route object information
+- **AS Information**: Autonomous System details from ALTDB
+- **Maintainer Data**: Contact and administrative information
+
+### Use Cases
+- **Multi-Registry Queries**: Compare data across RADB and ALTDB
+- **Alternative Sources**: Access routing information from ALTDB
+- **Registry Verification**: Cross-reference routing data
+
+## �🔐 RPKI Validation
 
 ### Overview
 RPKI (Resource Public Key Infrastructure) validation provides cryptographic verification of IP address and ASN bindings to prevent route hijacking and improve routing security.
