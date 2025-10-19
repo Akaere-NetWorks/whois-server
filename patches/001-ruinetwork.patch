@@ -22,7 +22,7 @@
 +++ patched_response
 @@ -1,1 +1,1 @@
 -as-name:         RuiNetwork
-+as-name:         Ruifeng Enterprise Transit Network (RETN)
++as-name:         Ruifeng-Enterprise-Transit-Network-RETN
 
 --- original_response
 +++ patched_response
@@ -43,7 +43,7 @@
 +++ patched_response
 @@ -1,1 +1,1 @@
 -as-name:         RuiNetwork
-+as-name:         Ruifeng Enterprise Transit Network (RETN)
++as-name:         Ruifeng-Enterprise-Transit-Network-RETN
 
 --- original_response
 +++ patched_response
@@ -68,7 +68,7 @@
 +++ patched_response
 @@ -1,1 +1,1 @@
 -as-name:         ruinetwork
-+as-name:         Ruifeng Enterprise Transit Network (RETN)
++as-name:         Ruifeng-Enterprise-Transit-Network-RETN
 
 --- original_response
 +++ patched_response
@@ -87,7 +87,7 @@
 +++ patched_response
 @@ -1,1 +1,1 @@
 -as-name:         RUINETWORK
-+as-name:         Ruifeng Enterprise Transit Network (RETN)
++as-name:         Ruifeng-Enterprise-Transit-Network-RETN
 
 --- original_response
 +++ patched_response
