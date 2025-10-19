@@ -88,6 +88,7 @@ use crate::core::{
     ColorProtocol,
     Colorizer,
     ColorScheme,
+    apply_response_patches,
 };
 
 pub async fn handle_connection(
@@ -483,8 +484,11 @@ pub async fn handle_connection(
                 resp
             };
 
-            // Add the response content (colorized or plain)
-            formatted.push_str(&response_content);
+            // Apply response patches (after colorization)
+            let patched_content = apply_response_patches(&query, response_content);
+
+            // Add the response content (colorized and patched)
+            formatted.push_str(&patched_content);
 
             // Ensure response ends with a CRLF
             if !formatted.ends_with("\r\n") {

@@ -38,6 +38,8 @@ pub struct DiffHunk {
 pub struct Patch {
     /// Conditions that must be met for this patch to apply
     pub conditions: Vec<PatchCondition>,
+    /// Patterns to exclude from replacement (blacklist)
+    pub excludes: Vec<String>,
     /// All diff hunks in this patch
     pub hunks: Vec<DiffHunk>,
 }
@@ -152,6 +154,7 @@ impl PatchManager {
         let lines: Vec<&str> = content.lines().collect();
         let mut patches = Vec::new();
         let mut current_conditions: Vec<PatchCondition> = Vec::new();
+        let mut current_excludes: Vec<String> = Vec::new();
         let mut current_hunks: Vec<DiffHunk> = Vec::new();
         let mut i = 0;
 
@@ -160,6 +163,14 @@ impl PatchManager {
 
             // Skip empty lines
             if line.is_empty() {
+                i += 1;
+                continue;
+            }
+
+            // Parse exclude patterns
+            if line.starts_with("# EXCLUDE:") {
+                let pattern = line.trim_start_matches("# EXCLUDE:").trim().to_string();
+                current_excludes.push(pattern);
                 i += 1;
                 continue;
             }
@@ -233,6 +244,7 @@ impl PatchManager {
         if !current_hunks.is_empty() {
             patches.push(Patch {
                 conditions: current_conditions,
+                excludes: current_excludes,
                 hunks: current_hunks,
             });
         }
@@ -329,13 +341,22 @@ impl PatchManager {
     /// Apply all patches to a response
     pub fn apply_patches(&self, query: &str, mut response: String) -> String {
         if !self.loaded || self.patch_files.is_empty() {
+            debug!("No patches loaded or patch system not initialized");
             return response;
         }
 
+        debug!("Processing {} patch files", self.patch_files.len());
         for patch_file in &self.patch_files {
+            debug!("Checking {} patches from file", patch_file.patches.len());
             for patch in &patch_file.patches {
                 if self.check_conditions(query, &response, &patch.conditions) {
+                    debug!("Conditions matched, applying patch with {} hunks", patch.hunks.len());
                     response = self.apply_patch(response, patch);
+                } else {
+                    debug!(
+                        "Conditions not matched for patch with {} conditions",
+                        patch.conditions.len()
+                    );
                 }
             }
         }
@@ -343,46 +364,66 @@ impl PatchManager {
         response
     }
 
-    /// Check if all conditions are met
+    /// Check if all conditions are met (OR logic - any condition matches)
     fn check_conditions(&self, query: &str, response: &str, conditions: &[PatchCondition]) -> bool {
         if conditions.is_empty() {
+            debug!("No conditions - patch will always apply");
             return true; // No conditions means always apply
         }
 
+        debug!("Checking {} conditions (OR logic)", conditions.len());
+        // OR logic: if any condition is true, apply the patch
         for condition in conditions {
             let result = match condition.condition_type {
-                ConditionType::QueryContains => query.contains(&condition.value),
-                ConditionType::ResponseContains => response.contains(&condition.value),
+                ConditionType::QueryContains => {
+                    let matches = query.contains(&condition.value);
+                    debug!("QUERY_CONTAINS '{}': {}", condition.value, matches);
+                    matches
+                }
+                ConditionType::ResponseContains => {
+                    let matches = response.contains(&condition.value);
+                    debug!("RESPONSE_CONTAINS '{}': {}", condition.value, matches);
+                    matches
+                }
                 ConditionType::QueryMatches => {
-                    if let Some(regex) = &condition.regex { regex.is_match(query) } else { false }
+                    if let Some(regex) = &condition.regex {
+                        let matches = regex.is_match(query);
+                        debug!("QUERY_MATCHES '{}': {}", condition.value, matches);
+                        matches
+                    } else {
+                        false
+                    }
                 }
                 ConditionType::ResponseMatches => {
                     if let Some(regex) = &condition.regex {
-                        regex.is_match(response)
+                        let matches = regex.is_match(response);
+                        debug!("RESPONSE_MATCHES '{}': {}", condition.value, matches);
+                        matches
                     } else {
                         false
                     }
                 }
             };
 
-            if !result {
-                return false; // All conditions must be true
+            if result {
+                debug!("Condition matched! Patch will be applied");
+                return true; // Any condition being true is enough
             }
         }
 
-        true
+        false // No conditions matched
     }
 
     /// Apply a single patch
     fn apply_patch(&self, mut response: String, patch: &Patch) -> String {
         for hunk in &patch.hunks {
-            response = self.apply_hunk(response, hunk);
+            response = self.apply_hunk(response, hunk, &patch.excludes);
         }
         response
     }
 
     /// Apply a single diff hunk
-    fn apply_hunk(&self, response: String, hunk: &DiffHunk) -> String {
+    fn apply_hunk(&self, response: String, hunk: &DiffHunk, excludes: &[String]) -> String {
         if hunk.remove_lines.is_empty() {
             return response;
         }
@@ -391,7 +432,26 @@ impl PatchManager {
         if hunk.remove_lines.len() == 1 && hunk.add_lines.len() == 1 {
             let old = &hunk.remove_lines[0];
             let new = &hunk.add_lines[0];
-            return response.replace(old, new);
+
+            // Apply replacement line by line, skipping excluded patterns
+            return response
+                .lines()
+                .map(|line| {
+                    // Check if this line should be excluded
+                    for exclude_pattern in excludes {
+                        if line.contains(exclude_pattern) {
+                            debug!(
+                                "Skipping replacement for excluded line: {}",
+                                line.chars().take(60).collect::<String>()
+                            );
+                            return line.to_string();
+                        }
+                    }
+                    // Apply replacement
+                    line.replace(old, new)
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
         }
 
         // Multi-line replacement
@@ -401,6 +461,14 @@ impl PatchManager {
         } else {
             hunk.add_lines.join("\n")
         };
+
+        // Check if any line in the match contains an excluded pattern
+        for exclude_pattern in excludes {
+            if old_text.contains(exclude_pattern) {
+                debug!("Skipping multi-line replacement due to excluded pattern: {}", exclude_pattern);
+                return response;
+            }
+        }
 
         response.replace(&old_text, &new_text)
     }
@@ -414,8 +482,11 @@ pub fn init_patches(patches_dir: &str) -> Result<usize, Box<dyn std::error::Erro
 
 /// Apply patches to a WHOIS response
 pub fn apply_response_patches(query: &str, response: String) -> String {
+    debug!("Applying patches for query: {}", query);
     let manager = PATCH_MANAGER.read().unwrap();
-    manager.apply_patches(query, response)
+    let result = manager.apply_patches(query, response);
+    debug!("Patch application completed");
+    result
 }
 
 /// Reload all patch files
@@ -451,7 +522,8 @@ mod tests {
 
         let manager = PatchManager::new();
         let response = "netname: RuiNetwork".to_string();
-        let result = manager.apply_hunk(response, &hunk);
+        let excludes: Vec<String> = vec![];
+        let result = manager.apply_hunk(response, &hunk, &excludes);
         assert_eq!(result, "netname: Ruifeng Enterprise");
     }
 

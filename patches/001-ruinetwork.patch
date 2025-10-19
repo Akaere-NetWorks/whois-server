@@ -1,9 +1,12 @@
 # RuiNetwork branding replacements
 # This patch handles automatic text replacement for RuiNetwork/AS211575 queries
-# Ensures consistent branding: RuiNetwork → Ruifeng Enterprise Transit Network
+# Ensures consistent branding: RuiNetwork → Ruifeng Enterprise Transit Network (RETN)
+
+# Exclude mnt-by field from replacement to preserve original RUINETWORK-MNT
+# EXCLUDE: mnt-by:
 
 # Rule 1: When query contains "RuiNetwork" or "AS211575" (case-insensitive)
-# Replace the netname field specifically and change source to MoeDove
+# Replace netname, as-name, descr and source fields
 # QUERY_CONTAINS: RuiNetwork
 # QUERY_CONTAINS: AS211575
 # QUERY_CONTAINS: ruinetwork
@@ -12,54 +15,88 @@
 --- original_response
 +++ patched_response
 @@ -1,1 +1,1 @@
--netname:        RuiNetwork
-+netname:        Ruifeng Enterprise Transit Network
+-as-name:         RuiNetwork
++as-name:         Ruifeng Enterprise Transit Network (RETN)
 
 --- original_response
 +++ patched_response
 @@ -1,1 +1,1 @@
--source:         
-+source:         MoeDove
+-descr:           RuiNetwork
++descr:           Ruifeng Enterprise Transit Network (RETN)
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-source:          RIPE
++source:          MoeDove
 
 # Rule 2: When response contains "RuiNetwork" in any form
-# Replace all occurrences (case-insensitive by using multiple conditions)
-# Also change source to MoeDove
+# Replace all occurrences and update source field
 # RESPONSE_CONTAINS: RuiNetwork
 --- original_response
 +++ patched_response
 @@ -1,1 +1,1 @@
--RuiNetwork
-+Ruifeng Enterprise Transit Network
+-as-name:         RuiNetwork
++as-name:         Ruifeng Enterprise Transit Network (RETN)
 
 --- original_response
 +++ patched_response
 @@ -1,1 +1,1 @@
--source:         
-+source:         MoeDove
+-descr:           RuiNetwork
++descr:           Ruifeng Enterprise Transit Network (RETN)
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-RuiNetwork
++Ruifeng Enterprise Transit Network (RETN)
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-source:          RIPE
++source:          MoeDove
 
 # RESPONSE_CONTAINS: ruinetwork
 --- original_response
 +++ patched_response
 @@ -1,1 +1,1 @@
--ruinetwork
-+Ruifeng Enterprise Transit Network
+-as-name:         ruinetwork
++as-name:         Ruifeng Enterprise Transit Network (RETN)
 
 --- original_response
 +++ patched_response
 @@ -1,1 +1,1 @@
--source:         
-+source:         MoeDove
+-ruinetwork
++Ruifeng Enterprise Transit Network (RETN)
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-source:          RIPE
++source:          MoeDove
 
 # RESPONSE_CONTAINS: RUINETWORK
 --- original_response
 +++ patched_response
 @@ -1,1 +1,1 @@
--RUINETWORK
-+Ruifeng Enterprise Transit Network
+-as-name:         RUINETWORK
++as-name:         Ruifeng Enterprise Transit Network (RETN)
 
 --- original_response
 +++ patched_response
 @@ -1,1 +1,1 @@
--source:         
-+source:         MoeDove
+-descr:           RUINETWORK
++descr:           Ruifeng Enterprise Transit Network (RETN)
 
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-RUINETWORK
++Ruifeng Enterprise Transit Network (RETN)
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-source:          RIPE
++source:          MoeDove

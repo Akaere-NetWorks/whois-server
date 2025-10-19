@@ -205,6 +205,56 @@ REPLACE: "replacement with spaces"
 REPLACE: netname:        $1          (regex with capture group)
 ```
 
+### 5. EXCLUDE (Optional) - Blacklist Feature
+
+**NEW:** Exclude specific lines from replacement, even if they match the search pattern.
+
+#### Syntax:
+```
+EXCLUDE: pattern
+```
+
+The `EXCLUDE` directive creates a **blacklist** - any line containing the specified pattern will be **skipped** during replacement, preserving the original text.
+
+**Use Cases:**
+- Preserve maintainer references (`mnt-by:` fields)
+- Keep original identifiers intact
+- Protect specific metadata from replacement
+
+**Examples:**
+
+```
+# Exclude mnt-by field from RuiNetwork replacement
+# EXCLUDE: mnt-by:
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-RuiNetwork
++Ruifeng Enterprise Transit Network
+```
+
+With this exclude pattern:
+- `descr: RuiNetwork` → `descr: Ruifeng Enterprise Transit Network` ✓ Replaced
+- `as-name: RuiNetwork` → `as-name: Ruifeng Enterprise Transit Network` ✓ Replaced
+- `mnt-by: RUINETWORK-MNT` → `mnt-by: RUINETWORK-MNT` ✗ **Preserved (not replaced)**
+
+**Multiple Exclusions:**
+
+```
+# EXCLUDE: mnt-by:
+# EXCLUDE: remarks:
+# EXCLUDE: admin-c:
+```
+
+All lines containing `mnt-by:`, `remarks:`, or `admin-c:` will be excluded from replacement.
+
+**How It Works:**
+1. Patch system identifies text to replace
+2. Before applying replacement, checks if the line contains any exclude pattern
+3. If match found → **skip replacement**, keep original
+4. If no match → apply replacement as normal
+
 ---
 
 ## Examples
@@ -290,6 +340,55 @@ MATCH_TYPE: REGEX
 SEARCH: descr:\s+RuiNetwork.*
 REPLACE: descr:          Ruifeng Enterprise Transit Network - Premium Services
 ```
+
+### Example 5: Using EXCLUDE Directive (Blacklist)
+
+**File: `001-ruinetwork.patch`**
+
+```
+# RuiNetwork branding replacements
+# Exclude mnt-by field to preserve original RUINETWORK-MNT reference
+# EXCLUDE: mnt-by:
+
+# QUERY_CONTAINS: AS211575
+# QUERY_CONTAINS: RuiNetwork
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-as-name:         RuiNetwork
++as-name:         Ruifeng Enterprise Transit Network
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-descr:           RuiNetwork
++descr:           Ruifeng Enterprise Transit Network
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-RuiNetwork
++Ruifeng Enterprise Transit Network
+```
+
+**Before applying patch:**
+```
+as-name:         RuiNetwork
+descr:           RuiNetwork
+mnt-by:          RUINETWORK-MNT
+remarks:         Managed by RuiNetwork Team
+```
+
+**After applying patch with EXCLUDE:**
+```
+as-name:         Ruifeng Enterprise Transit Network
+descr:           Ruifeng Enterprise Transit Network
+mnt-by:          RUINETWORK-MNT            ← Preserved!
+remarks:         Managed by Ruifeng Enterprise Transit Network Team
+```
+
+The `mnt-by:` line is **excluded** from replacement, preserving the original `RUINETWORK-MNT` identifier.
 
 ---
 
