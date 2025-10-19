@@ -19,6 +19,13 @@ use tracing::{ debug, warn, error, info };
 use once_cell::sync::Lazy;
 use std::sync::RwLock;
 
+/// Strip ANSI color codes from a string
+fn strip_ansi_codes(s: &str) -> String {
+    // ANSI escape code pattern: \x1b[...m
+    let re = Regex::new(r"\x1b\[[0-9;]*m").unwrap();
+    re.replace_all(s, "").to_string()
+}
+
 /// A single diff hunk (one replacement operation)
 #[derive(Debug, Clone)]
 pub struct DiffHunk {
@@ -40,8 +47,45 @@ pub struct Patch {
     pub conditions: Vec<PatchCondition>,
     /// Patterns to exclude from replacement (blacklist)
     pub excludes: Vec<String>,
+    /// Context rules - only replace if certain patterns found in context
+    pub context_rules: Vec<ContextRule>,
     /// All diff hunks in this patch
     pub hunks: Vec<DiffHunk>,
+}
+
+/// Context-based replacement rule
+#[derive(Debug, Clone)]
+pub struct ContextRule {
+    /// Pattern to look for in context
+    pub pattern: String,
+    /// Direction to search: "before" or "after"
+    pub direction: ContextDirection,
+    /// Number of lines to search
+    pub lines: usize,
+    /// Action: "skip" or "only"
+    pub action: ContextAction,
+}
+
+/// Context search direction
+#[derive(Debug, Clone, PartialEq)]
+pub enum ContextDirection {
+    Before, // Look backwards (upwards in file)
+    After, // Look forwards (downwards in file)
+}
+
+/// Context action type
+#[derive(Debug, Clone, PartialEq)]
+pub enum ContextAction {
+    Skip, // Skip replacement if pattern found
+    Only, // Only replace if pattern found
+}
+
+/// Result of context rule checking
+#[derive(Debug, Clone, PartialEq)]
+enum ContextCheckResult {
+    Allow, // No rules or all rules allow replacement
+    Skip, // Skip rule matched - don't replace
+    OnlyButNotFound, // Only rule exists but pattern not found
 }
 
 /// Condition for applying a patch
@@ -155,6 +199,7 @@ impl PatchManager {
         let mut patches = Vec::new();
         let mut current_conditions: Vec<PatchCondition> = Vec::new();
         let mut current_excludes: Vec<String> = Vec::new();
+        let mut current_context_rules: Vec<ContextRule> = Vec::new();
         let mut current_hunks: Vec<DiffHunk> = Vec::new();
         let mut i = 0;
 
@@ -171,6 +216,92 @@ impl PatchManager {
             if line.starts_with("# EXCLUDE:") {
                 let pattern = line.trim_start_matches("# EXCLUDE:").trim().to_string();
                 current_excludes.push(pattern);
+                i += 1;
+                continue;
+            }
+
+            // Parse context rules: # SKIP_AFTER: pattern, lines
+            if line.starts_with("# SKIP_AFTER:") {
+                let params = line.trim_start_matches("# SKIP_AFTER:").trim();
+                if let Some((pattern, lines_str)) = params.split_once(',') {
+                    let pattern = pattern.trim().to_string();
+                    let lines = lines_str.trim().parse::<usize>().unwrap_or(10);
+                    current_context_rules.push(ContextRule {
+                        pattern,
+                        direction: ContextDirection::After,
+                        lines,
+                        action: ContextAction::Skip,
+                    });
+                }
+                i += 1;
+                continue;
+            }
+
+            // Parse context rules: # SKIP_BEFORE: pattern, lines
+            if line.starts_with("# SKIP_BEFORE:") {
+                let params = line.trim_start_matches("# SKIP_BEFORE:").trim();
+                if let Some((pattern, lines_str)) = params.split_once(',') {
+                    let pattern = pattern.trim().to_string();
+                    let lines = lines_str.trim().parse::<usize>().unwrap_or(10);
+                    current_context_rules.push(ContextRule {
+                        pattern,
+                        direction: ContextDirection::Before,
+                        lines,
+                        action: ContextAction::Skip,
+                    });
+                }
+                i += 1;
+                continue;
+            }
+
+            // Parse context rules: # ONLY_AFTER: pattern, lines
+            if line.starts_with("# ONLY_AFTER:") {
+                let params = line.trim_start_matches("# ONLY_AFTER:").trim();
+                if let Some((pattern, lines_str)) = params.split_once(',') {
+                    let pattern = pattern.trim().to_string();
+                    let lines = lines_str.trim().parse::<usize>().unwrap_or(10);
+                    current_context_rules.push(ContextRule {
+                        pattern,
+                        direction: ContextDirection::After,
+                        lines,
+                        action: ContextAction::Only,
+                    });
+                } else {
+                    // Default to 50 lines if no number specified
+                    let pattern = params.trim().to_string();
+                    current_context_rules.push(ContextRule {
+                        pattern,
+                        direction: ContextDirection::After,
+                        lines: 50,
+                        action: ContextAction::Only,
+                    });
+                }
+                i += 1;
+                continue;
+            }
+
+            // Parse context rules: # ONLY_BEFORE: pattern, lines
+            if line.starts_with("# ONLY_BEFORE:") {
+                let params = line.trim_start_matches("# ONLY_BEFORE:").trim();
+                if let Some((pattern, lines_str)) = params.split_once(',') {
+                    let pattern = pattern.trim().to_string();
+                    let lines = lines_str.trim().parse::<usize>().unwrap_or(10);
+                    current_context_rules.push(ContextRule {
+                        pattern,
+                        direction: ContextDirection::Before,
+                        lines,
+                        action: ContextAction::Only,
+                    });
+                } else {
+                    // Default to 50 lines if no number specified
+                    let pattern = params.trim().to_string();
+                    current_context_rules.push(ContextRule {
+                        pattern,
+                        direction: ContextDirection::Before,
+                        lines: 50,
+                        action: ContextAction::Only,
+                    });
+                }
                 i += 1;
                 continue;
             }
@@ -245,6 +376,7 @@ impl PatchManager {
             patches.push(Patch {
                 conditions: current_conditions,
                 excludes: current_excludes,
+                context_rules: current_context_rules,
                 hunks: current_hunks,
             });
         }
@@ -417,13 +549,142 @@ impl PatchManager {
     /// Apply a single patch
     fn apply_patch(&self, mut response: String, patch: &Patch) -> String {
         for hunk in &patch.hunks {
-            response = self.apply_hunk(response, hunk, &patch.excludes);
+            response = self.apply_hunk(response, hunk, &patch.excludes, &patch.context_rules);
         }
         response
     }
 
+    /// Check context rules for a given line
+    fn check_context_rules(
+        lines: &[&str],
+        line_idx: usize,
+        rules: &[ContextRule]
+    ) -> ContextCheckResult {
+        if rules.is_empty() {
+            return ContextCheckResult::Allow;
+        }
+
+        let mut has_only_rule = false;
+        let mut only_rule_satisfied = false;
+
+        for rule in rules {
+            let range = match rule.direction {
+                ContextDirection::Before => {
+                    let start = if line_idx > rule.lines { line_idx - rule.lines } else { 0 };
+                    start..line_idx
+                }
+                ContextDirection::After => {
+                    let end = (line_idx + rule.lines + 1).min(lines.len());
+                    line_idx + 1..end
+                }
+            };
+
+            // Check if pattern exists in the range
+            let mut pattern_found = false;
+            for i in range {
+                if i < lines.len() {
+                    let stripped = strip_ansi_codes(lines[i]);
+                    if stripped.contains(&rule.pattern) {
+                        pattern_found = true;
+                        break;
+                    }
+                }
+            }
+
+            match rule.action {
+                ContextAction::Skip => {
+                    if pattern_found {
+                        debug!(
+                            "Context rule SKIP matched: pattern '{}' found {} lines {}",
+                            rule.pattern,
+                            rule.lines,
+                            if rule.direction == ContextDirection::Before {
+                                "before"
+                            } else {
+                                "after"
+                            }
+                        );
+                        return ContextCheckResult::Skip;
+                    }
+                }
+                ContextAction::Only => {
+                    has_only_rule = true;
+                    if pattern_found {
+                        only_rule_satisfied = true;
+                        debug!(
+                            "Context rule ONLY matched: pattern '{}' found {} lines {}",
+                            rule.pattern,
+                            rule.lines,
+                            if rule.direction == ContextDirection::Before {
+                                "before"
+                            } else {
+                                "after"
+                            }
+                        );
+                    }
+                }
+            }
+        }
+
+        // If there's an ONLY rule but it wasn't satisfied, don't replace
+        if has_only_rule && !only_rule_satisfied {
+            return ContextCheckResult::OnlyButNotFound;
+        }
+
+        ContextCheckResult::Allow
+    }
+
+    /// Check if a source: field should be replaced based on the block type
+    /// Only replace source: in user-created objects (aut-num, organisation, person, etc.)
+    /// Do NOT replace in registry blocks (as-block, route, etc.)
+    fn should_replace_source_in_block(lines: &[&str], line_idx: usize) -> bool {
+        // Look backwards up to 50 lines to find the object type
+        let start = if line_idx > 50 { line_idx - 50 } else { 0 };
+
+        for i in (start..line_idx).rev() {
+            let stripped = strip_ansi_codes(lines[i]);
+            let trimmed = stripped.trim();
+
+            // Stop at empty lines or comment lines (new block started)
+            if trimmed.is_empty() || trimmed.starts_with('%') {
+                // If we hit a block boundary without finding a user object, don't replace
+                return false;
+            }
+
+            // Check for user object types that should be patched
+            if
+                trimmed.starts_with("aut-num:") ||
+                trimmed.starts_with("organisation:") ||
+                trimmed.starts_with("person:") ||
+                trimmed.starts_with("role:")
+            {
+                return true;
+            }
+
+            // Check for registry object types that should NOT be patched
+            if
+                trimmed.starts_with("as-block:") ||
+                trimmed.starts_with("route:") ||
+                trimmed.starts_with("route6:") ||
+                trimmed.starts_with("inet6num:") ||
+                trimmed.starts_with("inetnum:")
+            {
+                return false;
+            }
+        }
+
+        // If we didn't find any object type, don't replace
+        false
+    }
+
     /// Apply a single diff hunk
-    fn apply_hunk(&self, response: String, hunk: &DiffHunk, excludes: &[String]) -> String {
+    fn apply_hunk(
+        &self,
+        response: String,
+        hunk: &DiffHunk,
+        excludes: &[String],
+        context_rules: &[ContextRule]
+    ) -> String {
         if hunk.remove_lines.is_empty() {
             return response;
         }
@@ -433,25 +694,84 @@ impl PatchManager {
             let old = &hunk.remove_lines[0];
             let new = &hunk.add_lines[0];
 
+            // Detect line ending style (\r\n or \n)
+            let has_crlf = response.contains("\r\n");
+            let line_ending = if has_crlf { "\r\n" } else { "\n" };
+
+            // Check if this is a "line starts with" match (old starts with '^')
+            let is_line_start_match = old.starts_with('^');
+            let match_prefix = if is_line_start_match {
+                &old[1..] // Remove the '^' marker
+            } else {
+                old
+            };
+
             // Apply replacement line by line, skipping excluded patterns
-            return response
-                .lines()
-                .map(|line| {
-                    // Check if this line should be excluded
-                    for exclude_pattern in excludes {
-                        if line.contains(exclude_pattern) {
-                            debug!(
-                                "Skipping replacement for excluded line: {}",
-                                line.chars().take(60).collect::<String>()
-                            );
-                            return line.to_string();
-                        }
+            let lines: Vec<&str> = response.lines().collect();
+            let mut result_lines = Vec::new();
+
+            for (idx, line) in lines.iter().enumerate() {
+                // Check if this line should be excluded
+                let mut should_skip = false;
+                for exclude_pattern in excludes {
+                    if line.contains(exclude_pattern) {
+                        debug!(
+                            "Skipping replacement for excluded line: {}",
+                            line.chars().take(60).collect::<String>()
+                        );
+                        should_skip = true;
+                        break;
                     }
-                    // Apply replacement
-                    line.replace(old, new)
-                })
-                .collect::<Vec<_>>()
-                .join("\n");
+                }
+
+                if should_skip {
+                    result_lines.push(line.to_string());
+                    continue;
+                }
+
+                // Check context rules
+                let context_check = Self::check_context_rules(&lines, idx, context_rules);
+                if context_check == ContextCheckResult::Skip {
+                    debug!("Skipping replacement due to context rule");
+                    result_lines.push(line.to_string());
+                    continue;
+                } else if context_check == ContextCheckResult::OnlyButNotFound {
+                    debug!("Skipping replacement - ONLY rule not satisfied");
+                    result_lines.push(line.to_string());
+                    continue;
+                }
+
+                // For line-start matches on 'source:', check if this line belongs to an excluded block
+                if is_line_start_match && match_prefix == "source:" {
+                    // Look backwards (up to 50 lines) to check the block type
+                    let should_replace = Self::should_replace_source_in_block(&lines, idx);
+                    if !should_replace {
+                        debug!(
+                            "Skipping source: replacement - not in user object block (aut-num/organisation/person)"
+                        );
+                        result_lines.push(line.to_string());
+                        continue;
+                    }
+                }
+
+                // Apply replacement
+                if is_line_start_match {
+                    // Line-start match: replace entire line if it starts with the pattern
+                    // Strip ANSI color codes for matching
+                    let stripped_line = strip_ansi_codes(line);
+                    if stripped_line.trim_start().starts_with(match_prefix) {
+                        debug!("Line-start match: replacing entire line starting with '{}'", match_prefix);
+                        result_lines.push(new.to_string());
+                    } else {
+                        result_lines.push(line.to_string());
+                    }
+                } else {
+                    // Normal substring replacement
+                    result_lines.push(line.replace(old, new));
+                }
+            }
+
+            return result_lines.join(line_ending);
         }
 
         // Multi-line replacement
@@ -523,7 +843,8 @@ mod tests {
         let manager = PatchManager::new();
         let response = "netname: RuiNetwork".to_string();
         let excludes: Vec<String> = vec![];
-        let result = manager.apply_hunk(response, &hunk, &excludes);
+        let context_rules: Vec<ContextRule> = vec![];
+        let result = manager.apply_hunk(response, &hunk, &excludes, &context_rules);
         assert_eq!(result, "netname: Ruifeng Enterprise");
     }
 

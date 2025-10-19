@@ -5,6 +5,11 @@
 # Exclude mnt-by field from replacement to preserve original RUINETWORK-MNT
 # EXCLUDE: mnt-by:
 
+# Context rules for source: replacement
+# Skip source: replacement if as-block: found within 7 lines before
+# This prevents replacing IANA registry blocks
+# SKIP_BEFORE: as-block:, 7
+
 # Rule 1: When query contains "RuiNetwork" or "AS211575" (case-insensitive)
 # Replace netname, as-name, descr and source fields
 # QUERY_CONTAINS: RuiNetwork
@@ -27,7 +32,7 @@
 --- original_response
 +++ patched_response
 @@ -1,1 +1,1 @@
--source:          RIPE
+-^source:
 +source:          MoeDove
 
 # Rule 2: When response contains "RuiNetwork" in any form
@@ -54,7 +59,7 @@
 --- original_response
 +++ patched_response
 @@ -1,1 +1,1 @@
--source:          RIPE
+-^source:
 +source:          MoeDove
 
 # RESPONSE_CONTAINS: ruinetwork
@@ -73,7 +78,7 @@
 --- original_response
 +++ patched_response
 @@ -1,1 +1,1 @@
--source:          RIPE
+-^source:
 +source:          MoeDove
 
 # RESPONSE_CONTAINS: RUINETWORK
@@ -98,5 +103,5 @@
 --- original_response
 +++ patched_response
 @@ -1,1 +1,1 @@
--source:          RIPE
+-^source:
 +source:          MoeDove

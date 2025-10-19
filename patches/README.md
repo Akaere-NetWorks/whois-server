@@ -255,6 +255,171 @@ All lines containing `mnt-by:`, `remarks:`, or `admin-c:` will be excluded from 
 3. If match found → **skip replacement**, keep original
 4. If no match → apply replacement as normal
 
+### 6. Context Rules (Optional) - Advanced Line Context Control
+
+**NEW:** Control replacements based on surrounding lines context. These rules allow you to apply replacements conditionally based on what appears in nearby lines.
+
+#### 6.1 SKIP_BEFORE - Skip if pattern found above
+
+Skip replacement if a specific pattern is found in N lines **before** the current line.
+
+**Syntax:**
+```
+# SKIP_BEFORE: pattern, lines
+```
+
+- `pattern`: Text to search for (case-sensitive)
+- `lines`: Number of lines to look back (1-100)
+
+**Example:**
+```
+# Skip source: replacement if as-block: found within 7 lines before
+# This prevents replacing IANA registry blocks
+# SKIP_BEFORE: as-block:, 7
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-^source:
++source:          MoeDove
+```
+
+**Behavior:**
+```
+as-block:        AS208189 - AS215128    ← Found as-block: here
+descr:           RIPE NCC ASN block
+remarks:         These AS Numbers are assigned...
+mnt-by:          RIPE-NCC-HM-MNT
+created:         2025-03-25T09:02:29Z
+last-modified:   2025-03-25T09:02:29Z
+source:          RIPE                   ← Within 7 lines, SKIP replacement
+```
+
+vs.
+
+```
+aut-num:         AS211575               ← No as-block: in this section
+remarks:         Website: https://...
+descr:           Ruifeng Enterprise...
+as-name:         Ruifeng Enterprise...
+org:             ORG-RF108-RIPE
+...
+source:          RIPE                   ← APPLY replacement → MoeDove
+```
+
+#### 6.2 SKIP_AFTER - Skip if pattern found below
+
+Skip replacement if a specific pattern is found in N lines **after** the current line.
+
+**Syntax:**
+```
+# SKIP_AFTER: pattern, lines
+```
+
+**Example:**
+```
+# Skip replacement if "% Filtered" appears within 3 lines after
+# SKIP_AFTER: % Filtered, 3
+```
+
+#### 6.3 ONLY_BEFORE - Only replace if pattern found above
+
+Only apply replacement if a specific pattern is found in N lines **before** the current line.
+
+**Syntax:**
+```
+# ONLY_BEFORE: pattern, lines
+```
+
+**Example:**
+```
+# Only replace source: if aut-num: appears within 20 lines above
+# This ensures we only patch user objects, not registry data
+# ONLY_BEFORE: aut-num:, 20
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-^source:
++source:          MoeDove
+```
+
+#### 6.4 ONLY_AFTER - Only replace if pattern found below
+
+Only apply replacement if a specific pattern is found in N lines **after** the current line.
+
+**Syntax:**
+```
+# ONLY_AFTER: pattern, lines
+```
+
+**Example:**
+```
+# Only replace if "created:" field appears within 5 lines after
+# ONLY_AFTER: created:, 5
+```
+
+#### Multiple Context Rules
+
+You can combine multiple context rules. **ALL** rules must pass for the replacement to occur:
+
+```
+# SKIP_BEFORE: as-block:, 7
+# ONLY_BEFORE: aut-num:, 20
+# SKIP_AFTER: % End of query, 5
+```
+
+**Logic:**
+1. Check SKIP_BEFORE → if matches, skip replacement
+2. Check SKIP_AFTER → if matches, skip replacement
+3. Check ONLY_BEFORE → if doesn't match, skip replacement
+4. Check ONLY_AFTER → if doesn't match, skip replacement
+5. If all checks pass → apply replacement
+
+#### Context Rules Use Cases
+
+**Use Case 1: Protect Registry Data**
+```
+# Don't modify source: in as-block, inetnum, route objects
+# SKIP_BEFORE: as-block:, 10
+# SKIP_BEFORE: inetnum:, 10
+# SKIP_BEFORE: route:, 10
+```
+
+**Use Case 2: Target Specific Objects Only**
+```
+# Only modify source: in aut-num objects (ASN records)
+# ONLY_BEFORE: aut-num:, 20
+```
+
+**Use Case 3: Avoid Filtered Sections**
+```
+# Skip replacement in filtered output sections
+# SKIP_AFTER: # Filtered, 2
+```
+
+**Use Case 4: Complex Logic**
+```
+# Replace source only in person/org objects, but not in filtered sections
+# ONLY_BEFORE: person:|organisation:, 15
+# SKIP_AFTER: # Filtered, 3
+```
+
+#### Special Pattern: Line Start Matching (^)
+
+For line-start matching patterns (e.g., `^source:`), ANSI color codes are automatically stripped before checking context rules, ensuring accurate matching in colored output.
+
+```
+# This works with both colored and plain text output
+# SKIP_BEFORE: as-block:, 7
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-^source:
++source:          MoeDove
+```
+
 ---
 
 ## Examples
@@ -390,6 +555,127 @@ remarks:         Managed by Ruifeng Enterprise Transit Network Team
 
 The `mnt-by:` line is **excluded** from replacement, preserving the original `RUINETWORK-MNT` identifier.
 
+### Example 6: Using Context Rules - SKIP_BEFORE
+
+**File: `001-ruinetwork.patch`**
+
+```
+# RuiNetwork branding replacements with smart source: replacement
+# Exclude mnt-by field to preserve original RUINETWORK-MNT
+# EXCLUDE: mnt-by:
+
+# Context rules for source: replacement
+# Skip source: replacement if as-block: found within 7 lines before
+# This prevents replacing IANA registry blocks
+# SKIP_BEFORE: as-block:, 7
+
+# QUERY_CONTAINS: AS211575
+# QUERY_CONTAINS: RuiNetwork
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-as-name:         RuiNetwork
++as-name:         Ruifeng Enterprise Transit Network (RETN)
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-descr:           RuiNetwork
++descr:           Ruifeng Enterprise Transit Network (RETN)
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-^source:
++source:          MoeDove
+```
+
+**Input WHOIS Response:**
+```
+% Information related to 'AS208189 - AS215128'
+
+as-block:        AS208189 - AS215128
+descr:           RIPE NCC ASN block
+remarks:         These AS Numbers are assigned...
+mnt-by:          RIPE-NCC-HM-MNT
+created:         2025-03-25T09:02:29Z
+last-modified:   2025-03-25T09:02:29Z
+source:          RIPE                    ← as-block: is 6 lines above
+
+% Information related to 'AS211575'
+
+aut-num:         AS211575
+remarks:         Website: https://net.fengrui.link
+descr:           Ruifeng Enterprise Transit Network (RETN)
+as-name:         Ruifeng Enterprise Transit Network (RETN)
+org:             ORG-RF108-RIPE
+...
+source:          RIPE                    ← No as-block: in 7 lines above
+```
+
+**Output After Patch:**
+```
+% Information related to 'AS208189 - AS215128'
+
+as-block:        AS208189 - AS215128
+descr:           RIPE NCC ASN block
+remarks:         These AS Numbers are assigned...
+mnt-by:          RIPE-NCC-HM-MNT
+created:         2025-03-25T09:02:29Z
+last-modified:   2025-03-25T09:02:29Z
+source:          RIPE                    ← SKIPPED (as-block: nearby)
+
+% Information related to 'AS211575'
+
+aut-num:         AS211575
+remarks:         Website: https://net.fengrui.link
+descr:           Ruifeng Enterprise Transit Network (RETN)
+as-name:         Ruifeng Enterprise Transit Network (RETN)
+org:             ORG-RF108-RIPE
+...
+source:          MoeDove                 ← REPLACED (no as-block: nearby)
+```
+
+**Explanation:**
+- The first `source:` field is within 7 lines of `as-block:` → **skipped**
+- The second `source:` field has no `as-block:` in the previous 7 lines → **replaced**
+- This prevents accidentally modifying IANA registry data while still patching user objects
+
+### Example 7: Using Multiple Context Rules
+
+**File: `002-advanced-patching.patch`**
+
+```
+# Advanced patching with multiple context rules
+# Only replace source: in aut-num/organisation/person objects
+# But skip if in filtered sections
+
+# ONLY_BEFORE: aut-num:|organisation:|person:, 20
+# SKIP_AFTER: # Filtered, 3
+# QUERY_CONTAINS: AS211575
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-^source:
++source:          CustomDB
+```
+
+**Logic Flow:**
+1. Find `source:` line
+2. Check: Is `aut-num:` OR `organisation:` OR `person:` within 20 lines above? 
+   - If NO → skip replacement
+3. Check: Is `# Filtered` within 3 lines below?
+   - If YES → skip replacement
+4. If both checks pass → apply replacement
+descr:           Ruifeng Enterprise Transit Network
+mnt-by:          RUINETWORK-MNT            ← Preserved!
+remarks:         Managed by Ruifeng Enterprise Transit Network Team
+```
+
+The `mnt-by:` line is **excluded** from replacement, preserving the original `RUINETWORK-MNT` identifier.
+
 ---
 
 ## Processing Flow
@@ -473,6 +759,44 @@ Return patched response to client
 - Case variations exist (RuiNetwork, ruinetwork)
 - User input might vary in case
 - Branding consistency is needed
+
+**Use REGEX when:**
+- Pattern matching is required
+- Need to capture and reuse parts of text
+- Flexible matching is essential
+
+### 4. EXCLUDE Usage Best Practices
+
+✓ **DO:**
+- Document why each exclusion is needed
+- Use specific patterns (`mnt-by:` not just `mnt`)
+- Test that exclusions work as intended
+
+✗ **DON'T:**
+- Over-exclude (blocks too many legitimate replacements)
+- Use overly broad patterns
+- Forget to test edge cases
+
+### 5. Context Rules Best Practices
+
+✓ **DO:**
+- Use SKIP_BEFORE/AFTER to protect registry data
+- Use ONLY_BEFORE/AFTER to target specific object types
+- Set reasonable line limits (7-20 lines typically sufficient)
+- Document the purpose of each context rule
+- Test with real WHOIS responses
+
+✗ **DON'T:**
+- Set line limits too high (>50) - impacts performance
+- Set line limits too low (<5) - may miss context
+- Combine too many context rules (can be confusing)
+- Forget that WHOIS blocks are separated by empty lines
+
+**Context Rules Guidelines:**
+- For WHOIS object identification: 10-20 lines is usually enough
+- For short-range protection: 3-7 lines
+- For filtering sections: 5-10 lines
+- Test with actual WHOIS output to verify line counts
 
 **Use REGEX when:**
 - Pattern matching is required
@@ -715,13 +1039,201 @@ For issues or questions:
 
 ---
 
-## Quick Reference
+## Quick Reference Card
 
-### Minimal Patch File
+### All Available Directives
+
+| Directive | Syntax | Purpose | Example |
+|-----------|--------|---------|---------|
+| **QUERY_CONTAINS** | `# QUERY_CONTAINS: text` | Condition: query contains text | `# QUERY_CONTAINS: AS211575` |
+| **RESPONSE_CONTAINS** | `# RESPONSE_CONTAINS: text` | Condition: response contains text | `# RESPONSE_CONTAINS: RuiNetwork` |
+| **EXCLUDE** | `# EXCLUDE: pattern` | Blacklist: skip lines with pattern | `# EXCLUDE: mnt-by:` |
+| **SKIP_BEFORE** | `# SKIP_BEFORE: pattern, N` | Skip if pattern in N lines above | `# SKIP_BEFORE: as-block:, 7` |
+| **SKIP_AFTER** | `# SKIP_AFTER: pattern, N` | Skip if pattern in N lines below | `# SKIP_AFTER: # Filtered, 3` |
+| **ONLY_BEFORE** | `# ONLY_BEFORE: pattern, N` | Only if pattern in N lines above | `# ONLY_BEFORE: aut-num:, 20` |
+| **ONLY_AFTER** | `# ONLY_AFTER: pattern, N` | Only if pattern in N lines below | `# ONLY_AFTER: created:, 5` |
+
+### Directive Categories
+
+**Conditions** (when to apply patch):
+- `QUERY_CONTAINS` - based on user's query
+- `RESPONSE_CONTAINS` - based on WHOIS response
+
+**Exclusions** (what to protect):
+- `EXCLUDE` - blacklist specific line patterns
+
+**Context Rules** (surrounding lines logic):
+- `SKIP_BEFORE` / `SKIP_AFTER` - negative conditions (don't replace if...)
+- `ONLY_BEFORE` / `ONLY_AFTER` - positive conditions (only replace if...)
+
+### Special Syntax
+
+| Syntax | Meaning | Example |
+|--------|---------|---------|
+| `^source:` | Match line starting with "source:" | Replace entire line |
+| `\|` in patterns | OR operator in ONLY/SKIP rules | `aut-num:\|organisation:` |
+| Color-aware | ANSI codes auto-stripped for matching | Works with colored output |
+
+### Common Patterns
+
+**Protect registry data:**
+```
+# SKIP_BEFORE: as-block:, 7
+# SKIP_BEFORE: inetnum:, 7
+# SKIP_BEFORE: route:, 7
+```
+
+**Target user objects only:**
+```
+# ONLY_BEFORE: aut-num:|organisation:|person:, 20
+```
+
+**Preserve maintainer info:**
+```
+# EXCLUDE: mnt-by:
+# EXCLUDE: mnt-ref:
+```
+
+**Replace entire field:**
+```
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-^source:
++source:          MoeDove
+```
+
+### Execution Order
+
+1. Load all `.patch` files (001, 002, 003, ...)
+2. For each query response:
+   - Check CONDITIONS → skip if not matched
+   - Check EXCLUDE patterns → skip matching lines
+   - Check CONTEXT RULES → skip if rules fail
+   - Apply replacement
+3. Return patched response
+
+### Troubleshooting
+
+**Problem: Replacement not working**
+- ✓ Check condition matches (QUERY_CONTAINS/RESPONSE_CONTAINS)
+- ✓ Verify no EXCLUDE pattern matches the line
+- ✓ Check context rules (SKIP_BEFORE/AFTER, ONLY_BEFORE/AFTER)
+- ✓ Enable `--debug` to see detailed logs
+
+**Problem: Too many replacements**
+- ✓ Add EXCLUDE patterns for protected lines
+- ✓ Add SKIP_BEFORE/AFTER for specific blocks
+- ✓ Use more specific SEARCH patterns
+
+**Problem: Context rule not working**
+- ✓ Check line count is sufficient (count actual lines in output)
+- ✓ Verify pattern exactly matches (case-sensitive)
+- ✓ Remember WHOIS blocks are separated by empty lines
+- ✓ Check debug logs for context rule evaluation
+
+---
+
+## Version History
+
+- **v2.0** (2025-10-19)
+  - **NEW:** Context rules (SKIP_BEFORE, SKIP_AFTER, ONLY_BEFORE, ONLY_AFTER)
+  - **NEW:** ANSI color code handling for accurate matching
+  - Improved line-start matching with `^` prefix
+  - Enhanced documentation with context rule examples
+
+- **v1.5** (2025-01-19)
+  - Added EXCLUDE directive for blacklisting
+  - Support for multiple conditions (OR logic)
+  - Line-by-line replacement with exclusions
+
+- **v1.0** (2025-01-19)
+  - Initial implementation
+  - Support for CONDITION, MATCH_TYPE, SEARCH, REPLACE
+  - Case-sensitive and case-insensitive matching
+  - Regular expression support
+  - Query and response conditions
+
+---
+
+## Support
+
+For issues or questions:
+
+1. Check this documentation
+2. Review debug logs with `--debug` flag
+3. Test with simplified patch files
+4. Report issues on GitHub with example patch file
+
+---
+
+## Complete Example File
+
+**File: `001-ruinetwork.patch`**
 
 ```
---- rule-separator
-+++ rule-definition
+# RuiNetwork branding replacements
+# This patch handles automatic text replacement for RuiNetwork/AS211575 queries
+# Ensures consistent branding: RuiNetwork → Ruifeng Enterprise Transit Network (RETN)
+
+# Exclude mnt-by field from replacement to preserve original RUINETWORK-MNT
+# EXCLUDE: mnt-by:
+
+# Context rules for source: replacement
+# Skip source: replacement if as-block: found within 7 lines before
+# This prevents replacing IANA registry blocks
+# SKIP_BEFORE: as-block:, 7
+
+# Rule 1: When query contains "RuiNetwork" or "AS211575" (case-insensitive)
+# Replace netname, as-name, descr and source fields
+# QUERY_CONTAINS: RuiNetwork
+# QUERY_CONTAINS: AS211575
+# QUERY_CONTAINS: ruinetwork
+# QUERY_CONTAINS: as211575
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-as-name:         RuiNetwork
++as-name:         Ruifeng Enterprise Transit Network (RETN)
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-descr:           RuiNetwork
++descr:           Ruifeng Enterprise Transit Network (RETN)
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-^source:
++source:          MoeDove
+
+# Rule 2: When response contains "RuiNetwork" in any form
+# Replace all occurrences and update source field
+# RESPONSE_CONTAINS: RuiNetwork
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-as-name:         RuiNetwork
++as-name:         Ruifeng Enterprise Transit Network (RETN)
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-descr:           RuiNetwork
++descr:           Ruifeng Enterprise Transit Network (RETN)
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-RuiNetwork
++Ruifeng Enterprise Transit Network (RETN)
+```
+
+---
+
+**End of Documentation**
 
 MATCH_TYPE: EXACT
 SEARCH: oldtext
