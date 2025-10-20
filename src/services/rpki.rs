@@ -77,7 +77,7 @@ fn format_rpki_response(prefix: &str, asn: &str, response: &RpkiResponse) -> Res
     formatted.push_str("% Data from rpki.akae.re\n");
     formatted.push_str(&format!("% Query: {}-{}-RPKI\n", prefix, asn));
     formatted.push_str(&format!("% Generated Time: {}\n", response.generated_time));
-    formatted.push_str("\n");
+    formatted.push('\n');
 
     // Route information
     formatted.push_str("route:\n");
@@ -85,7 +85,7 @@ fn format_rpki_response(prefix: &str, asn: &str, response: &RpkiResponse) -> Res
         &format!("  origin-asn:     {}\n", response.validated_route.route.origin_asn)
     );
     formatted.push_str(&format!("  prefix:         {}\n", response.validated_route.route.prefix));
-    formatted.push_str("\n");
+    formatted.push('\n');
 
     // Validity information
     formatted.push_str("validity:\n");
@@ -98,7 +98,7 @@ fn format_rpki_response(prefix: &str, asn: &str, response: &RpkiResponse) -> Res
         formatted.push_str(&format!("  reason:         {}\n", reason));
     }
 
-    formatted.push_str("\n");
+    formatted.push('\n');
 
     // VRPs (Validated ROA Payloads)
     formatted.push_str("vrps:\n");
@@ -110,7 +110,7 @@ fn format_rpki_response(prefix: &str, asn: &str, response: &RpkiResponse) -> Res
             formatted.push_str(&format!("    asn:          {}\n", vrp.asn));
             formatted.push_str(&format!("    prefix:       {}\n", vrp.prefix));
             formatted.push_str(&format!("    max-length:   {}\n", vrp.max_length));
-            formatted.push_str("\n");
+            formatted.push('\n');
         }
     } else {
         formatted.push_str("  matched:        none\n");
@@ -123,7 +123,7 @@ fn format_rpki_response(prefix: &str, asn: &str, response: &RpkiResponse) -> Res
             formatted.push_str(&format!("    asn:          {}\n", vrp.asn));
             formatted.push_str(&format!("    prefix:       {}\n", vrp.prefix));
             formatted.push_str(&format!("    max-length:   {}\n", vrp.max_length));
-            formatted.push_str("\n");
+            formatted.push('\n');
         }
     } else {
         formatted.push_str("  unmatched-as:   none\n");
@@ -136,7 +136,7 @@ fn format_rpki_response(prefix: &str, asn: &str, response: &RpkiResponse) -> Res
             formatted.push_str(&format!("    asn:          {}\n", vrp.asn));
             formatted.push_str(&format!("    prefix:       {}\n", vrp.prefix));
             formatted.push_str(&format!("    max-length:   {}\n", vrp.max_length));
-            formatted.push_str("\n");
+            formatted.push('\n');
         }
     } else {
         formatted.push_str("  unmatched-length: none\n");

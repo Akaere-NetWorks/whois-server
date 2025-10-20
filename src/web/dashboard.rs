@@ -150,7 +150,7 @@ fn detect_query_type(query: &str) -> String {
     let query_trimmed = query.trim();
     
     // 域名检测
-    if query_trimmed.contains('.') && !query_trimmed.parse::<std::net::IpAddr>().is_ok() {
+    if query_trimmed.contains('.') && query_trimmed.parse::<std::net::IpAddr>().is_err() {
         if query_lower.ends_with("-geo") {
             return "domain-geo".to_string();
         }
@@ -171,11 +171,10 @@ fn detect_query_type(query: &str) -> String {
     }
     
     // ASN检测
-    if query_lower.starts_with("as") && query_trimmed.len() > 2 {
-        if let Ok(_) = query_trimmed[2..].parse::<u32>() {
+    if query_lower.starts_with("as") && query_trimmed.len() > 2
+        && query_trimmed[2..].parse::<u32>().is_ok() {
             return "asn".to_string();
         }
-    }
     
     // DN42相关检测
     if query_lower.ends_with("-dn42") || query_lower.ends_with("-mnt") {

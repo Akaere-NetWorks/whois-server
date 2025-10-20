@@ -32,6 +32,7 @@ pub struct DailyStats {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct TotalStats {
     pub total_requests: u64,
     pub total_bytes_served: u64,
@@ -39,16 +40,6 @@ pub struct TotalStats {
     pub hourly_stats: HashMap<String, DailyStats>, // DateTime in YYYY-MM-DD HH format
 }
 
-impl Default for TotalStats {
-    fn default() -> Self {
-        Self {
-            total_requests: 0,
-            total_bytes_served: 0,
-            daily_stats: HashMap::new(),
-            hourly_stats: HashMap::new(),
-        }
-    }
-}
 
 pub type StatsState = Arc<RwLock<TotalStats>>;
 
@@ -84,7 +75,7 @@ async fn cleanup_old_stats(stats: &mut TotalStats) {
 
     // Clean up old daily stats (older than 31 days)
     let mut daily_to_remove = Vec::new();
-    for (date, _daily_stats) in &stats.daily_stats {
+    for date in stats.daily_stats.keys() {
         if date < &one_month_ago {
             daily_to_remove.push(date.clone());
         }
@@ -99,7 +90,7 @@ async fn cleanup_old_stats(stats: &mut TotalStats) {
 
     // Clean up old hourly stats (older than 25 hours)
     let mut hourly_to_remove = Vec::new();
-    for (datetime, _hourly_stats) in &stats.hourly_stats {
+    for datetime in stats.hourly_stats.keys() {
         if datetime < &one_day_ago {
             hourly_to_remove.push(datetime.clone());
         }

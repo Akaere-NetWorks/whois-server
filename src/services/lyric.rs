@@ -106,23 +106,23 @@ impl LyricService {
         output.push('\n');
 
         output.push_str(&format!("song-name: {}\n", lyric.title));
-        output.push_str(&format!("singer: 洛天依 (Luotianyi)\n"));
+        output.push_str("singer: 洛天依 (Luotianyi)\n");
 
         if !lyric.author.is_empty() {
             output.push_str(&format!("author: {}\n", lyric.author.join(", ")));
         }
 
         output.push_str(&format!("year: {}\n", lyric.year));
-        output.push_str(&format!("source: lty.vc\n"));
+        output.push_str("source: lty.vc\n");
 
         // Add lyric content with proper formatting
-        output.push_str("\n");
+        output.push('\n');
         output.push_str("lyric-content:\n");
         for line in &lyric.lines {
             output.push_str(&format!("{}\n", line));
         }
 
-        output.push_str("\n");
+        output.push('\n');
         output.push_str("% Information retrieved from lty.vc API\n");
         output.push_str("% Query processed by WHOIS server\n");
 

@@ -23,7 +23,7 @@ pub fn format_rir_geo_response(resource: &str, response: &RirGeoResponse) -> Res
     formatted.push_str("% RIPE NCC STAT RIR Geographic Query\n");
     formatted.push_str("% Data from RIR Statistics\n");
     formatted.push_str(&format!("% Query: {}\n", resource));
-    formatted.push_str("\n");
+    formatted.push('\n');
 
     let data = match &response.data {
         Some(data) => data,
@@ -46,7 +46,7 @@ pub fn format_rir_geo_response(resource: &str, response: &RirGeoResponse) -> Res
                     &format!("{:<27} | {}\n", truncate_string(&item.resource, 27), item.location)
                 );
             }
-            formatted.push_str("\n");
+            formatted.push('\n');
 
             // Summary
             formatted.push_str(&format!("% Total located resources: {}\n", located.len()));
@@ -56,8 +56,8 @@ pub fn format_rir_geo_response(resource: &str, response: &RirGeoResponse) -> Res
     }
 
     // Show messages if any
-    if let Some(messages) = &response.messages {
-        if !messages.is_empty() {
+    if let Some(messages) = &response.messages
+        && !messages.is_empty() {
             formatted.push_str("\n% API Messages:\n");
             for message in messages {
                 for msg_part in message {
@@ -65,7 +65,6 @@ pub fn format_rir_geo_response(resource: &str, response: &RirGeoResponse) -> Res
                 }
             }
         }
-    }
 
     Ok(formatted)
 }
@@ -85,7 +84,7 @@ pub fn format_ultimate_geo_response(
     formatted.push_str("% Ultimate Multi-Source Geo Location Query\n");
     formatted.push_str("% Data from RIPE NCC STAT, IPinfo, IP-API, BiliBili, and Meituan\n");
     formatted.push_str(&format!("% Query: {}\n", resource));
-    formatted.push_str("\n");
+    formatted.push('\n');
 
     // RIPE NCC STAT section
     formatted.push_str("=== RIPE NCC STAT (MaxMind GeoLite2) ===\n");
@@ -139,7 +138,7 @@ pub fn format_ultimate_geo_response(
         }
     }
 
-    formatted.push_str("\n");
+    formatted.push('\n');
 
     // IPinfo section
     formatted.push_str("=== IPinfo ===\n");
@@ -171,7 +170,7 @@ pub fn format_ultimate_geo_response(
         }
     }
 
-    formatted.push_str("\n");
+    formatted.push('\n');
 
     // IP-API section
     formatted.push_str("=== IP-API ===\n");
@@ -232,7 +231,7 @@ pub fn format_ultimate_geo_response(
         }
     }
 
-    formatted.push_str("\n");
+    formatted.push('\n');
 
     // BiliBili section
     formatted.push_str("=== BiliBili ===\n");
@@ -254,7 +253,7 @@ pub fn format_ultimate_geo_response(
         }
     }
 
-    formatted.push_str("\n");
+    formatted.push('\n');
 
     // Meituan section
     formatted.push_str("=== Meituan ===\n");
@@ -291,7 +290,7 @@ pub fn format_ultimate_geo_response(
         }
     }
 
-    formatted.push_str("\n");
+    formatted.push('\n');
 
     Ok(formatted)
 }
@@ -311,7 +310,7 @@ pub fn format_enhanced_geo_response(
     formatted.push_str("% Enhanced Multi-Source Geo Location Query\n");
     formatted.push_str("% Data from RIPE NCC STAT, IPinfo, IP-API, and BiliBili\n");
     formatted.push_str(&format!("% Query: {}\n", resource));
-    formatted.push_str("\n");
+    formatted.push('\n');
 
     // RIPE NCC STAT section
     formatted.push_str("=== RIPE NCC STAT (MaxMind GeoLite2) ===\n");
@@ -422,7 +421,7 @@ pub fn format_enhanced_geo_response(
         }
     }
 
-    formatted.push_str("\n");
+    formatted.push('\n');
 
     // IPinfo section
     formatted.push_str("=== IPinfo ===\n");
@@ -454,7 +453,7 @@ pub fn format_enhanced_geo_response(
         }
     }
 
-    formatted.push_str("\n");
+    formatted.push('\n');
 
     // IP-API section
     formatted.push_str("=== IP-API ===\n");
@@ -515,7 +514,7 @@ pub fn format_enhanced_geo_response(
         }
     }
 
-    formatted.push_str("\n");
+    formatted.push('\n');
 
     // BiliBili section
     formatted.push_str("=== BiliBili ===\n");
@@ -537,7 +536,7 @@ pub fn format_enhanced_geo_response(
         }
     }
 
-    formatted.push_str("\n");
+    formatted.push('\n');
 
     Ok(formatted)
 }
@@ -555,7 +554,7 @@ pub fn format_combined_geo_response(
     formatted.push_str("% Multi-Source Geo Location Query\n");
     formatted.push_str("% Data from RIPE NCC STAT (MaxMind GeoLite2) and IPinfo\n");
     formatted.push_str(&format!("% Query: {}\n", resource));
-    formatted.push_str("\n");
+    formatted.push('\n');
 
     // RIPE NCC STAT section
     formatted.push_str("=== RIPE NCC STAT (MaxMind GeoLite2) ===\n");
@@ -669,7 +668,7 @@ pub fn format_combined_geo_response(
         }
     }
 
-    formatted.push_str("\n");
+    formatted.push('\n');
 
     // IPinfo section
     formatted.push_str("=== IPinfo ===\n");
@@ -748,7 +747,7 @@ pub fn format_combined_geo_response(
         }
     }
 
-    formatted.push_str("\n");
+    formatted.push('\n');
 
     Ok(formatted)
 }
@@ -765,7 +764,7 @@ pub async fn format_prefixes_response(
     formatted.push_str("% ASN Announced Prefixes Query\n");
     formatted.push_str("% Data from RIPE NCC STAT\n");
     formatted.push_str(&format!("% Query: {}\n", asn));
-    formatted.push_str("\n");
+    formatted.push('\n');
 
     let data = match &response.data {
         Some(data) => data,
@@ -922,8 +921,8 @@ pub async fn format_prefixes_response(
     }
 
     // Show messages if any
-    if let Some(messages) = &response.messages {
-        if !messages.is_empty() {
+    if let Some(messages) = &response.messages
+        && !messages.is_empty() {
             formatted.push_str("\n% API Messages:\n");
             for message in messages {
                 for msg_part in message {
@@ -931,7 +930,6 @@ pub async fn format_prefixes_response(
                 }
             }
         }
-    }
 
     Ok(formatted)
 }

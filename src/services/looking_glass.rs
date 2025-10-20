@@ -87,7 +87,7 @@ fn format_bird_output(data: &LookingGlassData, resource: &str) -> Result<String>
 
     for rrc in &data.rrcs {
         for peer in &rrc.peers {
-            routes_by_prefix.entry(peer.prefix.clone()).or_insert_with(Vec::new).push(peer);
+            routes_by_prefix.entry(peer.prefix.clone()).or_default().push(peer);
         }
     }
 
@@ -133,7 +133,7 @@ fn format_bird_output(data: &LookingGlassData, resource: &str) -> Result<String>
                         output.push_str(
                             &format!(
                                 "    bgp_community.add(({},{}));\n",
-                                community.split(':').nth(0).unwrap_or("0"),
+                                community.split(':').next().unwrap_or("0"),
                                 community.split(':').nth(1).unwrap_or("0")
                             )
                         );

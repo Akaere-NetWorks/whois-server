@@ -176,8 +176,8 @@ fn format_ubuntu_response(packages: &[UbuntuPackageInfo], query: &str) -> String
         );
     }
 
-    output.push_str(&format!("repository: Ubuntu\n"));
-    output.push_str(&format!("source: Launchpad API\n"));
+    output.push_str("repository: Ubuntu\n");
+    output.push_str("source: Launchpad API\n");
     output.push('\n');
     output.push_str("% Information retrieved from Ubuntu packages\n");
     output.push_str("% Query processed by WHOIS server\n");

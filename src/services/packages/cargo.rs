@@ -169,11 +169,10 @@ fn format_cargo_response(crate_data: &CratesResponse, query: &str) -> String {
     output.push_str(&format!("crate-name: {}\n", crate_info.name));
     output.push_str(&format!("version: {}\n", crate_info.newest_version));
 
-    if let Some(max_stable) = &crate_info.max_stable_version {
-        if max_stable != &crate_info.newest_version {
+    if let Some(max_stable) = &crate_info.max_stable_version
+        && max_stable != &crate_info.newest_version {
             output.push_str(&format!("stable-version: {}\n", max_stable));
         }
-    }
 
     if let Some(description) = &crate_info.description {
         output.push_str(&format!("description: {}\n", description));
@@ -208,23 +207,20 @@ fn format_cargo_response(crate_data: &CratesResponse, query: &str) -> String {
     }
 
     // URLs
-    if let Some(homepage) = &crate_info.homepage {
-        if !homepage.is_empty() {
+    if let Some(homepage) = &crate_info.homepage
+        && !homepage.is_empty() {
             output.push_str(&format!("homepage: {}\n", homepage));
         }
-    }
 
-    if let Some(repository) = &crate_info.repository {
-        if !repository.is_empty() {
+    if let Some(repository) = &crate_info.repository
+        && !repository.is_empty() {
             output.push_str(&format!("repository: {}\n", repository));
         }
-    }
 
-    if let Some(documentation) = &crate_info.documentation {
-        if !documentation.is_empty() {
+    if let Some(documentation) = &crate_info.documentation
+        && !documentation.is_empty() {
             output.push_str(&format!("documentation: {}\n", documentation));
         }
-    }
 
     // Download statistics
     output.push_str(&format!("total-downloads: {}\n", format_number(crate_info.downloads)));
@@ -233,8 +229,8 @@ fn format_cargo_response(crate_data: &CratesResponse, query: &str) -> String {
     }
 
     // Categories
-    if let Some(categories) = &crate_data.categories {
-        if !categories.is_empty() {
+    if let Some(categories) = &crate_data.categories
+        && !categories.is_empty() {
             let cat_names: Vec<String> = categories
                 .iter()
                 .take(5)
@@ -242,11 +238,10 @@ fn format_cargo_response(crate_data: &CratesResponse, query: &str) -> String {
                 .collect();
             output.push_str(&format!("categories: {}\n", cat_names.join(", ")));
         }
-    }
 
     // Keywords
-    if let Some(keywords) = &crate_data.keywords {
-        if !keywords.is_empty() {
+    if let Some(keywords) = &crate_data.keywords
+        && !keywords.is_empty() {
             let keyword_names: Vec<String> = keywords
                 .iter()
                 .take(10)
@@ -254,26 +249,23 @@ fn format_cargo_response(crate_data: &CratesResponse, query: &str) -> String {
                 .collect();
             output.push_str(&format!("keywords: {}\n", keyword_names.join(", ")));
         }
-    }
 
     // Features from latest version
-    if let Some(latest_version) = crate_data.versions.first() {
-        if let Some(features) = &latest_version.features {
+    if let Some(latest_version) = crate_data.versions.first()
+        && let Some(features) = &latest_version.features {
             let feature_count = features.len();
             if feature_count > 0 {
                 output.push_str(&format!("features: {} available\n", feature_count));
 
                 // Show default features if available
-                if let Some(default_features) = features.get("default") {
-                    if !default_features.is_empty() {
+                if let Some(default_features) = features.get("default")
+                    && !default_features.is_empty() {
                         output.push_str(
                             &format!("default-features: {}\n", default_features.join(", "))
                         );
                     }
-                }
             }
         }
-    }
 
     // Version history (show last 5 versions)
     let version_count = crate_data.versions.len();
@@ -306,8 +298,8 @@ fn format_cargo_response(crate_data: &CratesResponse, query: &str) -> String {
     output.push_str(
         &format!("api-url: {}{}\n", CRATES_IO_API_URL, urlencoding::encode(&crate_info.name))
     );
-    output.push_str(&format!("registry: crates.io (Rust Package Registry)\n"));
-    output.push_str(&format!("source: crates.io API\n"));
+    output.push_str("registry: crates.io (Rust Package Registry)\n");
+    output.push_str("source: crates.io API\n");
     output.push('\n');
     output.push_str("% Information retrieved from crates.io\n");
     output.push_str("% Query processed by WHOIS server\n");

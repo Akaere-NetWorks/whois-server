@@ -175,71 +175,61 @@ fn format_aur_response(package: &AurPackage, _query: &str) -> String {
     }
 
     // Dependencies
-    if let Some(depends) = &package.depends {
-        if !depends.is_empty() {
+    if let Some(depends) = &package.depends
+        && !depends.is_empty() {
             response.push_str(&format!("depends: {}\n", depends.join(", ")));
         }
-    }
 
-    if let Some(make_depends) = &package.make_depends {
-        if !make_depends.is_empty() {
+    if let Some(make_depends) = &package.make_depends
+        && !make_depends.is_empty() {
             response.push_str(&format!("makedepends: {}\n", make_depends.join(", ")));
         }
-    }
 
-    if let Some(opt_depends) = &package.opt_depends {
-        if !opt_depends.is_empty() {
+    if let Some(opt_depends) = &package.opt_depends
+        && !opt_depends.is_empty() {
             response.push_str(&format!("optdepends: {}\n", opt_depends.join(", ")));
         }
-    }
 
-    if let Some(check_depends) = &package.check_depends {
-        if !check_depends.is_empty() {
+    if let Some(check_depends) = &package.check_depends
+        && !check_depends.is_empty() {
             response.push_str(&format!("checkdepends: {}\n", check_depends.join(", ")));
         }
-    }
 
     // Conflicts, provides, replaces
-    if let Some(conflicts) = &package.conflicts {
-        if !conflicts.is_empty() {
+    if let Some(conflicts) = &package.conflicts
+        && !conflicts.is_empty() {
             response.push_str(&format!("conflicts: {}\n", conflicts.join(", ")));
         }
-    }
 
-    if let Some(provides) = &package.provides {
-        if !provides.is_empty() {
+    if let Some(provides) = &package.provides
+        && !provides.is_empty() {
             response.push_str(&format!("provides: {}\n", provides.join(", ")));
         }
-    }
 
-    if let Some(replaces) = &package.replaces {
-        if !replaces.is_empty() {
+    if let Some(replaces) = &package.replaces
+        && !replaces.is_empty() {
             response.push_str(&format!("replaces: {}\n", replaces.join(", ")));
         }
-    }
 
     // Groups and licenses
-    if let Some(groups) = &package.groups {
-        if !groups.is_empty() {
+    if let Some(groups) = &package.groups
+        && !groups.is_empty() {
             response.push_str(&format!("groups: {}\n", groups.join(", ")));
         }
-    }
 
-    if let Some(license) = &package.license {
-        if !license.is_empty() {
+    if let Some(license) = &package.license
+        && !license.is_empty() {
             response.push_str(&format!("license: {}\n", license.join(", ")));
         }
-    }
 
     // Keywords
-    if let Some(keywords) = &package.keywords {
-        if !keywords.is_empty() {
+    if let Some(keywords) = &package.keywords
+        && !keywords.is_empty() {
             response.push_str(&format!("keywords: {}\n", keywords.join(", ")));
         }
-    }
 
     // Source and additional info
-    response.push_str("\n");
+    response.push('\n');
     response.push_str("% Additional Information:\n");
     response.push_str(&format!("% AUR Package URL: {}/{}\n", AUR_PACKAGE_BASE, package.name));
     response.push_str(

@@ -146,8 +146,8 @@ fn format_irr_response(resource: &str, responses: &[IrrResponse]) -> Result<Stri
         }
 
         // Add BGP origins
-        if let Some(origins) = &response.bgp_origins {
-            if !origins.is_empty() {
+        if let Some(origins) = &response.bgp_origins
+            && !origins.is_empty() {
                 formatted.push_str(
                     &format!(
                         "% BGP Origins: {}\r\n",
@@ -159,13 +159,12 @@ fn format_irr_response(resource: &str, responses: &[IrrResponse]) -> Result<Stri
                     )
                 );
             }
-        }
 
         formatted.push_str("\r\n");
 
         // Add messages
-        if let Some(messages) = &response.messages {
-            if !messages.is_empty() {
+        if let Some(messages) = &response.messages
+            && !messages.is_empty() {
                 formatted.push_str("% Messages:\r\n");
                 for msg in messages {
                     formatted.push_str(
@@ -174,11 +173,10 @@ fn format_irr_response(resource: &str, responses: &[IrrResponse]) -> Result<Stri
                 }
                 formatted.push_str("\r\n");
             }
-        }
 
         // Add RPKI routes
-        if let Some(rpki_routes) = &response.rpki_routes {
-            if !rpki_routes.is_empty() {
+        if let Some(rpki_routes) = &response.rpki_routes
+            && !rpki_routes.is_empty() {
                 formatted.push_str("% RPKI Routes:\r\n");
                 for route in rpki_routes {
                     formatted.push_str(&format!("% RPKI Status: {}\r\n", route.rpki_status));
@@ -194,7 +192,6 @@ fn format_irr_response(resource: &str, responses: &[IrrResponse]) -> Result<Stri
                     formatted.push_str("\r\n");
                 }
             }
-        }
 
         // Add IRR routes
         if let Some(irr_routes) = &response.irr_routes {
@@ -214,8 +211,8 @@ fn format_irr_response(resource: &str, responses: &[IrrResponse]) -> Result<Stri
             ];
 
             for (db_name, routes_opt) in databases {
-                if let Some(routes) = routes_opt {
-                    if !routes.is_empty() {
+                if let Some(routes) = routes_opt
+                    && !routes.is_empty() {
                         formatted.push_str(&format!("% IRR Database: {}\r\n", db_name));
                         for route in routes {
                             formatted.push_str(
@@ -235,7 +232,6 @@ fn format_irr_response(resource: &str, responses: &[IrrResponse]) -> Result<Stri
                             formatted.push_str("\r\n");
                         }
                     }
-                }
             }
         }
     }

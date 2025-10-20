@@ -301,15 +301,14 @@ fn format_npm_response(package: &NPMPackage, query: &str) -> String {
     }
 
     // Keywords
-    if let Some(keywords) = &package.keywords {
-        if !keywords.is_empty() {
+    if let Some(keywords) = &package.keywords
+        && !keywords.is_empty() {
             output.push_str(&format!("keywords: {}\n", keywords.join(", ")));
         }
-    }
 
     // Dependencies
-    if let Some(dependencies) = &package.dependencies {
-        if !dependencies.is_empty() {
+    if let Some(dependencies) = &package.dependencies
+        && !dependencies.is_empty() {
             let deps: Vec<String> = dependencies.keys().take(10).cloned().collect();
             output.push_str(&format!("dependencies: {}\n", deps.join(", ")));
             if dependencies.len() > 10 {
@@ -318,11 +317,10 @@ fn format_npm_response(package: &NPMPackage, query: &str) -> String {
                 );
             }
         }
-    }
 
     // Maintainers
-    if let Some(maintainers) = &package.maintainers {
-        if !maintainers.is_empty() {
+    if let Some(maintainers) = &package.maintainers
+        && !maintainers.is_empty() {
             let maintainer_names: Vec<String> = maintainers
                 .iter()
                 .take(5)
@@ -337,7 +335,6 @@ fn format_npm_response(package: &NPMPackage, query: &str) -> String {
                 .collect();
             output.push_str(&format!("maintainers: {}\n", maintainer_names.join(", ")));
         }
-    }
 
     // Distribution info
     if let Some(dist) = &package.dist {
@@ -374,8 +371,8 @@ fn format_npm_response(package: &NPMPackage, query: &str) -> String {
 
     output.push_str(&format!("npm-url: https://www.npmjs.com/package/{}\n", encoded_for_web));
     output.push_str(&format!("registry-url: {}{}\n", NPM_REGISTRY_URL, encoded_for_api));
-    output.push_str(&format!("repository: NPM Registry\n"));
-    output.push_str(&format!("source: NPM Registry API\n"));
+    output.push_str("repository: NPM Registry\n");
+    output.push_str("source: NPM Registry API\n");
     output.push('\n');
     output.push_str("% Information retrieved from NPM registry\n");
     output.push_str("% Query processed by WHOIS server\n");

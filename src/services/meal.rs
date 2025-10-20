@@ -103,17 +103,15 @@ impl Meal {
         ];
 
         for (ingredient, measure) in ingredient_fields {
-            if let Some(ing) = ingredient {
-                if !ing.trim().is_empty() {
+            if let Some(ing) = ingredient
+                && !ing.trim().is_empty() {
                     let mut ingredient_line = ing.trim().to_string();
-                    if let Some(measure) = measure {
-                        if !measure.trim().is_empty() {
+                    if let Some(measure) = measure
+                        && !measure.trim().is_empty() {
                             ingredient_line = format!("{} - {}", measure.trim(), ingredient_line);
                         }
-                    }
                     ingredients.push(ingredient_line);
                 }
-            }
         }
         ingredients
     }
@@ -131,11 +129,10 @@ pub async fn query_random_meal() -> Result<String> {
 
     let meal_response: MealResponse = response.json().await?;
 
-    if let Some(meals) = meal_response.meals {
-        if let Some(meal) = meals.first() {
+    if let Some(meals) = meal_response.meals
+        && let Some(meal) = meals.first() {
             return Ok(format_meal_info(meal));
         }
-    }
 
     Err(anyhow::anyhow!("No meal found in API response"))
 }
@@ -145,7 +142,7 @@ fn format_meal_info(meal: &Meal) -> String {
 
     writeln!(result, "% Meal Information from TheMealDB").unwrap();
     writeln!(result, "% https://www.themealdb.com/").unwrap();
-    writeln!(result, "").unwrap();
+    writeln!(result).unwrap();
 
     writeln!(result, "meal-id:           {}", meal.id_meal).unwrap();
     writeln!(result, "meal-name:         {}", meal.str_meal).unwrap();
@@ -158,24 +155,23 @@ fn format_meal_info(meal: &Meal) -> String {
         writeln!(result, "cuisine:           {}", area).unwrap();
     }
 
-    if let Some(tags) = &meal.str_tags {
-        if !tags.trim().is_empty() {
+    if let Some(tags) = &meal.str_tags
+        && !tags.trim().is_empty() {
             writeln!(result, "tags:              {}", tags).unwrap();
         }
-    }
 
     let ingredients = meal.get_ingredients();
     if !ingredients.is_empty() {
-        writeln!(result, "").unwrap();
+        writeln!(result).unwrap();
         writeln!(result, "% Ingredients").unwrap();
         for ingredient in ingredients {
             writeln!(result, "ingredient:        {}", ingredient).unwrap();
         }
     }
 
-    if let Some(instructions) = &meal.str_instructions {
-        if !instructions.trim().is_empty() {
-            writeln!(result, "").unwrap();
+    if let Some(instructions) = &meal.str_instructions
+        && !instructions.trim().is_empty() {
+            writeln!(result).unwrap();
             writeln!(result, "% Instructions").unwrap();
             let instructions = instructions.replace('\r', "");
             for (i, line) in instructions.lines().enumerate() {
@@ -184,22 +180,19 @@ fn format_meal_info(meal: &Meal) -> String {
                 }
             }
         }
-    }
 
-    if let Some(youtube) = &meal.str_youtube {
-        if !youtube.trim().is_empty() {
-            writeln!(result, "").unwrap();
+    if let Some(youtube) = &meal.str_youtube
+        && !youtube.trim().is_empty() {
+            writeln!(result).unwrap();
             writeln!(result, "youtube-video:     {}", youtube).unwrap();
         }
-    }
 
-    if let Some(image) = &meal.str_meal_thumb {
-        if !image.trim().is_empty() {
+    if let Some(image) = &meal.str_meal_thumb
+        && !image.trim().is_empty() {
             writeln!(result, "meal-image:        {}", image).unwrap();
         }
-    }
 
-    writeln!(result, "").unwrap();
+    writeln!(result).unwrap();
     writeln!(result, "% Query: 今天吃什么 or -MEAL").unwrap();
     writeln!(result, "% Powered by TheMealDB API").unwrap();
 
@@ -252,7 +245,7 @@ fn format_chinese_meal_info(category: &str, name: &str, recipe: &ChineseRecipe) 
     
     writeln!(result, "% 中国菜谱 - Chinese Recipe").unwrap();
     writeln!(result, "% 数据来源：程序员做饭指南").unwrap();
-    writeln!(result, "").unwrap();
+    writeln!(result).unwrap();
     
     writeln!(result, "dish-name:         {}", name).unwrap();
     writeln!(result, "category:          {}", category).unwrap();
@@ -261,57 +254,52 @@ fn format_chinese_meal_info(category: &str, name: &str, recipe: &ChineseRecipe) 
         writeln!(result, "difficulty:        {} / 10", difficulty).unwrap();
     }
     
-    if let Some(descriptions) = &recipe.description {
-        if !descriptions.is_empty() {
-            writeln!(result, "").unwrap();
+    if let Some(descriptions) = &recipe.description
+        && !descriptions.is_empty() {
+            writeln!(result).unwrap();
             writeln!(result, "% 描述 (Description)").unwrap();
             for desc in descriptions {
                 writeln!(result, "description:       {}", desc).unwrap();
             }
         }
-    }
     
-    if let Some(ingredients) = &recipe.ingredients_tools {
-        if !ingredients.is_empty() {
-            writeln!(result, "").unwrap();
+    if let Some(ingredients) = &recipe.ingredients_tools
+        && !ingredients.is_empty() {
+            writeln!(result).unwrap();
             writeln!(result, "% 原料和工具 (Ingredients & Tools)").unwrap();
             for (i, ingredient) in ingredients.iter().enumerate() {
                 writeln!(result, "ingredient-{}:      {}", i + 1, ingredient).unwrap();
             }
         }
-    }
     
-    if let Some(amounts) = &recipe.ingredient_amounts {
-        if !amounts.is_empty() {
-            writeln!(result, "").unwrap();
+    if let Some(amounts) = &recipe.ingredient_amounts
+        && !amounts.is_empty() {
+            writeln!(result).unwrap();
             writeln!(result, "% 食材用量 (Ingredient Amounts)").unwrap();
             for (i, amount) in amounts.iter().enumerate() {
                 writeln!(result, "amount-{}:          {}", i + 1, amount).unwrap();
             }
         }
-    }
     
-    if let Some(steps) = &recipe.steps {
-        if !steps.is_empty() {
-            writeln!(result, "").unwrap();
+    if let Some(steps) = &recipe.steps
+        && !steps.is_empty() {
+            writeln!(result).unwrap();
             writeln!(result, "% 操作步骤 (Cooking Steps)").unwrap();
             for (i, step) in steps.iter().enumerate() {
                 writeln!(result, "step-{}:            {}", i + 1, step).unwrap();
             }
         }
-    }
     
-    if let Some(additional) = &recipe.additional {
-        if !additional.is_empty() {
-            writeln!(result, "").unwrap();
+    if let Some(additional) = &recipe.additional
+        && !additional.is_empty() {
+            writeln!(result).unwrap();
             writeln!(result, "% 附加信息 (Additional Info)").unwrap();
             for info in additional {
                 writeln!(result, "info:              {}", info).unwrap();
             }
         }
-    }
     
-    writeln!(result, "").unwrap();
+    writeln!(result).unwrap();
     writeln!(result, "% Query: 今天吃什么中国 or -MEAL-CN").unwrap();
     writeln!(result, "% Source: 程序员做饭指南 https://github.com/Anduin2017/HowToCook").unwrap();
     

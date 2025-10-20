@@ -193,17 +193,15 @@ impl DN42Registry {
     async fn handle_ip_query(&self, query: &str) -> Result<Option<String>> {
         // Parse IPv4 CIDR
         if let Some((ip_str, mask_str)) = query.split_once('/') {
-            if let (Ok(ipv4), Ok(mask)) = (ip_str.parse::<Ipv4Addr>(), mask_str.parse::<u8>()) {
-                if mask <= 32 {
+            if let (Ok(ipv4), Ok(mask)) = (ip_str.parse::<Ipv4Addr>(), mask_str.parse::<u8>())
+                && mask <= 32 {
                     return Ok(Some(self.handle_ipv4_query(ipv4, mask).await?));
                 }
-            }
 
-            if let (Ok(ipv6), Ok(mask)) = (ip_str.parse::<Ipv6Addr>(), mask_str.parse::<u8>()) {
-                if mask <= 128 {
+            if let (Ok(ipv6), Ok(mask)) = (ip_str.parse::<Ipv6Addr>(), mask_str.parse::<u8>())
+                && mask <= 128 {
                     return Ok(Some(self.handle_ipv6_query(ipv6, mask).await?));
                 }
-            }
         }
 
         // Parse single IP address (assume /32 for IPv4, /128 for IPv6)
@@ -285,99 +283,90 @@ impl DN42Registry {
         let normalized_query = query.to_uppercase();
 
         // Handle ASN queries
-        if let Some(asn) = parse_asn(&normalized_query) {
-            if let Some(content) = self.get_from_storage(&format!("aut-num/{}", asn)).await? {
+        if let Some(asn) = parse_asn(&normalized_query)
+            && let Some(content) = self.get_from_storage(&format!("aut-num/{}", asn)).await? {
                 return Ok(Some(content));
             }
-        }
 
         // Handle person objects (-DN42 suffix)
-        if normalized_query.ends_with("-DN42") {
-            if
+        if normalized_query.ends_with("-DN42")
+            &&
                 let Some(content) = self.get_from_storage(
                     &format!("person/{}", normalized_query)
                 ).await?
             {
                 return Ok(Some(content));
             }
-        }
 
         // Handle maintainer objects (-MNT suffix)
-        if normalized_query.ends_with("-MNT") {
-            if
+        if normalized_query.ends_with("-MNT")
+            &&
                 let Some(content) = self.get_from_storage(
                     &format!("mntner/{}", normalized_query)
                 ).await?
             {
                 return Ok(Some(content));
             }
-        }
 
         // Handle schema objects (-SCHEMA suffix)
-        if normalized_query.ends_with("-SCHEMA") {
-            if
+        if normalized_query.ends_with("-SCHEMA")
+            &&
                 let Some(content) = self.get_from_storage(
                     &format!("schema/{}", normalized_query)
                 ).await?
             {
                 return Ok(Some(content));
             }
-        }
 
         // Handle organisation objects (ORG- prefix)
-        if normalized_query.starts_with("ORG-") {
-            if
+        if normalized_query.starts_with("ORG-")
+            &&
                 let Some(content) = self.get_from_storage(
                     &format!("organisation/{}", normalized_query)
                 ).await?
             {
                 return Ok(Some(content));
             }
-        }
 
         // Handle tinc-keyset objects (SET-*-TINC pattern)
-        if normalized_query.starts_with("SET-") && normalized_query.ends_with("-TINC") {
-            if
+        if normalized_query.starts_with("SET-") && normalized_query.ends_with("-TINC")
+            &&
                 let Some(content) = self.get_from_storage(
                     &format!("tinc-keyset/{}", normalized_query)
                 ).await?
             {
                 return Ok(Some(content));
             }
-        }
 
         // Handle tinc-key objects (-TINC suffix)
-        if normalized_query.ends_with("-TINC") && !normalized_query.starts_with("SET-") {
-            if
+        if normalized_query.ends_with("-TINC") && !normalized_query.starts_with("SET-")
+            &&
                 let Some(content) = self.get_from_storage(
                     &format!("tinc-key/{}", normalized_query)
                 ).await?
             {
                 return Ok(Some(content));
             }
-        }
 
         // Handle route-set objects (RS- prefix)
-        if normalized_query.starts_with("RS-") {
-            if
+        if normalized_query.starts_with("RS-")
+            &&
                 let Some(content) = self.get_from_storage(
                     &format!("route-set/{}", normalized_query)
                 ).await?
             {
                 return Ok(Some(content));
             }
-        }
 
         // Handle as-block objects (AS*-AS* pattern)
-        if normalized_query.contains("-AS") && normalized_query.starts_with("AS") {
-            if
+        if normalized_query.contains("-AS") && normalized_query.starts_with("AS")
+            &&
                 let Some(content) = self.get_from_storage(
                     &format!("as-block/{}", normalized_query)
                 ).await?
             {
                 return Ok(Some(content));
             }
-        }
 
         // Handle as-set objects (AS prefix, not an ASN)
         if
@@ -386,15 +375,13 @@ impl DN42Registry {
                 .chars()
                 .skip(2)
                 .all(|c| c.is_ascii_digit())
-        {
-            if
+            &&
                 let Some(content) = self.get_from_storage(
                     &format!("as-set/{}", normalized_query)
                 ).await?
             {
                 return Ok(Some(content));
             }
-        }
 
         // Handle DNS objects (default fallback)
         if
@@ -412,35 +399,29 @@ impl DN42Registry {
     async fn handle_ip_query_raw(&self, query: &str) -> Result<Option<String>> {
         // Parse IPv4 CIDR
         if let Some((ip_str, mask_str)) = query.split_once('/') {
-            if let (Ok(ipv4), Ok(mask)) = (ip_str.parse::<Ipv4Addr>(), mask_str.parse::<u8>()) {
-                if mask <= 32 {
-                    if let Some(target) = self.find_ipv4_network("inetnum", ipv4, mask).await? {
-                        return Ok(self.get_from_storage(&format!("inetnum/{}", target)).await?);
+            if let (Ok(ipv4), Ok(mask)) = (ip_str.parse::<Ipv4Addr>(), mask_str.parse::<u8>())
+                && mask <= 32
+                    && let Some(target) = self.find_ipv4_network("inetnum", ipv4, mask).await? {
+                        return self.get_from_storage(&format!("inetnum/{}", target)).await;
                     }
-                }
-            }
 
-            if let (Ok(ipv6), Ok(mask)) = (ip_str.parse::<Ipv6Addr>(), mask_str.parse::<u8>()) {
-                if mask <= 128 {
-                    if let Some(target) = self.find_ipv6_network("inet6num", ipv6, mask).await? {
-                        return Ok(self.get_from_storage(&format!("inet6num/{}", target)).await?);
+            if let (Ok(ipv6), Ok(mask)) = (ip_str.parse::<Ipv6Addr>(), mask_str.parse::<u8>())
+                && mask <= 128
+                    && let Some(target) = self.find_ipv6_network("inet6num", ipv6, mask).await? {
+                        return self.get_from_storage(&format!("inet6num/{}", target)).await;
                     }
-                }
-            }
         }
 
         // Parse single IP address (assume /32 for IPv4, /128 for IPv6)
-        if let Ok(ipv4) = query.parse::<Ipv4Addr>() {
-            if let Some(target) = self.find_ipv4_network("inetnum", ipv4, 32).await? {
-                return Ok(self.get_from_storage(&format!("inetnum/{}", target)).await?);
+        if let Ok(ipv4) = query.parse::<Ipv4Addr>()
+            && let Some(target) = self.find_ipv4_network("inetnum", ipv4, 32).await? {
+                return self.get_from_storage(&format!("inetnum/{}", target)).await;
             }
-        }
 
-        if let Ok(ipv6) = query.parse::<Ipv6Addr>() {
-            if let Some(target) = self.find_ipv6_network("inet6num", ipv6, 128).await? {
-                return Ok(self.get_from_storage(&format!("inet6num/{}", target)).await?);
+        if let Ok(ipv6) = query.parse::<Ipv6Addr>()
+            && let Some(target) = self.find_ipv6_network("inet6num", ipv6, 128).await? {
+                return self.get_from_storage(&format!("inet6num/{}", target)).await;
             }
-        }
 
         Ok(None)
     }
@@ -450,99 +431,90 @@ impl DN42Registry {
         let normalized_query = query.to_uppercase();
 
         // Handle ASN queries
-        if let Some(asn) = parse_asn(&normalized_query) {
-            if let Some(content) = self.get_from_storage(&format!("aut-num/{}", asn)).await? {
+        if let Some(asn) = parse_asn(&normalized_query)
+            && let Some(content) = self.get_from_storage(&format!("aut-num/{}", asn)).await? {
                 return Ok(Some(content));
             }
-        }
 
         // Handle person objects (-DN42 suffix)
-        if normalized_query.ends_with("-DN42") {
-            if
+        if normalized_query.ends_with("-DN42")
+            &&
                 let Some(content) = self.get_from_storage(
                     &format!("person/{}", normalized_query)
                 ).await?
             {
                 return Ok(Some(content));
             }
-        }
 
         // Handle maintainer objects (-MNT suffix)
-        if normalized_query.ends_with("-MNT") {
-            if
+        if normalized_query.ends_with("-MNT")
+            &&
                 let Some(content) = self.get_from_storage(
                     &format!("mntner/{}", normalized_query)
                 ).await?
             {
                 return Ok(Some(content));
             }
-        }
 
         // Handle schema objects (-SCHEMA suffix)
-        if normalized_query.ends_with("-SCHEMA") {
-            if
+        if normalized_query.ends_with("-SCHEMA")
+            &&
                 let Some(content) = self.get_from_storage(
                     &format!("schema/{}", normalized_query)
                 ).await?
             {
                 return Ok(Some(content));
             }
-        }
 
         // Handle organisation objects (ORG- prefix)
-        if normalized_query.starts_with("ORG-") {
-            if
+        if normalized_query.starts_with("ORG-")
+            &&
                 let Some(content) = self.get_from_storage(
                     &format!("organisation/{}", normalized_query)
                 ).await?
             {
                 return Ok(Some(content));
             }
-        }
 
         // Handle tinc-keyset objects (SET-*-TINC pattern)
-        if normalized_query.starts_with("SET-") && normalized_query.ends_with("-TINC") {
-            if
+        if normalized_query.starts_with("SET-") && normalized_query.ends_with("-TINC")
+            &&
                 let Some(content) = self.get_from_storage(
                     &format!("tinc-keyset/{}", normalized_query)
                 ).await?
             {
                 return Ok(Some(content));
             }
-        }
 
         // Handle tinc-key objects (-TINC suffix)
-        if normalized_query.ends_with("-TINC") && !normalized_query.starts_with("SET-") {
-            if
+        if normalized_query.ends_with("-TINC") && !normalized_query.starts_with("SET-")
+            &&
                 let Some(content) = self.get_from_storage(
                     &format!("tinc-key/{}", normalized_query)
                 ).await?
             {
                 return Ok(Some(content));
             }
-        }
 
         // Handle route-set objects (RS- prefix)
-        if normalized_query.starts_with("RS-") {
-            if
+        if normalized_query.starts_with("RS-")
+            &&
                 let Some(content) = self.get_from_storage(
                     &format!("route-set/{}", normalized_query)
                 ).await?
             {
                 return Ok(Some(content));
             }
-        }
 
         // Handle as-block objects (AS*-AS* pattern)
-        if normalized_query.contains("-AS") && normalized_query.starts_with("AS") {
-            if
+        if normalized_query.contains("-AS") && normalized_query.starts_with("AS")
+            &&
                 let Some(content) = self.get_from_storage(
                     &format!("as-block/{}", normalized_query)
                 ).await?
             {
                 return Ok(Some(content));
             }
-        }
 
         // Handle as-set objects (AS prefix, not an ASN)
         if
@@ -551,15 +523,13 @@ impl DN42Registry {
                 .chars()
                 .skip(2)
                 .all(|c| c.is_ascii_digit())
-        {
-            if
+            &&
                 let Some(content) = self.get_from_storage(
                     &format!("as-set/{}", normalized_query)
                 ).await?
             {
                 return Ok(Some(content));
             }
-        }
 
         // Handle DNS objects (default fallback)
         if
@@ -692,8 +662,8 @@ impl DN42Registry {
 /// Clone the DN42 registry repository using system git command
 fn clone_repository() -> Result<()> {
     // Create parent directory if it doesn't exist
-    if let Some(parent) = Path::new(DN42_REGISTRY_PATH).parent() {
-        if !parent.exists() {
+    if let Some(parent) = Path::new(DN42_REGISTRY_PATH).parent()
+        && !parent.exists() {
             std::fs
                 ::create_dir_all(parent)
                 .map_err(|e|
@@ -705,12 +675,11 @@ fn clone_repository() -> Result<()> {
                 )?;
             info!("Created git repository parent directory: {:?}", parent);
         }
-    }
 
     info!("Cloning repository from {} to {}", DN42_REGISTRY_URL, DN42_REGISTRY_PATH);
 
     // Check if git is available
-    let git_check = Command::new("git").args(&["--version"]).output();
+    let git_check = Command::new("git").args(["--version"]).output();
 
     match git_check {
         Ok(output) if output.status.success() => {
@@ -729,7 +698,7 @@ fn clone_repository() -> Result<()> {
     }
 
     let output = Command::new("git")
-        .args(&["clone", "--depth", "1", DN42_REGISTRY_URL, DN42_REGISTRY_PATH])
+        .args(["clone", "--depth", "1", DN42_REGISTRY_URL, DN42_REGISTRY_PATH])
         .output()
         .map_err(|e| anyhow::anyhow!("Failed to execute git clone command: {}", e))?;
 
@@ -769,7 +738,7 @@ fn pull_latest_changes() -> Result<()> {
 
     // First, fetch the latest changes
     let fetch_output = Command::new("git")
-        .args(&["fetch", "origin"])
+        .args(["fetch", "origin"])
         .current_dir(DN42_REGISTRY_PATH)
         .output()?;
 
@@ -781,7 +750,7 @@ fn pull_latest_changes() -> Result<()> {
 
     // Reset hard to origin/master (or origin/main)
     let reset_output = Command::new("git")
-        .args(&["reset", "--hard", "origin/master"])
+        .args(["reset", "--hard", "origin/master"])
         .current_dir(DN42_REGISTRY_PATH)
         .output();
 
@@ -796,7 +765,7 @@ fn pull_latest_changes() -> Result<()> {
             debug!("Reset to origin/master failed: {}, trying origin/main", stderr);
 
             let main_output = Command::new("git")
-                .args(&["reset", "--hard", "origin/main"])
+                .args(["reset", "--hard", "origin/main"])
                 .current_dir(DN42_REGISTRY_PATH)
                 .output()?;
 
@@ -840,9 +809,8 @@ fn parse_asn(query: &str) -> Option<String> {
     }
 
     // Handle AS prefix
-    if normalized.starts_with("AS") {
-        let asn_part = &normalized[2..];
-        if let Ok(num) = asn_part.parse::<u32>() {
+    if let Some(asn_part) = normalized.strip_prefix("AS")
+        && let Ok(num) = asn_part.parse::<u32>() {
             return match asn_part.len() {
                 1 => Some(format!("AS424242000{}", num)),
                 2 => Some(format!("AS42424200{}", num)),
@@ -851,7 +819,6 @@ fn parse_asn(query: &str) -> Option<String> {
                 _ => Some(normalized),
             };
         }
-    }
 
     None
 }

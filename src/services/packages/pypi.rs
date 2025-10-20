@@ -180,18 +180,16 @@ fn format_pypi_response(package: &PyPIResponse, query: &str) -> String {
     }
 
     // License
-    if let Some(license) = &info.license {
-        if !license.is_empty() {
+    if let Some(license) = &info.license
+        && !license.is_empty() {
             output.push_str(&format!("license: {}\n", license));
         }
-    }
 
     // Homepage
-    if let Some(homepage) = &info.home_page {
-        if !homepage.is_empty() {
+    if let Some(homepage) = &info.home_page
+        && !homepage.is_empty() {
             output.push_str(&format!("homepage: {}\n", homepage));
         }
-    }
 
     // Project URLs
     if let Some(project_urls) = &info.project_urls {
@@ -206,15 +204,14 @@ fn format_pypi_response(package: &PyPIResponse, query: &str) -> String {
     }
 
     // Keywords
-    if let Some(keywords) = &info.keywords {
-        if !keywords.is_empty() {
+    if let Some(keywords) = &info.keywords
+        && !keywords.is_empty() {
             output.push_str(&format!("keywords: {}\n", keywords));
         }
-    }
 
     // Dependencies
-    if let Some(requires_dist) = &info.requires_dist {
-        if !requires_dist.is_empty() {
+    if let Some(requires_dist) = &info.requires_dist
+        && !requires_dist.is_empty() {
             let deps: Vec<String> = requires_dist
                 .iter()
                 .take(10)
@@ -230,7 +227,6 @@ fn format_pypi_response(package: &PyPIResponse, query: &str) -> String {
                 );
             }
         }
-    }
 
     // Classifiers (programming language, license, etc.)
     if let Some(classifiers) = &info.classifiers {
@@ -253,11 +249,10 @@ fn format_pypi_response(package: &PyPIResponse, query: &str) -> String {
             .filter(|c| c.starts_with("Development Status"))
             .take(1)
             .collect();
-        if !status_classifiers.is_empty() {
-            if let Some(status) = status_classifiers.first().and_then(|c| c.split("::").last()) {
+        if !status_classifiers.is_empty()
+            && let Some(status) = status_classifiers.first().and_then(|c| c.split("::").last()) {
                 output.push_str(&format!("development-status: {}\n", status.trim()));
             }
-        }
     }
 
     // File information from current release
@@ -289,11 +284,10 @@ fn format_pypi_response(package: &PyPIResponse, query: &str) -> String {
     }
 
     // Platform
-    if let Some(platform) = &info.platform {
-        if !platform.is_empty() && platform != "UNKNOWN" {
+    if let Some(platform) = &info.platform
+        && !platform.is_empty() && platform != "UNKNOWN" {
             output.push_str(&format!("platform: {}\n", platform));
         }
-    }
 
     output.push_str(
         &format!("pypi-url: https://pypi.org/project/{}/\n", urlencoding::encode(&info.name))
@@ -301,8 +295,8 @@ fn format_pypi_response(package: &PyPIResponse, query: &str) -> String {
     output.push_str(
         &format!("api-url: {}{}/json\n", PYPI_API_URL, urlencoding::encode(&info.name))
     );
-    output.push_str(&format!("repository: Python Package Index (PyPI)\n"));
-    output.push_str(&format!("source: PyPI API\n"));
+    output.push_str("repository: Python Package Index (PyPI)\n");
+    output.push_str("source: PyPI API\n");
     output.push('\n');
     output.push_str("% Information retrieved from PyPI\n");
     output.push_str("% Query processed by WHOIS server\n");

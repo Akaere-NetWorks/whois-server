@@ -173,15 +173,14 @@ impl AcgcService {
 
         let wiki_data: MediaWikiResponse = response.json().await?;
 
-        if let Some(query_data) = wiki_data.query {
-            if let Some(pages) = query_data.pages {
+        if let Some(query_data) = wiki_data.query
+            && let Some(pages) = query_data.pages {
                 for (_, page) in pages {
                     if page.pageid.is_some() {
                         return Ok(self.format_character_info(&page));
                     }
                 }
             }
-        }
 
         Err(anyhow::anyhow!("No character details found"))
     }
@@ -199,27 +198,24 @@ impl AcgcService {
         }
 
         output.push_str(&format!("character-name: {}\n", page.title));
-        output.push_str(&format!("source: Moegirl Wiki (萌娘百科)\n"));
+        output.push_str("source: Moegirl Wiki (萌娘百科)\n");
 
         // Add character description from extract
-        if let Some(extract) = &page.extract {
-            if !extract.is_empty() {
+        if let Some(extract) = &page.extract
+            && !extract.is_empty() {
                 let cleaned_extract = self.clean_wiki_text(extract);
                 if !cleaned_extract.is_empty() {
                     output.push_str(&format!("description: {}\n", cleaned_extract));
                 }
             }
-        }
 
         // Try to extract additional information from the page content
-        if let Some(revisions) = &page.revisions {
-            if let Some(revision) = revisions.first() {
-                if let Some(content) = &revision.content {
+        if let Some(revisions) = &page.revisions
+            && let Some(revision) = revisions.first()
+                && let Some(content) = &revision.content {
                     let info = self.extract_character_info(content);
                     output.push_str(&info);
                 }
-            }
-        }
 
         // Add wiki URL
         let encoded_title = urlencoding::encode(&page.title);
@@ -327,7 +323,7 @@ impl AcgcService {
                         {
                             let entry = extracted_info
                                 .entry(field_name.to_string())
-                                .or_insert_with(std::collections::HashSet::new);
+                                .or_default();
                             entry.insert(cleaned_value);
                         }
                     }
@@ -430,16 +426,13 @@ impl AcgcService {
         text = text.replace("&amp;", "&");
 
         // Remove trailing incomplete content that might cause issues
-        if let Ok(re) = Regex::new(r"[{<[].*$") {
-            if text.len() > 20 && re.is_match(&text) {
-                if let Some(pos) = text.find(|c| c == '{' || c == '<' || c == '[') {
-                    if pos > 10 {
+        if let Ok(re) = Regex::new(r"[{<[].*$")
+            && text.len() > 20 && re.is_match(&text)
+                && let Some(pos) = text.find(['{', '<', '['])
+                    && pos > 10 {
                         // Keep some content before the incomplete markup
                         text = text[..pos].to_string();
                     }
-                }
-            }
-        }
 
         // Remove trailing commas and unnecessary punctuation
         text = text.trim_end_matches(',').trim_end_matches('、').to_string();
@@ -479,9 +472,7 @@ pub async fn process_acgc_query(query: &str) -> Result<String> {
 
         if character_query.is_empty() {
             return Ok(
-                format!(
-                    "Invalid ACGC query. Please provide a character name.\nExample: 利姆鲁-ACGC\n"
-                )
+                "Invalid ACGC query. Please provide a character name.\nExample: 利姆鲁-ACGC\n".to_string()
             );
         }
 

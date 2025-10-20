@@ -70,13 +70,11 @@ impl DN42OnlineFetcher {
                 let content = storage.get(&cache_key_clone)?;
                 let timestamp_str = storage.get(&timestamp_key_clone)?;
 
-                if let (Some(content), Some(timestamp_str)) = (content, timestamp_str) {
-                    if let Ok(timestamp) = timestamp_str.parse::<u64>() {
-                        if current_time - timestamp < CACHE_EXPIRATION_SECONDS {
+                if let (Some(content), Some(timestamp_str)) = (content, timestamp_str)
+                    && let Ok(timestamp) = timestamp_str.parse::<u64>()
+                        && current_time - timestamp < CACHE_EXPIRATION_SECONDS {
                             return Ok(Some(content));
                         }
-                    }
-                }
                 Ok(None)
             }
         ).await??;
@@ -230,15 +228,13 @@ impl DN42OnlineFetcher {
             let mut expired_keys = Vec::new();
 
             // Iterate through all keys to find expired cache entries
-            storage.iterate_keys(&CACHE_PREFIX, |key| {
+            storage.iterate_keys(CACHE_PREFIX, |key| {
                 let timestamp_key = format!("{}{}", TIMESTAMP_PREFIX, key);
-                if let Ok(Some(timestamp_str)) = storage.get(&timestamp_key) {
-                    if let Ok(timestamp) = timestamp_str.parse::<u64>() {
-                        if current_time - timestamp >= CACHE_EXPIRATION_SECONDS {
+                if let Ok(Some(timestamp_str)) = storage.get(&timestamp_key)
+                    && let Ok(timestamp) = timestamp_str.parse::<u64>()
+                        && current_time - timestamp >= CACHE_EXPIRATION_SECONDS {
                             expired_keys.push((key.to_string(), timestamp_key));
                         }
-                    }
-                }
                 true // Continue iteration
             })?;
 
@@ -272,7 +268,9 @@ impl DN42OnlineFetcher {
     pub async fn get_cache_stats(&self) -> Result<(usize, usize)> {
         let storage = self.storage.clone();
 
-        let stats = tokio::task::spawn_blocking(move || {
+        
+
+        tokio::task::spawn_blocking(move || {
             let mut total_entries = 0;
             let mut expired_entries = 0;
             let current_time = SystemTime::now()
@@ -280,23 +278,19 @@ impl DN42OnlineFetcher {
                 .unwrap_or_default()
                 .as_secs();
 
-            storage.iterate_keys(&CACHE_PREFIX, |key| {
+            storage.iterate_keys(CACHE_PREFIX, |key| {
                 total_entries += 1;
                 let timestamp_key = format!("{}{}", TIMESTAMP_PREFIX, key);
-                if let Ok(Some(timestamp_str)) = storage.get(&timestamp_key) {
-                    if let Ok(timestamp) = timestamp_str.parse::<u64>() {
-                        if current_time - timestamp >= CACHE_EXPIRATION_SECONDS {
+                if let Ok(Some(timestamp_str)) = storage.get(&timestamp_key)
+                    && let Ok(timestamp) = timestamp_str.parse::<u64>()
+                        && current_time - timestamp >= CACHE_EXPIRATION_SECONDS {
                             expired_entries += 1;
                         }
-                    }
-                }
                 true // Continue iteration
             })?;
 
             Ok::<(usize, usize), anyhow::Error>((total_entries, expired_entries))
-        }).await?;
-
-        stats
+        }).await?
     }
 }
 

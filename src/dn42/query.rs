@@ -17,9 +17,8 @@ pub fn parse_asn(query: &str) -> Option<String> {
     }
 
     // Handle AS prefix
-    if normalized.starts_with("AS") {
-        let asn_part = &normalized[2..];
-        if let Ok(num) = asn_part.parse::<u32>() {
+    if let Some(asn_part) = normalized.strip_prefix("AS")
+        && let Ok(num) = asn_part.parse::<u32>() {
             return match asn_part.len() {
                 1 => Some(format!("AS424242000{}", num)),
                 2 => Some(format!("AS42424200{}", num)),
@@ -28,7 +27,6 @@ pub fn parse_asn(query: &str) -> Option<String> {
                 _ => Some(normalized),
             };
         }
-    }
 
     None
 }
@@ -88,17 +86,15 @@ impl DN42QueryType {
 
         // Try to parse as IP address with CIDR
         if let Some((ip_str, mask_str)) = query.split_once('/') {
-            if let (Ok(ipv4), Ok(mask)) = (ip_str.parse::<Ipv4Addr>(), mask_str.parse::<u8>()) {
-                if mask <= 32 {
+            if let (Ok(ipv4), Ok(mask)) = (ip_str.parse::<Ipv4Addr>(), mask_str.parse::<u8>())
+                && mask <= 32 {
                     return DN42QueryType::IPv4Network { ip: ipv4, mask };
                 }
-            }
 
-            if let (Ok(ipv6), Ok(mask)) = (ip_str.parse::<Ipv6Addr>(), mask_str.parse::<u8>()) {
-                if mask <= 128 {
+            if let (Ok(ipv6), Ok(mask)) = (ip_str.parse::<Ipv6Addr>(), mask_str.parse::<u8>())
+                && mask <= 128 {
                     return DN42QueryType::IPv6Network { ip: ipv6, mask };
                 }
-            }
         }
 
         // Try to parse as single IP address (assume /32 for IPv4, /128 for IPv6)

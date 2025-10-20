@@ -76,7 +76,7 @@ pub async fn process_prefixes_query(asn: &str) -> Result<String> {
             formatted.push_str("% ASN Announced Prefixes Query\n");
             formatted.push_str("% Data from RIPE NCC STAT\n");
             formatted.push_str(&format!("% Query: {}\n", asn));
-            formatted.push_str("\n");
+            formatted.push('\n');
             formatted.push_str(&format!("% Error: {}\n", e));
             Ok(formatted)
         }

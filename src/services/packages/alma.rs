@@ -198,8 +198,8 @@ fn format_alma_response(packages: &[AlmaPackageResult], query: &str) -> String {
             output.push_str(&format!("upstream-url: {}\n", url));
         }
 
-        output.push_str(&format!("distribution: AlmaLinux\n"));
-        output.push_str(&format!("package-format: RPM\n"));
+        output.push_str("distribution: AlmaLinux\n");
+        output.push_str("package-format: RPM\n");
     }
 
     output.push('\n');

@@ -70,8 +70,8 @@ impl ColorProtocol {
             }
 
             // Check for color scheme request
-            if line.to_uppercase().starts_with("X-WHOIS-COLOR:") {
-                if let Some(value_part) = line.split(':').nth(1) {
+            if line.to_uppercase().starts_with("X-WHOIS-COLOR:")
+                && let Some(value_part) = line.split(':').nth(1) {
                     let value_part = value_part.trim();
 
                     // Support both formats: "ripe" and "scheme=ripe"
@@ -86,7 +86,6 @@ impl ColorProtocol {
                         self.client_supports_color = true;
                     }
                 }
-            }
         }
 
         false // Not a capability probe

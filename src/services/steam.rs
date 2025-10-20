@@ -270,7 +270,7 @@ impl SteamService {
 
         match parsed {
             Ok(json) => {
-                if let Some(app_data) = json.get(&app_id.to_string()) {
+                if let Some(app_data) = json.get(app_id.to_string()) {
                     let app_details: Result<SteamAppDetails, _> = serde_json::from_value(
                         app_data.clone()
                     );
@@ -518,15 +518,12 @@ impl SteamService {
     fn extract_price_info_from_search(&self, item: &serde_json::Value) -> Option<String> {
         if let Some(price_obj) = item.get("price") {
             // Handle free games
-            if let Some(currency) = price_obj.get("currency").and_then(|v| v.as_str()) {
-                if currency == "USD" {
-                    if let Some(final_price) = price_obj.get("final").and_then(|v| v.as_u64()) {
-                        if final_price == 0 {
+            if let Some(currency) = price_obj.get("currency").and_then(|v| v.as_str())
+                && currency == "USD"
+                    && let Some(final_price) = price_obj.get("final").and_then(|v| v.as_u64())
+                        && final_price == 0 {
                             return Some("Free".to_string());
                         }
-                    }
-                }
-            }
 
             // Handle priced games with potential discounts
             if
@@ -664,17 +661,15 @@ impl SteamService {
         output.push_str(&format!("type: {}\n", app.app_type));
         output.push_str(&format!("is-free: {}\n", app.is_free));
 
-        if let Some(developers) = &app.developers {
-            if !developers.is_empty() {
+        if let Some(developers) = &app.developers
+            && !developers.is_empty() {
                 output.push_str(&format!("developers: {}\n", developers.join(", ")));
             }
-        }
 
-        if let Some(publishers) = &app.publishers {
-            if !publishers.is_empty() {
+        if let Some(publishers) = &app.publishers
+            && !publishers.is_empty() {
                 output.push_str(&format!("publishers: {}\n", publishers.join(", ")));
             }
-        }
 
         if let Some(release_date) = &app.release_date {
             output.push_str(&format!("release-date: {}\n", release_date.date));
@@ -726,25 +721,23 @@ impl SteamService {
             output.push_str(&format!("website: {}\n", website));
         }
 
-        if let Some(genres) = &app.genres {
-            if !genres.is_empty() {
+        if let Some(genres) = &app.genres
+            && !genres.is_empty() {
                 let genre_names: Vec<&str> = genres
                     .iter()
                     .map(|g| g.description.as_str())
                     .collect();
                 output.push_str(&format!("genres: {}\n", genre_names.join(", ")));
             }
-        }
 
-        if let Some(categories) = &app.categories {
-            if !categories.is_empty() {
+        if let Some(categories) = &app.categories
+            && !categories.is_empty() {
                 let category_names: Vec<&str> = categories
                     .iter()
                     .map(|c| c.description.as_str())
                     .collect();
                 output.push_str(&format!("categories: {}\n", category_names.join(", ")));
             }
-        }
 
         if let Some(languages) = &app.supported_languages {
             output.push_str(
@@ -922,9 +915,7 @@ pub async fn process_steam_search_query(query: &str) -> Result<String> {
 
         if search_query.is_empty() {
             return Ok(
-                format!(
-                    "Invalid Steam search query. Please provide a search term.\nExample: Counter-Strike-STEAMSEARCH\n"
-                )
+                "Invalid Steam search query. Please provide a search term.\nExample: Counter-Strike-STEAMSEARCH\n".to_string()
             );
         }
 

@@ -26,7 +26,7 @@ pub async fn process_bgptool_query(base_query: &str) -> Result<String> {
 fn format_bgptool_response(response: &str) -> Result<String> {
     let mut formatted = String::from("% BGP Tools Query\n");
     formatted.push_str("% Data from bgp.tools\n");
-    formatted.push_str("\n");
+    formatted.push('\n');
 
     // Add the response content
     formatted.push_str(response);

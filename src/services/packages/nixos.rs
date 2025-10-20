@@ -291,11 +291,10 @@ fn format_nixos_response(packages: &[NixOSPackage], query: &str) -> String {
             output.push_str(&format!("platforms: {}\n", platforms.join(", ")));
         }
 
-        if let Some(homepage) = &package.package_homepage {
-            if !homepage.is_empty() {
+        if let Some(homepage) = &package.package_homepage
+            && !homepage.is_empty() {
                 output.push_str(&format!("homepage: {}\n", homepage[0]));
             }
-        }
 
         if let Some(position) = &package.package_position {
             output.push_str(&format!("nixpkgs-position: {}\n", position));
@@ -314,8 +313,8 @@ fn format_nixos_response(packages: &[NixOSPackage], query: &str) -> String {
         );
     }
 
-    output.push_str(&format!("repository: NixOS\n"));
-    output.push_str(&format!("source: NixOS Search API\n"));
+    output.push_str("repository: NixOS\n");
+    output.push_str("source: NixOS Search API\n");
     output.push('\n');
     output.push_str("% Information retrieved from NixOS packages\n");
     output.push_str("% Query processed by WHOIS server\n");

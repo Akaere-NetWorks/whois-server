@@ -139,18 +139,16 @@ impl IanaCache {
 
     pub async fn get_whois_server(&self, query: &str) -> Option<String> {
         // For ASN queries, check if any existing block contains this ASN
-        if let Some(asn) = self.extract_asn(query) {
-            if let Some(server) = self.find_server_for_asn(asn) {
+        if let Some(asn) = self.extract_asn(query)
+            && let Some(server) = self.find_server_for_asn(asn) {
                 return Some(server);
             }
-        }
 
         // For IP queries, check if any existing block contains this IP
-        if let Some(ip) = self.extract_ip(query) {
-            if let Some(server) = self.find_server_for_ip(&ip) {
+        if let Some(ip) = self.extract_ip(query)
+            && let Some(server) = self.find_server_for_ip(&ip) {
                 return Some(server);
             }
-        }
 
         // Fallback to regular cache key lookup for non-ASN/IP or no block match
         let cache_key = self.get_cache_key(query);
@@ -249,9 +247,9 @@ impl IanaCache {
         // Search through existing ASN block cache entries
         if let Ok(keys) = self.storage.list_keys() {
             for key in keys {
-                if key.starts_with("asn_block_") {
-                    if let Ok(Some(referral)) = self.storage.get_json::<IanaReferral>(&key) {
-                        if !referral.is_expired() && referral.contains_asn(asn) {
+                if key.starts_with("asn_block_")
+                    && let Ok(Some(referral)) = self.storage.get_json::<IanaReferral>(&key)
+                        && !referral.is_expired() && referral.contains_asn(asn) {
                             debug!(
                                 "IANA block cache hit for AS{}: {} (block: {:?}-{:?})",
                                 asn,
@@ -261,8 +259,6 @@ impl IanaCache {
                             );
                             return Some(referral.whois_server);
                         }
-                    }
-                }
             }
         }
         None
@@ -272,9 +268,9 @@ impl IanaCache {
         // Search through existing IP block cache entries
         if let Ok(keys) = self.storage.list_keys() {
             for key in keys {
-                if key.starts_with("ipv4_block_") || key.starts_with("ipv6_block_") {
-                    if let Ok(Some(referral)) = self.storage.get_json::<IanaReferral>(&key) {
-                        if !referral.is_expired() {
+                if (key.starts_with("ipv4_block_") || key.starts_with("ipv6_block_"))
+                    && let Ok(Some(referral)) = self.storage.get_json::<IanaReferral>(&key)
+                        && !referral.is_expired() {
                             match ip {
                                 std::net::IpAddr::V4(ipv4) => {
                                     if referral.contains_ipv4(*ipv4) {
@@ -302,8 +298,6 @@ impl IanaCache {
                                 }
                             }
                         }
-                    }
-                }
             }
         }
         None
@@ -313,27 +307,24 @@ impl IanaCache {
         debug!("Refreshing IANA cache for {} due to query failure", query);
 
         // For ASN queries, also clear any existing block cache that might contain this ASN
-        if let Some(asn) = self.extract_asn(query) {
-            if let Ok(keys) = self.storage.list_keys() {
+        if let Some(asn) = self.extract_asn(query)
+            && let Ok(keys) = self.storage.list_keys() {
                 for key in keys {
-                    if key.starts_with("asn_block_") {
-                        if let Ok(Some(referral)) = self.storage.get_json::<IanaReferral>(&key) {
-                            if referral.contains_asn(asn) {
+                    if key.starts_with("asn_block_")
+                        && let Ok(Some(referral)) = self.storage.get_json::<IanaReferral>(&key)
+                            && referral.contains_asn(asn) {
                                 debug!("Clearing expired ASN block cache: {}", key);
                                 let _ = self.storage.delete(&key);
                             }
-                        }
-                    }
                 }
             }
-        }
 
         // For IP queries, also clear any existing IP block cache that might contain this IP
-        if let Some(ip) = self.extract_ip(query) {
-            if let Ok(keys) = self.storage.list_keys() {
+        if let Some(ip) = self.extract_ip(query)
+            && let Ok(keys) = self.storage.list_keys() {
                 for key in keys {
-                    if key.starts_with("ipv4_block_") || key.starts_with("ipv6_block_") {
-                        if let Ok(Some(referral)) = self.storage.get_json::<IanaReferral>(&key) {
+                    if (key.starts_with("ipv4_block_") || key.starts_with("ipv6_block_"))
+                        && let Ok(Some(referral)) = self.storage.get_json::<IanaReferral>(&key) {
                             let contains = match ip {
                                 std::net::IpAddr::V4(ipv4) => referral.contains_ipv4(ipv4),
                                 std::net::IpAddr::V6(ipv6) => referral.contains_ipv6(ipv6),
@@ -343,10 +334,8 @@ impl IanaCache {
                                 let _ = self.storage.delete(&key);
                             }
                         }
-                    }
                 }
             }
-        }
 
         let cache_key = self.get_cache_key(query);
         let _ = self.storage.delete(&cache_key);
@@ -504,11 +493,10 @@ impl IanaCache {
         ];
 
         for pattern in &patterns {
-            if let Ok(regex) = Regex::new(pattern) {
-                if let Some(caps) = regex.captures(response) {
+            if let Ok(regex) = Regex::new(pattern)
+                && let Some(caps) = regex.captures(response) {
                     return caps.get(1).unwrap().as_str().trim().to_string();
                 }
-            }
         }
 
         "IANA referral".to_string()
@@ -582,13 +570,11 @@ impl IanaCache {
         let keys = self.storage.list_keys()?;
 
         for key in keys {
-            if let Ok(Some(referral)) = self.storage.get_json::<IanaReferral>(&key) {
-                if referral.is_expired() {
-                    if self.storage.delete(&key).is_ok() {
+            if let Ok(Some(referral)) = self.storage.get_json::<IanaReferral>(&key)
+                && referral.is_expired()
+                    && self.storage.delete(&key).is_ok() {
                         removed_count += 1;
                     }
-                }
-            }
         }
 
         debug!("Cleared {} expired IANA cache entries", removed_count);

@@ -135,15 +135,14 @@ fn format_debian_response(package: &DebianPackageResponse, _query: &str) -> Stri
     }
 
     // Binary packages built from this source
-    if let Some(binaries) = &latest_version.binaries {
-        if !binaries.is_empty() {
+    if let Some(binaries) = &latest_version.binaries
+        && !binaries.is_empty() {
             response.push_str(&format!("binary-packages: {}\n", binaries.join(", ")));
         }
-    }
 
     // Package repository information
-    response.push_str(&format!("repository: Debian Source Repository\n"));
-    response.push_str(&format!("package-format: deb\n"));
+    response.push_str("repository: Debian Source Repository\n");
+    response.push_str("package-format: deb\n");
 
     // All available versions
     response.push_str("\n% Available Versions:\n");

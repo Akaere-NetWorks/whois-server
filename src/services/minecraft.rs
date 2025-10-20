@@ -741,9 +741,7 @@ pub async fn process_minecraft_user_query(query: &str) -> Result<String> {
 
         if username.is_empty() {
             return Ok(
-                format!(
-                    "Invalid Minecraft user query. Please provide a username.\nExample: Notch-MCU\n"
-                )
+                "Invalid Minecraft user query. Please provide a username.\nExample: Notch-MCU\n".to_string()
             );
         }
 

@@ -161,6 +161,12 @@ pub struct PatchManager {
     storage: Option<crate::storage::lmdb::LmdbStorage>,
 }
 
+impl Default for PatchManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PatchManager {
     /// Create a new patch manager
     pub fn new() -> Self {
@@ -205,11 +211,11 @@ impl PatchManager {
         let metadata: PatchMetadata = response.json().await?;
 
         let mut output = String::new();
-        output.push_str(&format!("% Patch Update Report\n"));
+        output.push_str("% Patch Update Report\n");
         output.push_str(&format!("% Downloaded from: {}\n", url));
         output.push_str(&format!("% Last Updated: {}\n", metadata.last_updated));
         output.push_str(&format!("% Format Version: {}\n", metadata.metadata.format_version));
-        output.push_str(&format!("%\n"));
+        output.push_str("%\n");
 
         let mut success_count = 0;
         let mut failed_count = 0;
@@ -229,37 +235,37 @@ impl PatchManager {
             output.push_str(&format!("priority:        {}\n", patch_info.priority));
             output.push_str(&format!("modified:        {}\n", patch_info.modified));
 
-            match self.download_and_verify_patch(&patch_info).await {
+            match self.download_and_verify_patch(patch_info).await {
                 Ok((actual_sha1, was_updated)) => {
                     output.push_str(&format!("sha1-actual:     {}\n", actual_sha1));
 
                     if actual_sha1 == patch_info.sha1 {
                         if was_updated {
-                            output.push_str(&format!("status:          ✓ VERIFIED (downloaded)\n"));
+                            output.push_str("status:          ✓ VERIFIED (downloaded)\n");
                             success_count += 1;
                         } else {
-                            output.push_str(&format!("status:          ✓ UP-TO-DATE (skipped)\n"));
+                            output.push_str("status:          ✓ UP-TO-DATE (skipped)\n");
                             skipped_count += 1;
                         }
                     } else {
-                        output.push_str(&format!("status:          ✗ SHA1 MISMATCH\n"));
+                        output.push_str("status:          ✗ SHA1 MISMATCH\n");
                         failed_count += 1;
                     }
                 }
                 Err(e) => {
-                    output.push_str(&format!("status:          ✗ FAILED\n"));
+                    output.push_str("status:          ✗ FAILED\n");
                     output.push_str(&format!("error:           {}\n", e));
                     failed_count += 1;
                 }
             }
         }
 
-        output.push_str(&format!("\n% Summary\n"));
+        output.push_str("\n% Summary\n");
         output.push_str(&format!("% Total patches: {}\n", metadata.patches.len()));
         output.push_str(&format!("% Downloaded: {}\n", success_count));
         output.push_str(&format!("% Up-to-date (skipped): {}\n", skipped_count));
         output.push_str(&format!("% Failed: {}\n", failed_count));
-        output.push_str(&format!("%\n"));
+        output.push_str("%\n");
 
         // Reload patches from LMDB into memory
         // Reload patches from LMDB into memory if any patches were processed
@@ -276,8 +282,8 @@ impl PatchManager {
                 }
             }
         }
-        output.push_str(&format!("%\n"));
-        output.push_str(&format!("% Run 'whois help' for more information\n"));
+        output.push_str("%\n");
+        output.push_str("% Run 'whois help' for more information\n");
 
         Ok(output)
     }
@@ -291,8 +297,8 @@ impl PatchManager {
         // Check if patch already exists in LMDB with same SHA1
         if let Some(storage) = &self.storage {
             let meta_key = format!("meta:{}", patch_info.name);
-            if let Ok(Some(existing_meta_json)) = storage.get(&meta_key) {
-                if let Ok(existing_info) = serde_json::from_str::<PatchInfo>(&existing_meta_json) {
+            if let Ok(Some(existing_meta_json)) = storage.get(&meta_key)
+                && let Ok(existing_info) = serde_json::from_str::<PatchInfo>(&existing_meta_json) {
                     if existing_info.sha1 == patch_info.sha1 {
                         debug!("Patch {} already exists with same SHA1, skipping download", patch_info.name);
                         return Ok((patch_info.sha1.clone(), false));
@@ -301,7 +307,6 @@ impl PatchManager {
                                patch_info.name, existing_info.sha1, patch_info.sha1);
                     }
                 }
-            }
         }
 
         debug!("Downloading patch: {}", patch_info.name);
@@ -799,7 +804,7 @@ impl PatchManager {
         for rule in rules {
             let range = match rule.direction {
                 ContextDirection::Before => {
-                    let start = if line_idx > rule.lines { line_idx - rule.lines } else { 0 };
+                    let start = line_idx.saturating_sub(rule.lines);
                     start..line_idx
                 }
                 ContextDirection::After => {
@@ -868,7 +873,7 @@ impl PatchManager {
     /// Do NOT replace in registry blocks (as-block, route, etc.)
     fn should_replace_source_in_block(lines: &[&str], line_idx: usize) -> bool {
         // Look backwards up to 50 lines to find the object type
-        let start = if line_idx > 50 { line_idx - 50 } else { 0 };
+        let start = line_idx.saturating_sub(50);
 
         for i in (start..line_idx).rev() {
             let stripped = strip_ansi_codes(lines[i]);

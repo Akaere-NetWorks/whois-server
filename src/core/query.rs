@@ -100,12 +100,12 @@ pub fn analyze_query(query: &str) -> QueryType {
             let asn_part = &base_query[dash_pos + 1..];
 
             // Validate that ASN part is numeric
-            if asn_part.chars().all(|c| c.is_digit(10)) {
+            if asn_part.chars().all(|c| c.is_ascii_digit()) {
                 // Validate prefix part (IP/CIDR format)
-                if let Ok(_) = prefix_part.parse::<Ipv4Cidr>() {
+                if prefix_part.parse::<Ipv4Cidr>().is_ok() {
                     return QueryType::Rpki(prefix_part.to_string(), asn_part.to_string());
                 }
-                if let Ok(_) = prefix_part.parse::<Ipv6Cidr>() {
+                if prefix_part.parse::<Ipv6Cidr>().is_ok() {
                     return QueryType::Rpki(prefix_part.to_string(), asn_part.to_string());
                 }
                 // Also try single IP address
@@ -476,7 +476,7 @@ pub fn analyze_query(query: &str) -> QueryType {
     }
 
     // Identify ASN
-    if query.to_uppercase().starts_with("AS") && query[2..].chars().all(|c| c.is_digit(10)) {
+    if query.to_uppercase().starts_with("AS") && query[2..].chars().all(|c| c.is_ascii_digit()) {
         return QueryType::ASN(query.to_string());
     }
 
@@ -494,22 +494,20 @@ pub fn analyze_query(query: &str) -> QueryType {
 
 pub fn is_private_ipv4(ip: Ipv4Addr) -> bool {
     for range_str in PRIVATE_IPV4_RANGES {
-        if let Ok(range) = range_str.parse::<Ipv4Cidr>() {
-            if range.contains(&ip) {
+        if let Ok(range) = range_str.parse::<Ipv4Cidr>()
+            && range.contains(&ip) {
                 return true;
             }
-        }
     }
     false
 }
 
 pub fn is_private_ipv6(ip: Ipv6Addr) -> bool {
     for range_str in PRIVATE_IPV6_RANGES {
-        if let Ok(range) = range_str.parse::<Ipv6Cidr>() {
-            if range.contains(&ip) {
+        if let Ok(range) = range_str.parse::<Ipv6Cidr>()
+            && range.contains(&ip) {
                 return true;
             }
-        }
     }
     false
 }

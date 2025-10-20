@@ -295,8 +295,7 @@ impl server::Handler for WhoisSshHandler {
         // Accept shell request and send welcome message
         session.request_success();
 
-        let welcome_msg = format!(
-            "┌─────────────────────────────────────────────────────────────┐\r\n\
+        let welcome_msg = "┌─────────────────────────────────────────────────────────────┐\r\n\
             │              Akaere NetWorks WHOIS SSH Server               │\r\n\
             │                     whois.akae.re                           │\r\n\
             └─────────────────────────────────────────────────────────────┘\r\n\
@@ -317,8 +316,7 @@ impl server::Handler for WhoisSshHandler {
             \r\n\
             © 2025 Akaere Networks | Licensed under AGPL-3.0-or-later\r\n\
             \r\n\
-            whois> "
-        );
+            whois> ".to_string();
 
         session.data(channel, CryptoVec::from_slice(welcome_msg.as_bytes()));
         Ok(())

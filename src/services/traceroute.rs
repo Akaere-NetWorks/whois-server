@@ -293,14 +293,13 @@ pub async fn process_traceroute_query(query: &str) -> Result<String> {
             let mut manager = manager_arc.lock().await;
 
             // Initialize if needed
-            if !manager.initialized {
-                if let Err(e) = manager.initialize().await {
+            if !manager.initialized
+                && let Err(e) = manager.initialize().await {
                     error!("Failed to initialize NextTrace: {}", e);
                     return Ok(
                         format!("Traceroute service initialization failed: {}\n\nPlease ensure internet connectivity for initial setup.\n", e)
                     );
                 }
-            }
 
             match manager.trace_route(&target).await {
                 Ok(output) => {

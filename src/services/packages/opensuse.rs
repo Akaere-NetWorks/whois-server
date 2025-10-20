@@ -283,8 +283,8 @@ fn format_opensuse_response(packages: &[OpenSUSEPackage], query: &str) -> String
         );
     }
 
-    output.push_str(&format!("distribution: openSUSE\n"));
-    output.push_str(&format!("source: OpenSUSE Build Service API\n"));
+    output.push_str("distribution: openSUSE\n");
+    output.push_str("source: OpenSUSE Build Service API\n");
     output.push('\n');
     output.push_str("% Information retrieved from OpenSUSE packages\n");
     output.push_str("% Query processed by WHOIS server\n");

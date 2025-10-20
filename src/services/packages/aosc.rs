@@ -393,8 +393,8 @@ fn format_aosc_response(packages: &[AOSCPackage], query: &str) -> String {
         );
     }
 
-    output.push_str(&format!("repository: AOSC OS\n"));
-    output.push_str(&format!("source: AOSC Packages\n"));
+    output.push_str("repository: AOSC OS\n");
+    output.push_str("source: AOSC Packages\n");
     output.push('\n');
     output.push_str("% Information retrieved from AOSC packages\n");
     output.push_str("% Query processed by WHOIS server\n");

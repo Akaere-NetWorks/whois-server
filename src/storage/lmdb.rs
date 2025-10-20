@@ -361,11 +361,10 @@ impl LmdbStorage {
             }
 
             // Check if key starts with prefix
-            if key_str.starts_with(prefix) {
-                if !callback(key_str) {
+            if key_str.starts_with(prefix)
+                && !callback(key_str) {
                     break;
                 }
-            }
         }
 
         Ok(())

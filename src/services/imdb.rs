@@ -257,9 +257,9 @@ impl ImdbService {
 
             let search_data: ImdbSearchResponse = response.json().await?;
 
-            if search_data.response == "True" {
-                if let Some(results) = search_data.search {
-                    if let Some(first_result) = results.first() {
+            if search_data.response == "True"
+                && let Some(results) = search_data.search
+                    && let Some(first_result) = results.first() {
                         // Get detailed info for the first search result using direct API call
                         debug!(
                             "Found search result, getting details for: {}",
@@ -267,8 +267,6 @@ impl ImdbService {
                         );
                         return self.get_movie_details_by_id(&first_result.imdb_id).await;
                     }
-                }
-            }
 
             Err(anyhow::anyhow!("No search results found"))
         } else {
@@ -452,35 +450,31 @@ impl ImdbService {
             output.push_str(&format!("box-office: {}\n", box_office));
         }
 
-        if let Some(awards) = &imdb.awards {
-            if awards != "N/A" {
+        if let Some(awards) = &imdb.awards
+            && awards != "N/A" {
                 output.push_str(&format!("awards: {}\n", awards));
             }
-        }
 
-        if let Some(production) = &imdb.production {
-            if production != "N/A" {
+        if let Some(production) = &imdb.production
+            && production != "N/A" {
                 output.push_str(&format!("production: {}\n", production));
             }
-        }
 
-        if let Some(website) = &imdb.website {
-            if website != "N/A" {
+        if let Some(website) = &imdb.website
+            && website != "N/A" {
                 output.push_str(&format!("website: {}\n", website));
             }
-        }
 
         if let Some(total_seasons) = &imdb.total_seasons {
             output.push_str(&format!("total-seasons: {}\n", total_seasons));
         }
 
-        if let Some(plot) = &imdb.plot {
-            if plot != "N/A" {
+        if let Some(plot) = &imdb.plot
+            && plot != "N/A" {
                 output.push_str(
                     &format!("plot: {}\n", plot.replace("\r\n", " ").replace('\n', " "))
                 );
             }
-        }
 
         if let Some(imdb_id) = &imdb.imdb_id {
             output.push_str(&format!("imdb-url: https://www.imdb.com/title/{}/\n", imdb_id));
@@ -577,9 +571,7 @@ pub async fn process_imdb_search_query(query: &str) -> Result<String> {
 
         if search_query.is_empty() {
             return Ok(
-                format!(
-                    "Invalid IMDb search query. Please provide a search term.\nExample: Batman-IMDBSEARCH\n"
-                )
+                "Invalid IMDb search query. Please provide a search term.\nExample: Batman-IMDBSEARCH\n".to_string()
             );
         }
 

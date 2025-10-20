@@ -183,28 +183,28 @@ pub fn query_ntp_server(server: &str) -> Result<String> {
 
     // Format output
     let mut output = String::new();
-    output.push_str(&format!("% NTP Time Synchronization Test\n"));
+    output.push_str("% NTP Time Synchronization Test\n");
     output.push_str(&format!("% Server: {}\n", server));
     output.push_str(&format!("% Resolved to: {}\n", addr));
-    output.push_str(&format!("%\n"));
-    output.push_str(&format!("% Server Information:\n"));
+    output.push_str("%\n");
+    output.push_str("% Server Information:\n");
     output.push_str(&format!("stratum:         {} ({})\n", response.stratum, stratum_desc));
     output.push_str(&format!("precision:       2^{} seconds\n", response.precision));
     output.push_str(&format!("root-delay:      {} ms\n", (response.root_delay as f64 / 65536.0 * 1000.0) as u32));
     output.push_str(&format!("root-dispersion: {} ms\n", (response.root_dispersion as f64 / 65536.0 * 1000.0) as u32));
-    output.push_str(&format!("%\n"));
-    output.push_str(&format!("% Time Information:\n"));
+    output.push_str("%\n");
+    output.push_str("% Time Information:\n");
     output.push_str(&format!("server-time:     {}\n", format_timestamp(t3 / 1_000_000)));
     output.push_str(&format!("local-time:      {}\n", format_timestamp(t4 / 1_000_000)));
-    output.push_str(&format!("%\n"));
-    output.push_str(&format!("% Synchronization Metrics:\n"));
+    output.push_str("%\n");
+    output.push_str("% Synchronization Metrics:\n");
     output.push_str(&format!("offset:          {:.3} ms ({:.6} seconds)\n", offset_ms, offset_ms / 1000.0));
     output.push_str(&format!("round-trip:      {:.3} ms\n", delay_ms));
-    output.push_str(&format!("%\n"));
+    output.push_str("%\n");
     
     if offset_ms.abs() > 1000.0 {
         output.push_str(&format!("% ⚠ WARNING: Clock offset is {:.3} seconds\n", offset_ms / 1000.0));
-        output.push_str(&format!("% Your local clock may need adjustment\n"));
+        output.push_str("% Your local clock may need adjustment\n");
     } else if offset_ms.abs() > 100.0 {
         output.push_str(&format!("% ⚠ Clock offset is significant: {:.1}ms\n", offset_ms));
     } else if offset_ms.abs() > 10.0 {
@@ -213,8 +213,8 @@ pub fn query_ntp_server(server: &str) -> Result<String> {
         output.push_str(&format!("% ✓ Excellent synchronization! (offset: {:.2}ms)\n", offset_ms));
     }
     
-    output.push_str(&format!("%\n"));
-    output.push_str(&format!("% Note: This is a test query only. System time was not modified.\n"));
+    output.push_str("%\n");
+    output.push_str("% Note: This is a test query only. System time was not modified.\n");
 
     Ok(output)
 }
@@ -222,8 +222,7 @@ pub fn query_ntp_server(server: &str) -> Result<String> {
 /// Handle NTP query
 pub async fn handle_ntp_query(server: &str) -> Result<String> {
     if server.is_empty() {
-        return Ok(format!(
-            "% NTP Time Synchronization Test\n\
+        return Ok("% NTP Time Synchronization Test\n\
              % Error: No server specified\n\
              %\n\
              % Usage: <server>-NTP\n\
@@ -235,8 +234,7 @@ pub async fn handle_ntp_query(server: &str) -> Result<String> {
              %   ntp.aliyun.com-NTP\n\
              %   cn.pool.ntp.org-NTP\n\
              %\n\
-             % Run 'whois help' for more information\n"
-        ));
+             % Run 'whois help' for more information\n".to_string());
     }
 
     match query_ntp_server(server) {

@@ -241,15 +241,14 @@ impl WikipediaService {
                 )
             )?;
 
-        if let Some(query_data) = wiki_data.query {
-            if let Some(pages) = query_data.pages {
+        if let Some(query_data) = wiki_data.query
+            && let Some(pages) = query_data.pages {
                 for (_, page) in pages {
                     if page.pageid.is_some() {
                         return Ok(self.format_article_info(&page));
                     }
                 }
             }
-        }
 
         Err(anyhow::anyhow!("No article details found"))
     }
@@ -267,7 +266,7 @@ impl WikipediaService {
         }
 
         output.push_str(&format!("title: {}\n", page.title));
-        output.push_str(&format!("source: Wikipedia (English)\n"));
+        output.push_str("source: Wikipedia (English)\n");
 
         // Add article length and last modified date
         if let Some(length) = page.length {
@@ -301,8 +300,8 @@ impl WikipediaService {
         }
 
         // Add article extract/summary
-        if let Some(extract) = &page.extract {
-            if !extract.is_empty() {
+        if let Some(extract) = &page.extract
+            && !extract.is_empty() {
                 let cleaned_extract = self.clean_wiki_text(extract);
                 if !cleaned_extract.is_empty() {
                     // Limit extract to reasonable length
@@ -314,11 +313,10 @@ impl WikipediaService {
                     output.push_str(&format!("summary: {}\n", truncated_extract));
                 }
             }
-        }
 
         // Add categories
-        if let Some(categories) = &page.categories {
-            if !categories.is_empty() {
+        if let Some(categories) = &page.categories
+            && !categories.is_empty() {
                 let category_names: Vec<String> = categories
                     .iter()
                     .filter_map(|cat| cat.title.as_ref())
@@ -330,11 +328,10 @@ impl WikipediaService {
                     output.push_str(&format!("categories: {}\n", category_names.join(", ")));
                 }
             }
-        }
 
         // Add language links
-        if let Some(langlinks) = &page.langlinks {
-            if !langlinks.is_empty() {
+        if let Some(langlinks) = &page.langlinks
+            && !langlinks.is_empty() {
                 let lang_info: Vec<String> = langlinks
                     .iter()
                     .filter_map(|link| {
@@ -351,7 +348,6 @@ impl WikipediaService {
                     output.push_str(&format!("languages: {}\n", lang_info.join(", ")));
                 }
             }
-        }
 
         // Add URLs
         if let Some(url) = &page.canonicalurl {
@@ -455,9 +451,7 @@ pub async fn process_wikipedia_query(query: &str) -> Result<String> {
 
         if article_query.is_empty() {
             return Ok(
-                format!(
-                    "Invalid Wikipedia query. Please provide an article name.\nExample: Rust-WIKIPEDIA\n"
-                )
+                "Invalid Wikipedia query. Please provide an article name.\nExample: Rust-WIKIPEDIA\n".to_string()
             );
         }
 

@@ -253,11 +253,10 @@ fn format_github_user_response(user: &GitHubUser, query: &str) -> String {
         output.push_str(&format!("email: {}\n", email));
     }
 
-    if let Some(blog) = &user.blog {
-        if !blog.is_empty() {
+    if let Some(blog) = &user.blog
+        && !blog.is_empty() {
             output.push_str(&format!("website: {}\n", blog));
         }
-    }
 
     if let Some(twitter) = &user.twitter_username {
         output.push_str(&format!("twitter: @{}\n", twitter));
@@ -282,7 +281,7 @@ fn format_github_user_response(user: &GitHubUser, query: &str) -> String {
     output.push_str(&format!("github-url: {}\n", user.html_url));
     output.push_str(&format!("avatar-url: {}\n", user.avatar_url));
     output.push_str(&format!("api-url: {}/users/{}\n", GITHUB_API_URL, user.login));
-    output.push_str(&format!("source: GitHub API\n"));
+    output.push_str("source: GitHub API\n");
     output.push('\n');
     output.push_str("% Information retrieved from GitHub\n");
     output.push_str("% Query processed by WHOIS server\n");
@@ -312,11 +311,10 @@ fn format_github_repository_response(repo: &GitHubRepository, query: &str) -> St
         output.push_str(&format!("language: {}\n", language));
     }
 
-    if let Some(homepage) = &repo.homepage {
-        if !homepage.is_empty() {
+    if let Some(homepage) = &repo.homepage
+        && !homepage.is_empty() {
             output.push_str(&format!("homepage: {}\n", homepage));
         }
-    }
 
     if let Some(license) = &repo.license {
         output.push_str(&format!("license: {}\n", license.name));
@@ -376,11 +374,10 @@ fn format_github_repository_response(repo: &GitHubRepository, query: &str) -> St
     }
 
     // Topics
-    if let Some(topics) = &repo.topics {
-        if !topics.is_empty() {
+    if let Some(topics) = &repo.topics
+        && !topics.is_empty() {
             output.push_str(&format!("topics: {}\n", topics.join(", ")));
         }
-    }
 
     output.push_str(&format!("created-at: {}\n", repo.created_at));
     output.push_str(&format!("updated-at: {}\n", repo.updated_at));
@@ -393,7 +390,7 @@ fn format_github_repository_response(repo: &GitHubRepository, query: &str) -> St
     output.push_str(&format!("clone-url: {}\n", repo.clone_url));
     output.push_str(&format!("ssh-url: {}\n", repo.ssh_url));
     output.push_str(&format!("api-url: {}/repos/{}\n", GITHUB_API_URL, repo.full_name));
-    output.push_str(&format!("source: GitHub API\n"));
+    output.push_str("source: GitHub API\n");
     output.push('\n');
     output.push_str("% Information retrieved from GitHub\n");
     output.push_str("% Query processed by WHOIS server\n");
