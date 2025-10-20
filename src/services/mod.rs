@@ -8,6 +8,7 @@ pub mod manrs;
 pub mod geo;
 pub mod iana_cache;
 pub mod dns;
+pub mod ntp;
 pub mod traceroute;
 pub mod ssl;
 pub mod crt;
@@ -33,6 +34,7 @@ pub use manrs::*;
 pub use geo::*;
 // pub use iana_cache::*; // Used via explicit imports in modules
 pub use dns::*;
+pub use ntp::*;
 pub use traceroute::*;
 pub use ssl::*;
 pub use crt::*;

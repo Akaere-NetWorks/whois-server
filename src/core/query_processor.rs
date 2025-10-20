@@ -18,6 +18,7 @@ use crate::services::{
     process_manrs_query,
     process_rpki_query,
     process_dns_query,
+    handle_ntp_query,
     process_traceroute_query,
     process_ssl_query,
     process_crt_query,
@@ -220,6 +221,10 @@ pub async fn process_query(
         QueryType::Dns(base_query) => {
             debug!("Processing DNS query: {}", base_query);
             process_dns_query(base_query).await
+        }
+        QueryType::Ntp(base_query) => {
+            debug!("Processing NTP query: {}", base_query);
+            handle_ntp_query(base_query).await
         }
         QueryType::Trace(base_query) => {
             debug!("Processing traceroute query: {}", base_query);
