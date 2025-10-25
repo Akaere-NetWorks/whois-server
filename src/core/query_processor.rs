@@ -47,6 +47,7 @@ use crate::services::{
     process_wikipedia_query,
     process_lyric_query,
     process_desc_query,
+    process_peeringdb_query,
     query_random_meal,
     query_random_chinese_meal,
     query_whois,
@@ -337,6 +338,10 @@ pub async fn process_query(
         QueryType::Desc(base_query) => {
             debug!("Processing description query: {}", base_query);
             process_desc_query(base_query).await
+        }
+        QueryType::PeeringDB(base_query) => {
+            debug!("Processing PeeringDB query: {}", base_query);
+            process_peeringdb_query(base_query).await
         }
         QueryType::Meal => {
             debug!("Processing meal suggestion query");

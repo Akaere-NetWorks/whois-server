@@ -8,6 +8,10 @@ pub const TIMEOUT_SECONDS: u64 = 10;
 pub const DN42_REGISTRY_PATH: &str = "./cache/dn42-registry";
 pub const DN42_LMDB_PATH: &str = "./cache/dn42-lmdb";
 
+// PeeringDB cache configuration
+pub const PEERINGDB_LMDB_PATH: &str = "./cache/peeringdb-lmdb";
+pub const PEERINGDB_CACHE_TTL: u64 = 86400; // 1 day in seconds
+
 // Internet Routing Registry (IRR) servers
 pub const RADB_WHOIS_SERVER: &str = "whois.radb.net";
 pub const RADB_WHOIS_PORT: u16 = 43;

@@ -23,6 +23,7 @@ pub mod github;
 pub mod help;
 pub mod meal;
 pub mod desc;
+pub mod peeringdb;
 
 pub use whois::*;
 pub use email::*;
@@ -48,3 +49,4 @@ pub use lyric::*;
 pub use github::*;
 pub use meal::*;
 pub use desc::*;
+pub use peeringdb::*;

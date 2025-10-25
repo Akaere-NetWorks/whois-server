@@ -50,6 +50,10 @@ pub fn generate_help_response() -> String {
     output.push_str("AS15169-PREFIXES    - List all prefixes announced by ASN\n");
     output.push_str("example: AS15169-PREFIXES\n");
     output.push('\n');
+    output.push_str("AS15169-PEERINGDB   - PeeringDB network information (ASN with AS prefix)\n");
+    output.push_str("4718-PEERINGDB      - PeeringDB Internet Exchange info (pure number = IX ID)\n");
+    output.push_str("example: AS15169-PEERINGDB, 4718-PEERINGDB\n");
+    output.push('\n');
 
     output.push_str("GEO-LOCATION SERVICES:\n");
     output.push_str("-".repeat(40).as_str());
