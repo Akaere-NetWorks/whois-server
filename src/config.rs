@@ -38,6 +38,10 @@ pub const RIPE_WHOIS_PORT: u16 = 43;
 pub const TC_WHOIS_SERVER: &str = "whois.bgp.net.br";
 pub const TC_WHOIS_PORT: u16 = 43;
 
+//RIPE NCC Routing Information Service (RIS) Whois
+pub const RIS_WHOIS_SERVER: &str = "riswhois.ripe.net";
+pub const RIS_WHOIS_PORT: u16 = 43;
+
 // Server identification banner
 pub const SERVER_BANNER: &str = "% Akaere NetWorks Whois Server";
 

@@ -108,6 +108,9 @@ pub fn generate_help_response() -> String {
     output.push_str("AS15169-RIPE        - RIPE IRR query\n");
     output.push_str("example: AS15169-RIPE\n");
     output.push('\n');
+    output.push_str("AS15169-RIS         - RIPE RIS (Routing Information Service) query\n");
+    output.push_str("example: AS15169-RIS\n");
+    output.push('\n');
     output.push_str("AS15169-TC          - TC (Telecom) IRR query\n");
     output.push_str("example: AS15169-TC\n");
     output.push('\n');

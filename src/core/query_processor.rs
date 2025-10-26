@@ -13,7 +13,7 @@ use crate::config::{
     BELL_WHOIS_SERVER, JPIRR_WHOIS_PORT, JPIRR_WHOIS_SERVER, LACNIC_WHOIS_PORT,
     LACNIC_WHOIS_SERVER, LEVEL3_WHOIS_PORT, LEVEL3_WHOIS_SERVER, NTTCOM_WHOIS_PORT,
     NTTCOM_WHOIS_SERVER, RADB_WHOIS_PORT, RADB_WHOIS_SERVER, RIPE_WHOIS_PORT, RIPE_WHOIS_SERVER,
-    TC_WHOIS_PORT, TC_WHOIS_SERVER,
+    RIS_WHOIS_PORT, RIS_WHOIS_SERVER, TC_WHOIS_PORT, TC_WHOIS_SERVER,
 };
 use crate::core::{
     ColorScheme, Colorizer, QueryType, apply_response_patches, is_private_ipv4, is_private_ipv6,
@@ -143,6 +143,10 @@ pub async fn process_query(
         QueryType::RipeIrr(resource) => {
             debug!("Processing RIPE IRR query: {}", resource);
             query_whois(resource, RIPE_WHOIS_SERVER, RIPE_WHOIS_PORT).await
+        }
+        QueryType::Ris(resource) => {
+            debug!("Processing RIS query: {}", resource);
+            query_whois(resource, RIS_WHOIS_SERVER, RIS_WHOIS_PORT).await
         }
         QueryType::Tc(resource) => {
             debug!("Processing TC query: {}", resource);

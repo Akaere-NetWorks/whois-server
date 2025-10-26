@@ -27,6 +27,7 @@ pub enum QueryType {
     Level3(String),        // For queries ending with -LEVEL3
     Nttcom(String),        // For queries ending with -NTTCOM
     RipeIrr(String),       // For queries ending with -RIPE (IRR)
+    Ris(String),           // For queries ending with -RIS (RIPE RIS)
     Tc(String),            // For queries ending with -TC
     Irr(String),           // For queries ending with -IRR (general IRR Explorer)
     LookingGlass(String),  // For queries ending with -LG
@@ -209,6 +210,12 @@ pub fn analyze_query(query: &str) -> QueryType {
     if query.to_uppercase().ends_with("-RIPE") {
         let base_query = &query[..query.len() - 5]; // Remove "-RIPE" suffix
         return QueryType::RipeIrr(base_query.to_string());
+    }
+
+    // Check if it's a RIS query
+    if query.to_uppercase().ends_with("-RIS") {
+        let base_query = &query[..query.len() - 4]; // Remove "-RIS" suffix
+        return QueryType::Ris(base_query.to_string());
     }
 
     // Check if it's a TC IRR query
