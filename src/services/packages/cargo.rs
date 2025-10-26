@@ -16,11 +16,11 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-use anyhow::{ Context, Result };
+use anyhow::{Context, Result};
 use reqwest;
-use serde::{ Deserialize, Serialize };
-use tracing::{ debug, error };
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use tracing::{debug, error};
 
 const CRATES_IO_API_URL: &str = "https://crates.io/api/v1/crates/";
 
@@ -107,11 +107,12 @@ pub async fn process_cargo_query(crate_name: &str) -> Result<String> {
     }
 
     // Validate Cargo crate name format
-    if
-        crate_name.len() > 64 ||
-        !crate_name.chars().all(|c| c.is_ascii_alphanumeric() || "-_".contains(c)) ||
-        crate_name.starts_with('-') ||
-        crate_name.ends_with('-')
+    if crate_name.len() > 64
+        || !crate_name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || "-_".contains(c))
+        || crate_name.starts_with('-')
+        || crate_name.ends_with('-')
     {
         return Err(anyhow::anyhow!("Invalid Cargo crate name format"));
     }
@@ -126,8 +127,7 @@ pub async fn process_cargo_query(crate_name: &str) -> Result<String> {
 }
 
 async fn query_crates_io_crate(crate_name: &str) -> Result<CratesResponse> {
-    let client = reqwest::Client
-        ::builder()
+    let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(15))
         .user_agent("Mozilla/5.0 (compatible; WHOIS-Server/1.0)")
         .build()
@@ -139,7 +139,8 @@ async fn query_crates_io_crate(crate_name: &str) -> Result<CratesResponse> {
 
     let response = client
         .get(&crate_url)
-        .send().await
+        .send()
+        .await
         .context("Failed to send request to crates.io API")?;
 
     if response.status() == 404 {
@@ -147,11 +148,15 @@ async fn query_crates_io_crate(crate_name: &str) -> Result<CratesResponse> {
     }
 
     if !response.status().is_success() {
-        return Err(anyhow::anyhow!("crates.io API returned status: {}", response.status()));
+        return Err(anyhow::anyhow!(
+            "crates.io API returned status: {}",
+            response.status()
+        ));
     }
 
     let crate_data: CratesResponse = response
-        .json().await
+        .json()
+        .await
         .context("Failed to parse crates.io response")?;
 
     Ok(crate_data)
@@ -170,9 +175,10 @@ fn format_cargo_response(crate_data: &CratesResponse, query: &str) -> String {
     output.push_str(&format!("version: {}\n", crate_info.newest_version));
 
     if let Some(max_stable) = &crate_info.max_stable_version
-        && max_stable != &crate_info.newest_version {
-            output.push_str(&format!("stable-version: {}\n", max_stable));
-        }
+        && max_stable != &crate_info.newest_version
+    {
+        output.push_str(&format!("stable-version: {}\n", max_stable));
+    }
 
     if let Some(description) = &crate_info.description {
         output.push_str(&format!("description: {}\n", description));
@@ -186,7 +192,10 @@ fn format_cargo_response(crate_data: &CratesResponse, query: &str) -> String {
 
         if let Some(published_by) = &latest_version.published_by {
             if let Some(name) = &published_by.name {
-                output.push_str(&format!("published-by: {} ({})\n", name, published_by.login));
+                output.push_str(&format!(
+                    "published-by: {} ({})\n",
+                    name, published_by.login
+                ));
             } else {
                 output.push_str(&format!("published-by: {}\n", published_by.login));
             }
@@ -208,96 +217,122 @@ fn format_cargo_response(crate_data: &CratesResponse, query: &str) -> String {
 
     // URLs
     if let Some(homepage) = &crate_info.homepage
-        && !homepage.is_empty() {
-            output.push_str(&format!("homepage: {}\n", homepage));
-        }
+        && !homepage.is_empty()
+    {
+        output.push_str(&format!("homepage: {}\n", homepage));
+    }
 
     if let Some(repository) = &crate_info.repository
-        && !repository.is_empty() {
-            output.push_str(&format!("repository: {}\n", repository));
-        }
+        && !repository.is_empty()
+    {
+        output.push_str(&format!("repository: {}\n", repository));
+    }
 
     if let Some(documentation) = &crate_info.documentation
-        && !documentation.is_empty() {
-            output.push_str(&format!("documentation: {}\n", documentation));
-        }
+        && !documentation.is_empty()
+    {
+        output.push_str(&format!("documentation: {}\n", documentation));
+    }
 
     // Download statistics
-    output.push_str(&format!("total-downloads: {}\n", format_number(crate_info.downloads)));
+    output.push_str(&format!(
+        "total-downloads: {}\n",
+        format_number(crate_info.downloads)
+    ));
     if let Some(recent) = crate_info.recent_downloads {
         output.push_str(&format!("recent-downloads: {}\n", format_number(recent)));
     }
 
     // Categories
     if let Some(categories) = &crate_data.categories
-        && !categories.is_empty() {
-            let cat_names: Vec<String> = categories
-                .iter()
-                .take(5)
-                .map(|c| c.category.clone())
-                .collect();
-            output.push_str(&format!("categories: {}\n", cat_names.join(", ")));
-        }
+        && !categories.is_empty()
+    {
+        let cat_names: Vec<String> = categories
+            .iter()
+            .take(5)
+            .map(|c| c.category.clone())
+            .collect();
+        output.push_str(&format!("categories: {}\n", cat_names.join(", ")));
+    }
 
     // Keywords
     if let Some(keywords) = &crate_data.keywords
-        && !keywords.is_empty() {
-            let keyword_names: Vec<String> = keywords
-                .iter()
-                .take(10)
-                .map(|k| k.keyword.clone())
-                .collect();
-            output.push_str(&format!("keywords: {}\n", keyword_names.join(", ")));
-        }
+        && !keywords.is_empty()
+    {
+        let keyword_names: Vec<String> = keywords
+            .iter()
+            .take(10)
+            .map(|k| k.keyword.clone())
+            .collect();
+        output.push_str(&format!("keywords: {}\n", keyword_names.join(", ")));
+    }
 
     // Features from latest version
     if let Some(latest_version) = crate_data.versions.first()
-        && let Some(features) = &latest_version.features {
-            let feature_count = features.len();
-            if feature_count > 0 {
-                output.push_str(&format!("features: {} available\n", feature_count));
+        && let Some(features) = &latest_version.features
+    {
+        let feature_count = features.len();
+        if feature_count > 0 {
+            output.push_str(&format!("features: {} available\n", feature_count));
 
-                // Show default features if available
-                if let Some(default_features) = features.get("default")
-                    && !default_features.is_empty() {
-                        output.push_str(
-                            &format!("default-features: {}\n", default_features.join(", "))
-                        );
-                    }
+            // Show default features if available
+            if let Some(default_features) = features.get("default")
+                && !default_features.is_empty()
+            {
+                output.push_str(&format!(
+                    "default-features: {}\n",
+                    default_features.join(", ")
+                ));
             }
         }
+    }
 
     // Version history (show last 5 versions)
     let version_count = crate_data.versions.len();
     if version_count > 1 {
         output.push_str(&format!("total-versions: {}\n", version_count));
-        let recent_versions: Vec<String> = crate_data.versions
+        let recent_versions: Vec<String> = crate_data
+            .versions
             .iter()
             .take(5)
             .map(|v| {
-                if v.yanked { format!("{} (yanked)", v.num) } else { v.num.clone() }
+                if v.yanked {
+                    format!("{} (yanked)", v.num)
+                } else {
+                    v.num.clone()
+                }
             })
             .collect();
-        output.push_str(&format!("recent-versions: {}\n", recent_versions.join(", ")));
+        output.push_str(&format!(
+            "recent-versions: {}\n",
+            recent_versions.join(", ")
+        ));
     }
 
     // Timestamps
-    output.push_str(&format!("created: {}\n", format_timestamp(&crate_info.created_at)));
-    output.push_str(&format!("updated: {}\n", format_timestamp(&crate_info.updated_at)));
+    output.push_str(&format!(
+        "created: {}\n",
+        format_timestamp(&crate_info.created_at)
+    ));
+    output.push_str(&format!(
+        "updated: {}\n",
+        format_timestamp(&crate_info.updated_at)
+    ));
 
     // URLs
-    output.push_str(
-        &format!(
-            "crates-io-url: https://crates.io/crates/{}\n",
-            urlencoding::encode(&crate_info.name)
-        )
-    );
-    output.push_str(
-        &format!("docs-rs-url: https://docs.rs/{}\n", urlencoding::encode(&crate_info.name))
-    );
-    output.push_str(
-        &format!("api-url: {}{}\n", CRATES_IO_API_URL, urlencoding::encode(&crate_info.name))
-    );
+    output.push_str(&format!(
+        "crates-io-url: https://crates.io/crates/{}\n",
+        urlencoding::encode(&crate_info.name)
+    ));
+    output.push_str(&format!(
+        "docs-rs-url: https://docs.rs/{}\n",
+        urlencoding::encode(&crate_info.name)
+    ));
+    output.push_str(&format!(
+        "api-url: {}{}\n",
+        CRATES_IO_API_URL,
+        urlencoding::encode(&crate_info.name)
+    ));
     output.push_str("registry: crates.io (Rust Package Registry)\n");
     output.push_str("source: crates.io API\n");
     output.push('\n');

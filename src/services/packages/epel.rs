@@ -86,16 +86,16 @@ async fn query_epel_repositories(package_name: &str) -> Result<Vec<EpelPackage>>
     // Try different EPEL repositories
     let repositories = [
         ("EPEL-10", EPEL_10_REPO),
-        ("EPEL-9", EPEL_9_REPO), 
+        ("EPEL-9", EPEL_9_REPO),
         ("EPEL-8", EPEL_8_REPO),
     ];
 
     for (repo_name, repo_base) in &repositories {
         debug!("Checking {} repository for: {}", repo_name, package_name);
-        
+
         // Try to access the repodata/repomd.xml file which contains package metadata
         let repodata_url = format!("{}/repodata/repomd.xml", repo_base);
-        
+
         match client.get(&repodata_url).send().await {
             Ok(response) if response.status().is_success() => {
                 debug!("Found repodata for {} repository", repo_name);
@@ -103,18 +103,19 @@ async fn query_epel_repositories(package_name: &str) -> Result<Vec<EpelPackage>>
                 let package = EpelPackage {
                     name: package_name.to_string(),
                     version: Some("Available".to_string()),
-                    release: Some(
-                        if repo_name.contains("10") { 
-                            "el10".to_string() 
-                        } else if repo_name.contains("9") { 
-                            "el9".to_string() 
-                        } else { 
-                            "el8".to_string() 
-                        }
-                    ),
+                    release: Some(if repo_name.contains("10") {
+                        "el10".to_string()
+                    } else if repo_name.contains("9") {
+                        "el9".to_string()
+                    } else {
+                        "el8".to_string()
+                    }),
                     arch: Some("x86_64".to_string()),
                     summary: Some(format!("Package available in {}", repo_name)),
-                    description: Some(format!("EPEL package from {} repository - Extra Packages for Enterprise Linux", repo_name)),
+                    description: Some(format!(
+                        "EPEL package from {} repository - Extra Packages for Enterprise Linux",
+                        repo_name
+                    )),
                     url: Some(format!("{}/Packages", repo_base)),
                     license: Some("Various".to_string()),
                     buildtime: None,
@@ -264,11 +265,7 @@ fn format_epel_not_found(package_name: &str) -> String {
         % Compatible with RHEL, CentOS, AlmaLinux, Rocky Linux\n\
         % Enable EPEL repository before searching for packages\n\
         ",
-        package_name,
-        package_name,
-        package_name,
-        package_name,
-        EPEL_WEB
+        package_name, package_name, package_name, package_name, EPEL_WEB
     )
 }
 

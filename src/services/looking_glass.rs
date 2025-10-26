@@ -1,5 +1,5 @@
-use anyhow::{ Result, anyhow };
-use serde::{ Deserialize, Serialize };
+use anyhow::{Result, anyhow};
+use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use tracing::debug;
 
@@ -45,15 +45,23 @@ struct PeerData {
 pub async fn process_looking_glass_query(resource: &str) -> Result<String> {
     debug!("Processing Looking Glass query for: {}", resource);
 
-    let url = format!("{}/data/looking-glass/data.json?resource={}", RIPE_STAT_API_BASE, resource);
+    let url = format!(
+        "{}/data/looking-glass/data.json?resource={}",
+        RIPE_STAT_API_BASE, resource
+    );
     debug!("Requesting URL: {}", url);
 
-    let client = reqwest::Client::builder().timeout(Duration::from_secs(10)).build()?;
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(10))
+        .build()?;
 
     let response = client.get(&url).send().await?;
 
     if !response.status().is_success() {
-        return Err(anyhow!("API request failed with status: {}", response.status()));
+        return Err(anyhow!(
+            "API request failed with status: {}",
+            response.status()
+        ));
     }
 
     let lg_response: LookingGlassResponse = response.json().await?;
@@ -70,7 +78,10 @@ fn format_bird_output(data: &LookingGlassData, resource: &str) -> Result<String>
     let mut output = String::new();
 
     // BIRD-style header
-    output.push_str(&format!("% RIPE STAT Looking Glass data for {}\n", resource));
+    output.push_str(&format!(
+        "% RIPE STAT Looking Glass data for {}\n",
+        resource
+    ));
     output.push_str("% Data from RIPE NCC Route Information Service (RIS)\n");
     output.push_str("% Output in BIRD routing daemon style\n\n");
 
@@ -80,14 +91,15 @@ fn format_bird_output(data: &LookingGlassData, resource: &str) -> Result<String>
     }
 
     // Group routes by prefix for better organization
-    let mut routes_by_prefix: std::collections::HashMap<
-        String,
-        Vec<&PeerData>
-    > = std::collections::HashMap::new();
+    let mut routes_by_prefix: std::collections::HashMap<String, Vec<&PeerData>> =
+        std::collections::HashMap::new();
 
     for rrc in &data.rrcs {
         for peer in &rrc.peers {
-            routes_by_prefix.entry(peer.prefix.clone()).or_default().push(peer);
+            routes_by_prefix
+                .entry(peer.prefix.clone())
+                .or_default()
+                .push(peer);
         }
     }
 
@@ -97,7 +109,10 @@ fn format_bird_output(data: &LookingGlassData, resource: &str) -> Result<String>
         for peer in peers {
             // BIRD-style route format
             output.push_str(&format!("route {} via {} {{\n", prefix, peer.next_hop));
-            output.push_str(&format!("    # Peer: {} (AS{})\n", peer.peer, peer.asn_origin));
+            output.push_str(&format!(
+                "    # Peer: {} (AS{})\n",
+                peer.peer, peer.asn_origin
+            ));
             output.push_str(&format!("    # AS-Path: {}\n", peer.as_path));
             output.push_str(&format!("    # Origin: {}\n", peer.origin));
 
@@ -106,23 +121,31 @@ fn format_bird_output(data: &LookingGlassData, resource: &str) -> Result<String>
             }
 
             if !peer.large_community.is_empty() {
-                output.push_str(&format!("    # Large Communities: {}\n", peer.large_community));
+                output.push_str(&format!(
+                    "    # Large Communities: {}\n",
+                    peer.large_community
+                ));
             }
 
             if !peer.extended_community.is_empty() {
-                output.push_str(
-                    &format!("    # Extended Communities: {}\n", peer.extended_community)
-                );
+                output.push_str(&format!(
+                    "    # Extended Communities: {}\n",
+                    peer.extended_community
+                ));
             }
 
             output.push_str(&format!("    # Last Updated: {}\n", peer.last_updated));
             output.push_str(&format!("    # Latest Time: {}\n", peer.latest_time));
 
             // BIRD-style attributes
-            output.push_str(
-                &format!("    bgp_path.len = {};\n", peer.as_path.split_whitespace().count())
-            );
-            output.push_str(&format!("    bgp_origin = {};\n", peer.origin.to_uppercase()));
+            output.push_str(&format!(
+                "    bgp_path.len = {};\n",
+                peer.as_path.split_whitespace().count()
+            ));
+            output.push_str(&format!(
+                "    bgp_origin = {};\n",
+                peer.origin.to_uppercase()
+            ));
             output.push_str(&format!("    bgp_next_hop = {};\n", peer.next_hop));
 
             // Add communities as BIRD attributes if present
@@ -130,13 +153,11 @@ fn format_bird_output(data: &LookingGlassData, resource: &str) -> Result<String>
                 let communities: Vec<&str> = peer.community.split_whitespace().collect();
                 for community in communities {
                     if community.contains(':') {
-                        output.push_str(
-                            &format!(
-                                "    bgp_community.add(({},{}));\n",
-                                community.split(':').next().unwrap_or("0"),
-                                community.split(':').nth(1).unwrap_or("0")
-                            )
-                        );
+                        output.push_str(&format!(
+                            "    bgp_community.add(({},{}));\n",
+                            community.split(':').next().unwrap_or("0"),
+                            community.split(':').nth(1).unwrap_or("0")
+                        ));
                     }
                 }
             }
@@ -146,21 +167,22 @@ fn format_bird_output(data: &LookingGlassData, resource: &str) -> Result<String>
     }
 
     // Summary statistics
-    let total_routes = data.rrcs
-        .iter()
-        .map(|rrc| rrc.peers.len())
-        .sum::<usize>();
+    let total_routes = data.rrcs.iter().map(|rrc| rrc.peers.len()).sum::<usize>();
     let total_rrcs = data.rrcs.len();
 
-    output.push_str(
-        &format!("# Summary: {} routes from {} RRC collectors\n", total_routes, total_rrcs)
-    );
+    output.push_str(&format!(
+        "# Summary: {} routes from {} RRC collectors\n",
+        total_routes, total_rrcs
+    ));
 
     // List all RRC locations
     output.push_str("# RRC Locations:\n");
     for rrc in &data.rrcs {
         let peer_count = rrc.peers.len();
-        output.push_str(&format!("#   {}: {} ({} peers)\n", rrc.rrc, rrc.location, peer_count));
+        output.push_str(&format!(
+            "#   {}: {} ({} peers)\n",
+            rrc.rrc, rrc.location, peer_count
+        ));
     }
 
     Ok(output)

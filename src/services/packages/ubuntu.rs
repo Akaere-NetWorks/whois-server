@@ -16,10 +16,10 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-use anyhow::{ Context, Result };
+use anyhow::{Context, Result};
 use reqwest;
-use serde::{ Deserialize, Serialize };
-use tracing::{ debug, error };
+use serde::{Deserialize, Serialize};
+use tracing::{debug, error};
 
 const UBUNTU_PACKAGES_API: &str = "https://api.launchpad.net/1.0/ubuntu/+archive/primary";
 const UBUNTU_PACKAGES_SEARCH: &str = "https://packages.ubuntu.com";
@@ -52,10 +52,11 @@ pub async fn process_ubuntu_query(package_name: &str) -> Result<String> {
     }
 
     // Validate package name (Ubuntu follows Debian naming conventions)
-    if
-        package_name.len() > 100 ||
-        package_name.contains(' ') ||
-        !package_name.chars().all(|c| c.is_ascii_alphanumeric() || "+-._".contains(c))
+    if package_name.len() > 100
+        || package_name.contains(' ')
+        || !package_name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || "+-._".contains(c))
     {
         return Err(anyhow::anyhow!("Invalid Ubuntu package name format"));
     }
@@ -92,8 +93,7 @@ async fn query_ubuntu_packages(package_name: &str) -> Result<UbuntuSearchResult>
     // Use Launchpad API to search for packages
     let search_url = format!(
         "{}?ws.op=getPublishedBinaries&binary_name={}&ws.size=5",
-        UBUNTU_PACKAGES_API,
-        package_name
+        UBUNTU_PACKAGES_API, package_name
     );
 
     debug!("Querying Ubuntu packages API: {}", search_url);
@@ -101,15 +101,20 @@ async fn query_ubuntu_packages(package_name: &str) -> Result<UbuntuSearchResult>
     let response = client
         .get(&search_url)
         .header("Accept", "application/json")
-        .send().await
+        .send()
+        .await
         .context("Failed to send request to Ubuntu packages API")?;
 
     if !response.status().is_success() {
-        return Err(anyhow::anyhow!("Ubuntu packages API returned status: {}", response.status()));
+        return Err(anyhow::anyhow!(
+            "Ubuntu packages API returned status: {}",
+            response.status()
+        ));
     }
 
     let search_result: UbuntuSearchResult = response
-        .json().await
+        .json()
+        .await
         .context("Failed to parse Ubuntu packages API response")?;
 
     Ok(search_result)
@@ -154,9 +159,10 @@ fn format_ubuntu_response(packages: &[UbuntuPackageInfo], query: &str) -> String
         }
 
         if let Some(arch_specific) = package.architecture_specific {
-            output.push_str(
-                &format!("architecture-specific: {}\n", if arch_specific { "yes" } else { "no" })
-            );
+            output.push_str(&format!(
+                "architecture-specific: {}\n",
+                if arch_specific { "yes" } else { "no" }
+            ));
         }
 
         if let Some(status) = &package.status {
@@ -167,13 +173,10 @@ fn format_ubuntu_response(packages: &[UbuntuPackageInfo], query: &str) -> String
             output.push_str(&format!("date-published: {}\n", date));
         }
 
-        output.push_str(
-            &format!(
-                "ubuntu-url: {}/search?keywords={}\n",
-                UBUNTU_PACKAGES_SEARCH,
-                package.binary_package_name
-            )
-        );
+        output.push_str(&format!(
+            "ubuntu-url: {}/search?keywords={}\n",
+            UBUNTU_PACKAGES_SEARCH, package.binary_package_name
+        ));
     }
 
     output.push_str("repository: Ubuntu\n");
@@ -194,9 +197,7 @@ fn format_ubuntu_not_found(package_name: &str) -> String {
         \n\
         % Package not found in Ubuntu repositories\n\
         % Query processed by WHOIS server\n",
-        package_name,
-        UBUNTU_PACKAGES_SEARCH,
-        package_name
+        package_name, UBUNTU_PACKAGES_SEARCH, package_name
     )
 }
 

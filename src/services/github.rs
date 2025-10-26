@@ -16,10 +16,10 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-use anyhow::{ Context, Result };
+use anyhow::{Context, Result};
 use reqwest;
-use serde::{ Deserialize, Serialize };
-use tracing::{ debug, error };
+use serde::{Deserialize, Serialize};
+use tracing::{debug, error};
 
 const GITHUB_API_URL: &str = "https://api.github.com";
 
@@ -112,7 +112,9 @@ pub async fn process_github_query(query: &str) -> Result<String> {
         // Repository query format: owner/repo
         let parts: Vec<&str> = query.split('/').collect();
         if parts.len() != 2 {
-            return Err(anyhow::anyhow!("Invalid repository format. Use: owner/repository"));
+            return Err(anyhow::anyhow!(
+                "Invalid repository format. Use: owner/repository"
+            ));
         }
 
         let owner = parts[0];
@@ -120,7 +122,9 @@ pub async fn process_github_query(query: &str) -> Result<String> {
 
         // Validate GitHub username/repo name format
         if !is_valid_github_name(owner) || !is_valid_github_name(repo) {
-            return Err(anyhow::anyhow!("Invalid GitHub username or repository name format"));
+            return Err(anyhow::anyhow!(
+                "Invalid GitHub username or repository name format"
+            ));
         }
 
         match query_github_repository(owner, repo).await {
@@ -147,17 +151,16 @@ pub async fn process_github_query(query: &str) -> Result<String> {
 }
 
 fn is_valid_github_name(name: &str) -> bool {
-    !name.is_empty() &&
-        name.len() <= 39 &&
-        name.chars().all(|c| c.is_ascii_alphanumeric() || c == '-') &&
-        !name.starts_with('-') &&
-        !name.ends_with('-') &&
-        !name.contains("--")
+    !name.is_empty()
+        && name.len() <= 39
+        && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
+        && !name.starts_with('-')
+        && !name.ends_with('-')
+        && !name.contains("--")
 }
 
 async fn query_github_user(username: &str) -> Result<GitHubUser> {
-    let client = reqwest::Client
-        ::builder()
+    let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(15))
         .user_agent("Mozilla/5.0 (compatible; WHOIS-Server/1.0)")
         .build()
@@ -169,7 +172,8 @@ async fn query_github_user(username: &str) -> Result<GitHubUser> {
 
     let response = client
         .get(&user_url)
-        .send().await
+        .send()
+        .await
         .context("Failed to send request to GitHub API")?;
 
     if response.status() == 404 {
@@ -177,17 +181,22 @@ async fn query_github_user(username: &str) -> Result<GitHubUser> {
     }
 
     if !response.status().is_success() {
-        return Err(anyhow::anyhow!("GitHub API returned status: {}", response.status()));
+        return Err(anyhow::anyhow!(
+            "GitHub API returned status: {}",
+            response.status()
+        ));
     }
 
-    let user_data: GitHubUser = response.json().await.context("Failed to parse GitHub user data")?;
+    let user_data: GitHubUser = response
+        .json()
+        .await
+        .context("Failed to parse GitHub user data")?;
 
     Ok(user_data)
 }
 
 async fn query_github_repository(owner: &str, repo: &str) -> Result<GitHubRepository> {
-    let client = reqwest::Client
-        ::builder()
+    let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(15))
         .user_agent("Mozilla/5.0 (compatible; WHOIS-Server/1.0)")
         .build()
@@ -204,7 +213,8 @@ async fn query_github_repository(owner: &str, repo: &str) -> Result<GitHubReposi
 
     let response = client
         .get(&repo_url)
-        .send().await
+        .send()
+        .await
         .context("Failed to send request to GitHub API")?;
 
     if response.status() == 404 {
@@ -212,11 +222,15 @@ async fn query_github_repository(owner: &str, repo: &str) -> Result<GitHubReposi
     }
 
     if !response.status().is_success() {
-        return Err(anyhow::anyhow!("GitHub API returned status: {}", response.status()));
+        return Err(anyhow::anyhow!(
+            "GitHub API returned status: {}",
+            response.status()
+        ));
     }
 
     let repo_data: GitHubRepository = response
-        .json().await
+        .json()
+        .await
         .context("Failed to parse GitHub repository data")?;
 
     Ok(repo_data)
@@ -254,9 +268,10 @@ fn format_github_user_response(user: &GitHubUser, query: &str) -> String {
     }
 
     if let Some(blog) = &user.blog
-        && !blog.is_empty() {
-            output.push_str(&format!("website: {}\n", blog));
-        }
+        && !blog.is_empty()
+    {
+        output.push_str(&format!("website: {}\n", blog));
+    }
 
     if let Some(twitter) = &user.twitter_username {
         output.push_str(&format!("twitter: @{}\n", twitter));
@@ -280,7 +295,10 @@ fn format_github_user_response(user: &GitHubUser, query: &str) -> String {
 
     output.push_str(&format!("github-url: {}\n", user.html_url));
     output.push_str(&format!("avatar-url: {}\n", user.avatar_url));
-    output.push_str(&format!("api-url: {}/users/{}\n", GITHUB_API_URL, user.login));
+    output.push_str(&format!(
+        "api-url: {}/users/{}\n",
+        GITHUB_API_URL, user.login
+    ));
     output.push_str("source: GitHub API\n");
     output.push('\n');
     output.push_str("% Information retrieved from GitHub\n");
@@ -312,9 +330,10 @@ fn format_github_repository_response(repo: &GitHubRepository, query: &str) -> St
     }
 
     if let Some(homepage) = &repo.homepage
-        && !homepage.is_empty() {
-            output.push_str(&format!("homepage: {}\n", homepage));
-        }
+        && !homepage.is_empty()
+    {
+        output.push_str(&format!("homepage: {}\n", homepage));
+    }
 
     if let Some(license) = &repo.license {
         output.push_str(&format!("license: {}\n", license.name));
@@ -375,9 +394,10 @@ fn format_github_repository_response(repo: &GitHubRepository, query: &str) -> St
 
     // Topics
     if let Some(topics) = &repo.topics
-        && !topics.is_empty() {
-            output.push_str(&format!("topics: {}\n", topics.join(", ")));
-        }
+        && !topics.is_empty()
+    {
+        output.push_str(&format!("topics: {}\n", topics.join(", ")));
+    }
 
     output.push_str(&format!("created-at: {}\n", repo.created_at));
     output.push_str(&format!("updated-at: {}\n", repo.updated_at));
@@ -389,7 +409,10 @@ fn format_github_repository_response(repo: &GitHubRepository, query: &str) -> St
     output.push_str(&format!("github-url: {}\n", repo.html_url));
     output.push_str(&format!("clone-url: {}\n", repo.clone_url));
     output.push_str(&format!("ssh-url: {}\n", repo.ssh_url));
-    output.push_str(&format!("api-url: {}/repos/{}\n", GITHUB_API_URL, repo.full_name));
+    output.push_str(&format!(
+        "api-url: {}/repos/{}\n",
+        GITHUB_API_URL, repo.full_name
+    ));
     output.push_str("source: GitHub API\n");
     output.push('\n');
     output.push_str("% Information retrieved from GitHub\n");

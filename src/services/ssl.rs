@@ -1,14 +1,14 @@
-use std::sync::Arc;
-use std::io::{ BufRead, BufReader, Write };
-use std::net::{ TcpStream, ToSocketAddrs };
-use std::time::Duration;
 use anyhow::Result;
-use tracing::{ debug, error };
-use rustls::{ ClientConfig, ClientConnection, StreamOwned };
-use x509_parser::prelude::*;
-use sha1::{ Sha1, Digest };
-use sha2::Sha256;
 use chrono::DateTime;
+use rustls::{ClientConfig, ClientConnection, StreamOwned};
+use sha1::{Digest, Sha1};
+use sha2::Sha256;
+use std::io::{BufRead, BufReader, Write};
+use std::net::{TcpStream, ToSocketAddrs};
+use std::sync::Arc;
+use std::time::Duration;
+use tracing::{debug, error};
+use x509_parser::prelude::*;
 
 /// SSL certificate information structure
 #[derive(Debug, Clone)]
@@ -70,7 +70,10 @@ impl SslService {
             }
             Err(e) => {
                 error!("Failed to retrieve SSL certificate for {}: {}", domain, e);
-                Ok(format!("SSL Certificate Query Failed for {}:{}\nError: {}\n", domain, port, e))
+                Ok(format!(
+                    "SSL Certificate Query Failed for {}:{}\nError: {}\n",
+                    domain, port, e
+                ))
             }
         }
     }
@@ -92,8 +95,8 @@ impl SslService {
             &addr
                 .to_socket_addrs()?
                 .next()
-                .ok_or_else(|| { anyhow::anyhow!("Unable to resolve domain: {}", domain) })?,
-            self.timeout
+                .ok_or_else(|| anyhow::anyhow!("Unable to resolve domain: {}", domain))?,
+            self.timeout,
         )?;
 
         tcp_stream.set_read_timeout(Some(self.timeout))?;
@@ -102,7 +105,10 @@ impl SslService {
         let mut tls_stream = StreamOwned::new(conn, tcp_stream);
 
         // Perform TLS handshake by sending a basic HTTP request
-        let request = format!("HEAD / HTTP/1.1\r\nHost: {}\r\nConnection: close\r\n\r\n", domain);
+        let request = format!(
+            "HEAD / HTTP/1.1\r\nHost: {}\r\nConnection: close\r\n\r\n",
+            domain
+        );
         tls_stream.write_all(request.as_bytes())?;
 
         // Read response to ensure handshake completion
@@ -111,7 +117,8 @@ impl SslService {
         reader.read_line(&mut response)?;
 
         // Get peer certificates
-        let peer_certs = tls_stream.conn
+        let peer_certs = tls_stream
+            .conn
             .peer_certificates()
             .ok_or_else(|| anyhow::anyhow!("No peer certificates available"))?;
 
@@ -160,13 +167,11 @@ impl SslService {
                                     16 => {
                                         let mut ipv6_parts = Vec::new();
                                         for chunk in ip.chunks(2) {
-                                            ipv6_parts.push(
-                                                format!(
-                                                    "{:02x}{:02x}",
-                                                    chunk[0],
-                                                    chunk.get(1).unwrap_or(&0)
-                                                )
-                                            );
+                                            ipv6_parts.push(format!(
+                                                "{:02x}{:02x}",
+                                                chunk[0],
+                                                chunk.get(1).unwrap_or(&0)
+                                            ));
                                         }
                                         format!("IP: {}", ipv6_parts.join(":"))
                                     }
@@ -174,8 +179,9 @@ impl SslService {
                                 };
                                 san_list.push(ip_str);
                             }
-                            GeneralName::RFC822Name(email) =>
-                                san_list.push(format!("Email: {}", email)),
+                            GeneralName::RFC822Name(email) => {
+                                san_list.push(format!("Email: {}", email))
+                            }
                             GeneralName::URI(uri) => san_list.push(format!("URI: {}", uri)),
                             _ => {}
                         }
@@ -260,12 +266,15 @@ impl SslService {
         let timestamp = time.timestamp();
 
         // Convert timestamp to DateTime<Utc>
-        let datetime = DateTime::from_timestamp(timestamp, 0).ok_or_else(||
-            anyhow::anyhow!("Invalid timestamp: {}", timestamp)
-        )?;
+        let datetime = DateTime::from_timestamp(timestamp, 0)
+            .ok_or_else(|| anyhow::anyhow!("Invalid timestamp: {}", timestamp))?;
 
         // Format as readable string with both timestamp and UTC time
-        Ok(format!("{} ({})", datetime.format("%Y-%m-%d %H:%M:%S UTC"), timestamp))
+        Ok(format!(
+            "{} ({})",
+            datetime.format("%Y-%m-%d %H:%M:%S UTC"),
+            timestamp
+        ))
     }
 
     /// Generate certificate fingerprint
@@ -275,25 +284,21 @@ impl SslService {
                 let mut hasher = Sha1::new();
                 hasher.update(cert_der);
                 let result = hasher.finalize();
-                Ok(
-                    result
-                        .iter()
-                        .map(|b| format!("{:02X}", b))
-                        .collect::<Vec<_>>()
-                        .join(":")
-                )
+                Ok(result
+                    .iter()
+                    .map(|b| format!("{:02X}", b))
+                    .collect::<Vec<_>>()
+                    .join(":"))
             }
             "SHA256" => {
                 let mut hasher = Sha256::new();
                 hasher.update(cert_der);
                 let result = hasher.finalize();
-                Ok(
-                    result
-                        .iter()
-                        .map(|b| format!("{:02X}", b))
-                        .collect::<Vec<_>>()
-                        .join(":")
-                )
+                Ok(result
+                    .iter()
+                    .map(|b| format!("{:02X}", b))
+                    .collect::<Vec<_>>()
+                    .join(":"))
             }
             _ => Err(anyhow::anyhow!("Unsupported hash algorithm: {}", algorithm)),
         }
@@ -303,7 +308,10 @@ impl SslService {
     fn format_certificate_info(&self, cert: &CertificateInfo, domain: &str, port: u16) -> String {
         let mut output = String::new();
 
-        output.push_str(&format!("SSL Certificate Information for {}:{}\n", domain, port));
+        output.push_str(&format!(
+            "SSL Certificate Information for {}:{}\n",
+            domain, port
+        ));
         output.push_str("=".repeat(60).as_str());
         output.push('\n');
 
@@ -319,8 +327,14 @@ impl SslService {
         output.push('\n');
 
         output.push_str("Algorithms:\n");
-        output.push_str(&format!("  Signature Algorithm: {}\n", cert.signature_algorithm));
-        output.push_str(&format!("  Public Key Algorithm: {}\n", cert.public_key_algorithm));
+        output.push_str(&format!(
+            "  Signature Algorithm: {}\n",
+            cert.signature_algorithm
+        ));
+        output.push_str(&format!(
+            "  Public Key Algorithm: {}\n",
+            cert.public_key_algorithm
+        ));
         output.push('\n');
 
         if !cert.subject_alternative_names.is_empty() {
@@ -342,7 +356,10 @@ impl SslService {
         output.push_str("Certificate Properties:\n");
         output.push_str(&format!("  Is CA Certificate: {}\n", cert.is_ca));
         output.push_str(&format!("  Is Self-Signed: {}\n", cert.is_self_signed));
-        output.push_str(&format!("  Certificate Chain Length: {}\n", cert.chain_length));
+        output.push_str(&format!(
+            "  Certificate Chain Length: {}\n",
+            cert.chain_length
+        ));
         output.push('\n');
 
         output.push_str("Fingerprints:\n");
@@ -389,7 +406,7 @@ impl rustls::client::ServerCertVerifier for AcceptAllVerifier {
         _server_name: &rustls::ServerName,
         _scts: &mut dyn Iterator<Item = &[u8]>,
         _ocsp_response: &[u8],
-        _now: std::time::SystemTime
+        _now: std::time::SystemTime,
     ) -> Result<rustls::client::ServerCertVerified, rustls::Error> {
         Ok(rustls::client::ServerCertVerified::assertion())
     }
@@ -400,12 +417,18 @@ pub async fn process_ssl_query(query: &str) -> Result<String> {
     let ssl_service = SslService::new();
 
     if let Some((domain, port)) = SslService::parse_ssl_query(query) {
-        debug!("Processing SSL query for domain: {}, port: {:?}", domain, port);
+        debug!(
+            "Processing SSL query for domain: {}, port: {:?}",
+            domain, port
+        );
         return ssl_service.query_ssl_certificate(&domain, port).await;
     }
 
     error!("Invalid SSL query format: {}", query);
-    Ok(format!("Invalid SSL query format. Use: domain-SSL or domain:port-SSL\nQuery: {}\n", query))
+    Ok(format!(
+        "Invalid SSL query format. Use: domain-SSL or domain:port-SSL\nQuery: {}\n",
+        query
+    ))
 }
 
 #[cfg(test)]

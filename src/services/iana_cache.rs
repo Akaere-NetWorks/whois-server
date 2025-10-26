@@ -1,9 +1,9 @@
-use std::time::{ SystemTime, UNIX_EPOCH };
 use crate::storage::lmdb::LmdbStorage;
-use serde::{ Deserialize, Serialize };
-use tracing::{ debug, warn, error };
-use regex::Regex;
 use anyhow::Result;
+use regex::Regex;
+use serde::{Deserialize, Serialize};
+use std::time::{SystemTime, UNIX_EPOCH};
+use tracing::{debug, error, warn};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IanaReferral {
@@ -20,7 +20,10 @@ pub struct IanaReferral {
 
 impl IanaReferral {
     fn new(whois_server: String, description: String) -> Self {
-        let cached_at = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+        let cached_at = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
 
         Self {
             whois_server,
@@ -39,9 +42,12 @@ impl IanaReferral {
         whois_server: String,
         description: String,
         as_block_start: u32,
-        as_block_end: u32
+        as_block_end: u32,
     ) -> Self {
-        let cached_at = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+        let cached_at = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
 
         Self {
             whois_server,
@@ -60,9 +66,12 @@ impl IanaReferral {
         whois_server: String,
         description: String,
         start: std::net::Ipv4Addr,
-        end: std::net::Ipv4Addr
+        end: std::net::Ipv4Addr,
     ) -> Self {
-        let cached_at = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+        let cached_at = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
 
         Self {
             whois_server,
@@ -81,9 +90,12 @@ impl IanaReferral {
         whois_server: String,
         description: String,
         start: std::net::Ipv6Addr,
-        end: std::net::Ipv6Addr
+        end: std::net::Ipv6Addr,
     ) -> Self {
-        let cached_at = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+        let cached_at = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
 
         Self {
             whois_server,
@@ -120,7 +132,10 @@ impl IanaReferral {
     }
 
     fn is_expired(&self) -> bool {
-        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
 
         // 7 days = 7 * 24 * 60 * 60 = 604800 seconds
         now - self.cached_at > 604800
@@ -140,15 +155,17 @@ impl IanaCache {
     pub async fn get_whois_server(&self, query: &str) -> Option<String> {
         // For ASN queries, check if any existing block contains this ASN
         if let Some(asn) = self.extract_asn(query)
-            && let Some(server) = self.find_server_for_asn(asn) {
-                return Some(server);
-            }
+            && let Some(server) = self.find_server_for_asn(asn)
+        {
+            return Some(server);
+        }
 
         // For IP queries, check if any existing block contains this IP
         if let Some(ip) = self.extract_ip(query)
-            && let Some(server) = self.find_server_for_ip(&ip) {
-                return Some(server);
-            }
+            && let Some(server) = self.find_server_for_ip(&ip)
+        {
+            return Some(server);
+        }
 
         // Fallback to regular cache key lookup for non-ASN/IP or no block match
         let cache_key = self.get_cache_key(query);
@@ -174,9 +191,8 @@ impl IanaCache {
         // Cache miss or expired, query IANA
         match self.query_iana(query).await {
             Ok(Some(referral)) => {
-                let cache_key = if
-                    referral.as_block_start.is_some() &&
-                    referral.as_block_end.is_some()
+                let cache_key = if referral.as_block_start.is_some()
+                    && referral.as_block_end.is_some()
                 {
                     // Use block range as cache key for ASN blocks
                     format!(
@@ -249,16 +265,15 @@ impl IanaCache {
             for key in keys {
                 if key.starts_with("asn_block_")
                     && let Ok(Some(referral)) = self.storage.get_json::<IanaReferral>(&key)
-                        && !referral.is_expired() && referral.contains_asn(asn) {
-                            debug!(
-                                "IANA block cache hit for AS{}: {} (block: {:?}-{:?})",
-                                asn,
-                                referral.whois_server,
-                                referral.as_block_start,
-                                referral.as_block_end
-                            );
-                            return Some(referral.whois_server);
-                        }
+                    && !referral.is_expired()
+                    && referral.contains_asn(asn)
+                {
+                    debug!(
+                        "IANA block cache hit for AS{}: {} (block: {:?}-{:?})",
+                        asn, referral.whois_server, referral.as_block_start, referral.as_block_end
+                    );
+                    return Some(referral.whois_server);
+                }
             }
         }
         None
@@ -270,34 +285,35 @@ impl IanaCache {
             for key in keys {
                 if (key.starts_with("ipv4_block_") || key.starts_with("ipv6_block_"))
                     && let Ok(Some(referral)) = self.storage.get_json::<IanaReferral>(&key)
-                        && !referral.is_expired() {
-                            match ip {
-                                std::net::IpAddr::V4(ipv4) => {
-                                    if referral.contains_ipv4(*ipv4) {
-                                        debug!(
-                                            "IANA IPv4 block cache hit for {}: {} (block: {:?}-{:?})",
-                                            ip,
-                                            referral.whois_server,
-                                            referral.ipv4_block_start,
-                                            referral.ipv4_block_end
-                                        );
-                                        return Some(referral.whois_server);
-                                    }
-                                }
-                                std::net::IpAddr::V6(ipv6) => {
-                                    if referral.contains_ipv6(*ipv6) {
-                                        debug!(
-                                            "IANA IPv6 block cache hit for {}: {} (block: {:?}-{:?})",
-                                            ip,
-                                            referral.whois_server,
-                                            referral.ipv6_block_start,
-                                            referral.ipv6_block_end
-                                        );
-                                        return Some(referral.whois_server);
-                                    }
-                                }
+                    && !referral.is_expired()
+                {
+                    match ip {
+                        std::net::IpAddr::V4(ipv4) => {
+                            if referral.contains_ipv4(*ipv4) {
+                                debug!(
+                                    "IANA IPv4 block cache hit for {}: {} (block: {:?}-{:?})",
+                                    ip,
+                                    referral.whois_server,
+                                    referral.ipv4_block_start,
+                                    referral.ipv4_block_end
+                                );
+                                return Some(referral.whois_server);
                             }
                         }
+                        std::net::IpAddr::V6(ipv6) => {
+                            if referral.contains_ipv6(*ipv6) {
+                                debug!(
+                                    "IANA IPv6 block cache hit for {}: {} (block: {:?}-{:?})",
+                                    ip,
+                                    referral.whois_server,
+                                    referral.ipv6_block_start,
+                                    referral.ipv6_block_end
+                                );
+                                return Some(referral.whois_server);
+                            }
+                        }
+                    }
+                }
             }
         }
         None
@@ -308,43 +324,46 @@ impl IanaCache {
 
         // For ASN queries, also clear any existing block cache that might contain this ASN
         if let Some(asn) = self.extract_asn(query)
-            && let Ok(keys) = self.storage.list_keys() {
-                for key in keys {
-                    if key.starts_with("asn_block_")
-                        && let Ok(Some(referral)) = self.storage.get_json::<IanaReferral>(&key)
-                            && referral.contains_asn(asn) {
-                                debug!("Clearing expired ASN block cache: {}", key);
-                                let _ = self.storage.delete(&key);
-                            }
+            && let Ok(keys) = self.storage.list_keys()
+        {
+            for key in keys {
+                if key.starts_with("asn_block_")
+                    && let Ok(Some(referral)) = self.storage.get_json::<IanaReferral>(&key)
+                    && referral.contains_asn(asn)
+                {
+                    debug!("Clearing expired ASN block cache: {}", key);
+                    let _ = self.storage.delete(&key);
                 }
             }
+        }
 
         // For IP queries, also clear any existing IP block cache that might contain this IP
         if let Some(ip) = self.extract_ip(query)
-            && let Ok(keys) = self.storage.list_keys() {
-                for key in keys {
-                    if (key.starts_with("ipv4_block_") || key.starts_with("ipv6_block_"))
-                        && let Ok(Some(referral)) = self.storage.get_json::<IanaReferral>(&key) {
-                            let contains = match ip {
-                                std::net::IpAddr::V4(ipv4) => referral.contains_ipv4(ipv4),
-                                std::net::IpAddr::V6(ipv6) => referral.contains_ipv6(ipv6),
-                            };
-                            if contains {
-                                debug!("Clearing expired IP block cache: {}", key);
-                                let _ = self.storage.delete(&key);
-                            }
-                        }
+            && let Ok(keys) = self.storage.list_keys()
+        {
+            for key in keys {
+                if (key.starts_with("ipv4_block_") || key.starts_with("ipv6_block_"))
+                    && let Ok(Some(referral)) = self.storage.get_json::<IanaReferral>(&key)
+                {
+                    let contains = match ip {
+                        std::net::IpAddr::V4(ipv4) => referral.contains_ipv4(ipv4),
+                        std::net::IpAddr::V6(ipv6) => referral.contains_ipv6(ipv6),
+                    };
+                    if contains {
+                        debug!("Clearing expired IP block cache: {}", key);
+                        let _ = self.storage.delete(&key);
+                    }
                 }
             }
+        }
 
         let cache_key = self.get_cache_key(query);
         let _ = self.storage.delete(&cache_key);
 
         match self.query_iana(query).await {
             Ok(Some(referral)) => {
-                let cache_key = if
-                    referral.as_block_start.is_some() &&
-                    referral.as_block_end.is_some()
+                let cache_key = if referral.as_block_start.is_some()
+                    && referral.as_block_end.is_some()
                 {
                     format!(
                         "asn_block_{}_{}",
@@ -368,7 +387,10 @@ impl IanaCache {
                 };
 
                 if let Err(e) = self.storage.put_json(&cache_key, &referral) {
-                    warn!("Failed to cache refreshed IANA referral for {}: {}", query, e);
+                    warn!(
+                        "Failed to cache refreshed IANA referral for {}: {}",
+                        query, e
+                    );
                 }
                 Some(referral.whois_server)
             }
@@ -381,16 +403,17 @@ impl IanaCache {
     }
 
     async fn query_iana(&self, query: &str) -> Result<Option<IanaReferral>> {
-        use tokio::io::{ AsyncReadExt, AsyncWriteExt };
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
         use tokio::net::TcpStream;
-        use tokio::time::{ timeout, Duration };
+        use tokio::time::{Duration, timeout};
 
         debug!("Querying IANA for: {}", query);
 
         let mut stream = timeout(
             Duration::from_secs(10),
-            TcpStream::connect("whois.iana.org:43")
-        ).await??;
+            TcpStream::connect("whois.iana.org:43"),
+        )
+        .await??;
 
         let query_str = format!("{}\r\n", query);
         stream.write_all(query_str.as_bytes()).await?;
@@ -429,7 +452,12 @@ impl IanaCache {
             let start = caps.get(1).unwrap().as_str().parse::<u32>()?;
             let end = caps.get(2).unwrap().as_str().parse::<u32>()?;
             debug!("Found AS block range: {}-{}", start, end);
-            return Ok(Some(IanaReferral::new_with_as_block(whois_server, description, start, end)));
+            return Ok(Some(IanaReferral::new_with_as_block(
+                whois_server,
+                description,
+                start,
+                end,
+            )));
         }
 
         // Check for IPv4 inetnum block
@@ -437,16 +465,17 @@ impl IanaCache {
         if let Some(caps) = ipv4_block_regex.captures(response) {
             let start_str = caps.get(1).unwrap().as_str();
             let end_str = caps.get(2).unwrap().as_str();
-            if
-                let (Ok(start), Ok(end)) = (
-                    start_str.parse::<std::net::Ipv4Addr>(),
-                    end_str.parse::<std::net::Ipv4Addr>(),
-                )
-            {
+            if let (Ok(start), Ok(end)) = (
+                start_str.parse::<std::net::Ipv4Addr>(),
+                end_str.parse::<std::net::Ipv4Addr>(),
+            ) {
                 debug!("Found IPv4 block range: {}-{}", start, end);
-                return Ok(
-                    Some(IanaReferral::new_with_ipv4_block(whois_server, description, start, end))
-                );
+                return Ok(Some(IanaReferral::new_with_ipv4_block(
+                    whois_server,
+                    description,
+                    start,
+                    end,
+                )));
             }
         }
 
@@ -461,21 +490,14 @@ impl IanaCache {
                 if let Some(end_addr) = self.calculate_ipv6_block_end(network, prefix_len) {
                     debug!(
                         "Found IPv6 block range: {}/{} ({}-{})",
-                        network,
-                        prefix_len,
-                        network,
-                        end_addr
+                        network, prefix_len, network, end_addr
                     );
-                    return Ok(
-                        Some(
-                            IanaReferral::new_with_ipv6_block(
-                                whois_server,
-                                description,
-                                network,
-                                end_addr
-                            )
-                        )
-                    );
+                    return Ok(Some(IanaReferral::new_with_ipv6_block(
+                        whois_server,
+                        description,
+                        network,
+                        end_addr,
+                    )));
                 }
             }
         }
@@ -494,9 +516,10 @@ impl IanaCache {
 
         for pattern in &patterns {
             if let Ok(regex) = Regex::new(pattern)
-                && let Some(caps) = regex.captures(response) {
-                    return caps.get(1).unwrap().as_str().trim().to_string();
-                }
+                && let Some(caps) = regex.captures(response)
+            {
+                return caps.get(1).unwrap().as_str().trim().to_string();
+            }
         }
 
         "IANA referral".to_string()
@@ -505,7 +528,7 @@ impl IanaCache {
     fn calculate_ipv6_block_end(
         &self,
         start: std::net::Ipv6Addr,
-        prefix_len: u8
+        prefix_len: u8,
     ) -> Option<std::net::Ipv6Addr> {
         if prefix_len > 128 {
             return None;
@@ -513,15 +536,19 @@ impl IanaCache {
 
         let start_u128 = u128::from(start);
         let host_bits = 128 - (prefix_len as u32);
-        let mask = if host_bits >= 128 { 0 } else { (1u128 << host_bits) - 1 };
+        let mask = if host_bits >= 128 {
+            0
+        } else {
+            (1u128 << host_bits) - 1
+        };
         let end_u128 = start_u128 | mask;
 
         Some(std::net::Ipv6Addr::from(end_u128))
     }
 
     fn get_cache_key(&self, query: &str) -> String {
+        use cidr::{Ipv4Cidr, Ipv6Cidr};
         use std::net::IpAddr;
-        use cidr::{ Ipv4Cidr, Ipv6Cidr };
 
         // For IP addresses, use the appropriate range key
         if let Ok(ip) = query.parse::<IpAddr>() {
@@ -572,9 +599,10 @@ impl IanaCache {
         for key in keys {
             if let Ok(Some(referral)) = self.storage.get_json::<IanaReferral>(&key)
                 && referral.is_expired()
-                    && self.storage.delete(&key).is_ok() {
-                        removed_count += 1;
-                    }
+                && self.storage.delete(&key).is_ok()
+            {
+                removed_count += 1;
+            }
         }
 
         debug!("Cleared {} expired IANA cache entries", removed_count);
@@ -608,7 +636,11 @@ mod tests {
         let referral = IanaReferral {
             whois_server: "whois.example.com".to_string(),
             description: "Test".to_string(),
-            cached_at: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() - 604801, // 7 days + 1 second ago
+            cached_at: SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs()
+                - 604801, // 7 days + 1 second ago
             as_block_start: None,
             as_block_end: None,
             ipv4_block_start: None,
@@ -630,7 +662,7 @@ mod tests {
             "whois.ripe.net".to_string(),
             "RIPE NCC".to_string(),
             213404,
-            214427
+            214427,
         );
 
         assert!(referral.contains_asn(213404)); // Start of range
@@ -648,7 +680,7 @@ mod tests {
             "whois.apnic.net".to_string(),
             "APNIC".to_string(),
             Ipv4Addr::new(1, 0, 0, 0),
-            Ipv4Addr::new(1, 255, 255, 255)
+            Ipv4Addr::new(1, 255, 255, 255),
         );
 
         assert!(referral.contains_ipv4(Ipv4Addr::new(1, 0, 0, 0))); // Start

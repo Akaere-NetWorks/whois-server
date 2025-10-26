@@ -1,6 +1,6 @@
-use std::time::Duration;
 use anyhow::Result;
 use serde::Deserialize;
+use std::time::Duration;
 use tracing::debug;
 
 /// IRR Explorer API response structures
@@ -87,7 +87,9 @@ pub struct Message {
 pub async fn process_irr_query(resource: &str) -> Result<String> {
     debug!("Processing IRR Explorer query for: {}", resource);
 
-    let client = reqwest::Client::builder().timeout(Duration::from_secs(10)).build()?;
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(10))
+        .build()?;
 
     let response = query_irr_explorer_api(&client, resource).await?;
     format_irr_response(resource, &response)
@@ -96,7 +98,7 @@ pub async fn process_irr_query(resource: &str) -> Result<String> {
 /// Query IRR Explorer API
 async fn query_irr_explorer_api(
     client: &reqwest::Client,
-    resource: &str
+    resource: &str,
 ) -> Result<Vec<IrrResponse>> {
     let url = format!(
         "https://irrexplorer.nlnog.net/api/prefixes/prefix/{}",
@@ -104,16 +106,22 @@ async fn query_irr_explorer_api(
     );
     debug!("IRR Explorer API URL: {}", url);
 
-    let response = client.get(&url).header("User-Agent", "akaere-whois-server/1.0").send().await?;
+    let response = client
+        .get(&url)
+        .header("User-Agent", "akaere-whois-server/1.0")
+        .send()
+        .await?;
 
     if !response.status().is_success() {
-        return Err(anyhow::anyhow!("IRR Explorer API HTTP error: {}", response.status()));
+        return Err(anyhow::anyhow!(
+            "IRR Explorer API HTTP error: {}",
+            response.status()
+        ));
     }
 
     let json_response: Vec<IrrResponse> = response.json().await?;
     Ok(json_response)
 }
-
 
 /// Format IRR Explorer response into RIPE-style whois format
 fn format_irr_response(resource: &str, responses: &[IrrResponse]) -> Result<String> {
@@ -140,58 +148,64 @@ fn format_irr_response(resource: &str, responses: &[IrrResponse]) -> Result<Stri
         if let Some(rir) = &response.rir {
             formatted.push_str(&format!("% RIR: {}\r\n", rir));
         }
-        formatted.push_str(&format!("% Overall Category: {}\r\n", response.category_overall));
+        formatted.push_str(&format!(
+            "% Overall Category: {}\r\n",
+            response.category_overall
+        ));
         if let Some(goodness) = response.goodness_overall {
             formatted.push_str(&format!("% Goodness Score: {}\r\n", goodness));
         }
 
         // Add BGP origins
         if let Some(origins) = &response.bgp_origins
-            && !origins.is_empty() {
-                formatted.push_str(
-                    &format!(
-                        "% BGP Origins: {}\r\n",
-                        origins
-                            .iter()
-                            .map(|o| format!("AS{}", o))
-                            .collect::<Vec<_>>()
-                            .join(", ")
-                    )
-                );
-            }
+            && !origins.is_empty()
+        {
+            formatted.push_str(&format!(
+                "% BGP Origins: {}\r\n",
+                origins
+                    .iter()
+                    .map(|o| format!("AS{}", o))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ));
+        }
 
         formatted.push_str("\r\n");
 
         // Add messages
         if let Some(messages) = &response.messages
-            && !messages.is_empty() {
-                formatted.push_str("% Messages:\r\n");
-                for msg in messages {
-                    formatted.push_str(
-                        &format!("% [{:>7}] {}\r\n", msg.category.to_uppercase(), msg.text)
-                    );
-                }
-                formatted.push_str("\r\n");
+            && !messages.is_empty()
+        {
+            formatted.push_str("% Messages:\r\n");
+            for msg in messages {
+                formatted.push_str(&format!(
+                    "% [{:>7}] {}\r\n",
+                    msg.category.to_uppercase(),
+                    msg.text
+                ));
             }
+            formatted.push_str("\r\n");
+        }
 
         // Add RPKI routes
         if let Some(rpki_routes) = &response.rpki_routes
-            && !rpki_routes.is_empty() {
-                formatted.push_str("% RPKI Routes:\r\n");
-                for route in rpki_routes {
-                    formatted.push_str(&format!("% RPKI Status: {}\r\n", route.rpki_status));
-                    formatted.push_str(&format!("% RPSL Primary Key: {}\r\n", route.rpsl_pk));
-                    if let Some(max_len) = route.rpki_max_length {
-                        formatted.push_str(&format!("% Max Length: {}\r\n", max_len));
-                    }
-                    formatted.push_str("\r\n");
-                    formatted.push_str(&route.rpsl_text.replace('\n', "\r\n"));
-                    if !route.rpsl_text.ends_with('\n') {
-                        formatted.push_str("\r\n");
-                    }
+            && !rpki_routes.is_empty()
+        {
+            formatted.push_str("% RPKI Routes:\r\n");
+            for route in rpki_routes {
+                formatted.push_str(&format!("% RPKI Status: {}\r\n", route.rpki_status));
+                formatted.push_str(&format!("% RPSL Primary Key: {}\r\n", route.rpsl_pk));
+                if let Some(max_len) = route.rpki_max_length {
+                    formatted.push_str(&format!("% Max Length: {}\r\n", max_len));
+                }
+                formatted.push_str("\r\n");
+                formatted.push_str(&route.rpsl_text.replace('\n', "\r\n"));
+                if !route.rpsl_text.ends_with('\n') {
                     formatted.push_str("\r\n");
                 }
+                formatted.push_str("\r\n");
             }
+        }
 
         // Add IRR routes
         if let Some(irr_routes) = &response.irr_routes {
@@ -212,26 +226,23 @@ fn format_irr_response(resource: &str, responses: &[IrrResponse]) -> Result<Stri
 
             for (db_name, routes_opt) in databases {
                 if let Some(routes) = routes_opt
-                    && !routes.is_empty() {
-                        formatted.push_str(&format!("% IRR Database: {}\r\n", db_name));
-                        for route in routes {
-                            formatted.push_str(
-                                &format!("% RPKI Status: {}\r\n", route.rpki_status)
-                            );
-                            formatted.push_str(
-                                &format!("% RPSL Primary Key: {}\r\n", route.rpsl_pk)
-                            );
-                            if let Some(max_len) = route.rpki_max_length {
-                                formatted.push_str(&format!("% Max Length: {}\r\n", max_len));
-                            }
-                            formatted.push_str("\r\n");
-                            formatted.push_str(&route.rpsl_text.replace('\n', "\r\n"));
-                            if !route.rpsl_text.ends_with('\n') {
-                                formatted.push_str("\r\n");
-                            }
+                    && !routes.is_empty()
+                {
+                    formatted.push_str(&format!("% IRR Database: {}\r\n", db_name));
+                    for route in routes {
+                        formatted.push_str(&format!("% RPKI Status: {}\r\n", route.rpki_status));
+                        formatted.push_str(&format!("% RPSL Primary Key: {}\r\n", route.rpsl_pk));
+                        if let Some(max_len) = route.rpki_max_length {
+                            formatted.push_str(&format!("% Max Length: {}\r\n", max_len));
+                        }
+                        formatted.push_str("\r\n");
+                        formatted.push_str(&route.rpsl_text.replace('\n', "\r\n"));
+                        if !route.rpsl_text.ends_with('\n') {
                             formatted.push_str("\r\n");
                         }
+                        formatted.push_str("\r\n");
                     }
+                }
             }
         }
     }

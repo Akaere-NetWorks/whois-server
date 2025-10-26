@@ -16,11 +16,11 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-use anyhow::{ Context, Result };
-use reqwest;
-use serde::{ Deserialize, Serialize };
-use tracing::{ debug, error };
+use anyhow::{Context, Result};
 use regex::Regex;
+use reqwest;
+use serde::{Deserialize, Serialize};
+use tracing::{debug, error};
 
 const AOSC_PACKAGES_URL: &str = "https://packages.aosc.io/packages/";
 const AOSC_SEARCH_URL: &str = "https://packages.aosc.io/search?q=";
@@ -62,10 +62,11 @@ pub async fn process_aosc_query(package_name: &str) -> Result<String> {
     }
 
     // Validate package name
-    if
-        package_name.len() > 100 ||
-        package_name.contains(' ') ||
-        !package_name.chars().all(|c| c.is_ascii_alphanumeric() || "+-._".contains(c))
+    if package_name.len() > 100
+        || package_name.contains(' ')
+        || !package_name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || "+-._".contains(c))
     {
         return Err(anyhow::anyhow!("Invalid AOSC package name format"));
     }
@@ -102,15 +103,20 @@ async fn query_aosc_packages(package_name: &str) -> Result<AOSCSearchResponse> {
 
     let response = client
         .get(&package_url)
-        .send().await
+        .send()
+        .await
         .context("Failed to send request to AOSC packages page")?;
 
     if !response.status().is_success() {
-        return Err(anyhow::anyhow!("AOSC packages page returned status: {}", response.status()));
+        return Err(anyhow::anyhow!(
+            "AOSC packages page returned status: {}",
+            response.status()
+        ));
     }
 
     let html_content = response
-        .text().await
+        .text()
+        .await
         .context("Failed to get HTML content from AOSC packages page")?;
 
     parse_aosc_html(&html_content, package_name)
@@ -132,7 +138,9 @@ fn parse_aosc_html(html: &str, query: &str) -> Result<AOSCSearchResponse> {
     let description = desc_regex
         .captures(html)
         .and_then(|cap| cap.get(1))
-        .map_or(format!("AOSC package: {}", query), |m| m.as_str().to_string());
+        .map_or(format!("AOSC package: {}", query), |m| {
+            m.as_str().to_string()
+        });
 
     // Extract section
     let section_regex = Regex::new(r#"<b class="pkg-field">Section</b>:\s*([^<]+)"#).unwrap();
@@ -153,10 +161,9 @@ fn parse_aosc_html(html: &str, query: &str) -> Result<AOSCSearchResponse> {
             if let Some(dep_name) = dep_cap.get(1) {
                 // Only include actual package names, skip URLs and paths
                 let dep_str = dep_name.as_str();
-                if
-                    !dep_str.starts_with("http") &&
-                    !dep_str.starts_with("/") &&
-                    !dep_str.contains("github.com")
+                if !dep_str.starts_with("http")
+                    && !dep_str.starts_with("/")
+                    && !dep_str.contains("github.com")
                 {
                     depends.push(dep_str.to_string());
                 }
@@ -167,9 +174,9 @@ fn parse_aosc_html(html: &str, query: &str) -> Result<AOSCSearchResponse> {
     // Extract upstream URL - try multiple patterns
     let upstream_url = {
         // Try the source link first
-        let upstream_regex1 = Regex::new(
-            r#"<b class="pkg-field"[^>]*>Upstream</b>:\s*<a href="([^"]+)">source</a>"#
-        ).unwrap();
+        let upstream_regex1 =
+            Regex::new(r#"<b class="pkg-field"[^>]*>Upstream</b>:\s*<a href="([^"]+)">source</a>"#)
+                .unwrap();
         let url1 = upstream_regex1
             .captures(html)
             .and_then(|cap| cap.get(1))
@@ -180,9 +187,8 @@ fn parse_aosc_html(html: &str, query: &str) -> Result<AOSCSearchResponse> {
             url1
         } else {
             // Try the tarball link as fallback
-            let upstream_regex2 = Regex::new(
-                r#"<a href="([^"]+)"\s*>\(tarball\)[^<]*</a>"#
-            ).unwrap();
+            let upstream_regex2 =
+                Regex::new(r#"<a href="([^"]+)"\s*>\(tarball\)[^<]*</a>"#).unwrap();
             upstream_regex2
                 .captures(html)
                 .and_then(|cap| cap.get(1))
@@ -209,27 +215,23 @@ fn parse_aosc_html(html: &str, query: &str) -> Result<AOSCSearchResponse> {
             let pkg_size = size.as_str().trim();
 
             // Only include known AOSC architectures
-            if
-                matches!(
-                    arch,
-                    "amd64" |
-                        "arm64" |
-                        "loongarch64" |
-                        "loongson3" |
-                        "mips64r6el" |
-                        "ppc64el" |
-                        "riscv64"
-                )
-            {
+            if matches!(
+                arch,
+                "amd64"
+                    | "arm64"
+                    | "loongarch64"
+                    | "loongson3"
+                    | "mips64r6el"
+                    | "ppc64el"
+                    | "riscv64"
+            ) {
                 architectures.push(AOSCArchitecture {
                     name: arch.to_string(),
                     version: version.clone(),
                     size: pkg_size.to_string(),
                     download_url: format!(
                         "https://packages.aosc.io/files/{}/stable/{}/{}",
-                        arch,
-                        query,
-                        version
+                        arch, query, version
                     ),
                 });
             }
@@ -239,34 +241,31 @@ fn parse_aosc_html(html: &str, query: &str) -> Result<AOSCSearchResponse> {
     // Pattern 2: Extract from download links with size information
     if architectures.is_empty() {
         let download_regex = Regex::new(
-            r#"<a[^>]+href="/files/([a-z0-9]+)/[^"]*"[^>]*>\s*([0-9.]+\s*[KMGT]?iB)\s*</a>"#
-        ).unwrap();
+            r#"<a[^>]+href="/files/([a-z0-9]+)/[^"]*"[^>]*>\s*([0-9.]+\s*[KMGT]?iB)\s*</a>"#,
+        )
+        .unwrap();
         for cap in download_regex.captures_iter(html) {
             if let (Some(arch_name), Some(size)) = (cap.get(1), cap.get(2)) {
                 let arch = arch_name.as_str().trim();
                 let pkg_size = size.as_str().trim();
 
-                if
-                    matches!(
-                        arch,
-                        "amd64" |
-                            "arm64" |
-                            "loongarch64" |
-                            "loongson3" |
-                            "mips64r6el" |
-                            "ppc64el" |
-                            "riscv64"
-                    )
-                {
+                if matches!(
+                    arch,
+                    "amd64"
+                        | "arm64"
+                        | "loongarch64"
+                        | "loongson3"
+                        | "mips64r6el"
+                        | "ppc64el"
+                        | "riscv64"
+                ) {
                     architectures.push(AOSCArchitecture {
                         name: arch.to_string(),
                         version: version.clone(),
                         size: pkg_size.to_string(),
                         download_url: format!(
                             "https://packages.aosc.io/files/{}/stable/{}/{}",
-                            arch,
-                            query,
-                            version
+                            arch, query, version
                         ),
                     });
                 }
@@ -312,9 +311,7 @@ fn parse_aosc_html(html: &str, query: &str) -> Result<AOSCSearchResponse> {
                     size,
                     download_url: format!(
                         "https://packages.aosc.io/files/{}/stable/{}/{}",
-                        arch,
-                        query,
-                        version
+                        arch, query, version
                     ),
                 });
             }
@@ -376,7 +373,8 @@ fn format_aosc_response(packages: &[AOSCPackage], query: &str) -> String {
 
         // Display architectures as a simple list
         if !package.architectures.is_empty() {
-            let arch_names: Vec<String> = package.architectures
+            let arch_names: Vec<String> = package
+                .architectures
                 .iter()
                 .map(|arch| arch.name.clone())
                 .collect();
@@ -384,13 +382,18 @@ fn format_aosc_response(packages: &[AOSCPackage], query: &str) -> String {
 
             // Display individual architecture details
             for arch in &package.architectures {
-                output.push_str(&format!("  {}: {} ({})\n", arch.name, arch.version, arch.size));
+                output.push_str(&format!(
+                    "  {}: {} ({})\n",
+                    arch.name, arch.version, arch.size
+                ));
             }
         }
 
-        output.push_str(
-            &format!("aosc-url: {}{}\n", AOSC_PACKAGES_URL, urlencoding::encode(&package.name))
-        );
+        output.push_str(&format!(
+            "aosc-url: {}{}\n",
+            AOSC_PACKAGES_URL,
+            urlencoding::encode(&package.name)
+        ));
     }
 
     output.push_str("repository: AOSC OS\n");

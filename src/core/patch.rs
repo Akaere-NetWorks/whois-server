@@ -12,11 +12,11 @@
 //!
 //! Patches use standard unified diff format for compatibility and readability.
 
-use regex::Regex;
-use tracing::{ debug, error, info, warn };
 use once_cell::sync::Lazy;
+use regex::Regex;
+use serde::{Deserialize, Serialize};
 use std::sync::RwLock;
-use serde::{ Deserialize, Serialize };
+use tracing::{debug, error, info, warn};
 
 /// Strip ANSI color codes from a string
 fn strip_ansi_codes(s: &str) -> String {
@@ -69,7 +69,7 @@ pub struct ContextRule {
 #[derive(Debug, Clone, PartialEq)]
 pub enum ContextDirection {
     Before, // Look backwards (upwards in file)
-    After, // Look forwards (downwards in file)
+    After,  // Look forwards (downwards in file)
 }
 
 /// Context action type
@@ -82,8 +82,8 @@ pub enum ContextAction {
 /// Result of context rule checking
 #[derive(Debug, Clone, PartialEq)]
 enum ContextCheckResult {
-    Allow, // No rules or all rules allow replacement
-    Skip, // Skip rule matched - don't replace
+    Allow,           // No rules or all rules allow replacement
+    Skip,            // Skip rule matched - don't replace
     OnlyButNotFound, // Only rule exists but pattern not found
 }
 
@@ -150,9 +150,7 @@ pub struct PatchFile {
 }
 
 /// Global patch manager
-static PATCH_MANAGER: Lazy<RwLock<PatchManager>> = Lazy::new(|| {
-    RwLock::new(PatchManager::new())
-});
+static PATCH_MANAGER: Lazy<RwLock<PatchManager>> = Lazy::new(|| RwLock::new(PatchManager::new()));
 
 /// Manages all patch files
 pub struct PatchManager {
@@ -189,7 +187,7 @@ impl PatchManager {
     /// Download and update patches from remote repository (async)
     pub async fn update_patches_from_remote(
         &mut self,
-        update_url: Option<&str>
+        update_url: Option<&str>,
     ) -> Result<String, Box<dyn std::error::Error>> {
         self.init_storage()?;
 
@@ -214,7 +212,10 @@ impl PatchManager {
         output.push_str("% Patch Update Report\n");
         output.push_str(&format!("% Downloaded from: {}\n", url));
         output.push_str(&format!("% Last Updated: {}\n", metadata.last_updated));
-        output.push_str(&format!("% Format Version: {}\n", metadata.metadata.format_version));
+        output.push_str(&format!(
+            "% Format Version: {}\n",
+            metadata.metadata.format_version
+        ));
         output.push_str("%\n");
 
         let mut success_count = 0;
@@ -273,7 +274,10 @@ impl PatchManager {
             info!("Reloading patches from LMDB storage...");
             match self.load_patches_from_storage() {
                 Ok(count) => {
-                    output.push_str(&format!("% Patches reloaded: {} patch files loaded into memory\n", count));
+                    output.push_str(&format!(
+                        "% Patches reloaded: {} patch files loaded into memory\n",
+                        count
+                    ));
                     info!("Successfully reloaded {} patch files", count);
                 }
                 Err(e) => {
@@ -292,21 +296,27 @@ impl PatchManager {
     /// Returns: (actual_sha1, was_updated)
     async fn download_and_verify_patch(
         &mut self,
-        patch_info: &PatchInfo
+        patch_info: &PatchInfo,
     ) -> Result<(String, bool), Box<dyn std::error::Error>> {
         // Check if patch already exists in LMDB with same SHA1
         if let Some(storage) = &self.storage {
             let meta_key = format!("meta:{}", patch_info.name);
             if let Ok(Some(existing_meta_json)) = storage.get(&meta_key)
-                && let Ok(existing_info) = serde_json::from_str::<PatchInfo>(&existing_meta_json) {
-                    if existing_info.sha1 == patch_info.sha1 {
-                        debug!("Patch {} already exists with same SHA1, skipping download", patch_info.name);
-                        return Ok((patch_info.sha1.clone(), false));
-                    } else {
-                        debug!("Patch {} exists but SHA1 changed: {} -> {}", 
-                               patch_info.name, existing_info.sha1, patch_info.sha1);
-                    }
+                && let Ok(existing_info) = serde_json::from_str::<PatchInfo>(&existing_meta_json)
+            {
+                if existing_info.sha1 == patch_info.sha1 {
+                    debug!(
+                        "Patch {} already exists with same SHA1, skipping download",
+                        patch_info.name
+                    );
+                    return Ok((patch_info.sha1.clone(), false));
+                } else {
+                    debug!(
+                        "Patch {} exists but SHA1 changed: {} -> {}",
+                        patch_info.name, existing_info.sha1, patch_info.sha1
+                    );
                 }
+            }
         }
 
         debug!("Downloading patch: {}", patch_info.name);
@@ -346,7 +356,7 @@ impl PatchManager {
 
     /// Calculate SHA1 checksum
     fn calculate_sha1(&self, content: &str) -> String {
-        use sha1::{ Sha1, Digest };
+        use sha1::{Digest, Sha1};
         let mut hasher = Sha1::new();
         hasher.update(content.as_bytes());
         format!("{:x}", hasher.finalize())
@@ -363,7 +373,7 @@ impl PatchManager {
 
         // List all keys from LMDB and find patch metadata
         let mut patch_names = Vec::new();
-        
+
         match storage.list_keys() {
             Ok(keys) => {
                 // Filter keys that start with "meta:" to get patch metadata
@@ -375,10 +385,10 @@ impl PatchManager {
                         debug!("Found patch in storage: {}", patch_name);
                     }
                 }
-                
+
                 // Sort by name (numeric prefix ensures correct order)
                 patch_names.sort();
-                
+
                 debug!("Found {} patches in storage", patch_names.len());
             }
             Err(e) => {
@@ -389,22 +399,20 @@ impl PatchManager {
         for name in patch_names {
             let key = format!("patch:{}", name);
             match storage.get(&key) {
-                Ok(Some(content)) => {
-                    match self.parse_patch_content(&name, &content) {
-                        Ok(patch_file) => {
-                            debug!(
-                                "Loaded patch from storage: {} ({} patches)",
-                                patch_file.filename,
-                                patch_file.patches.len()
-                            );
-                            total_patches += patch_file.patches.len();
-                            self.patch_files.push(patch_file);
-                        }
-                        Err(e) => {
-                            error!("Failed to parse patch {}: {}", name, e);
-                        }
+                Ok(Some(content)) => match self.parse_patch_content(&name, &content) {
+                    Ok(patch_file) => {
+                        debug!(
+                            "Loaded patch from storage: {} ({} patches)",
+                            patch_file.filename,
+                            patch_file.patches.len()
+                        );
+                        total_patches += patch_file.patches.len();
+                        self.patch_files.push(patch_file);
                     }
-                }
+                    Err(e) => {
+                        error!("Failed to parse patch {}: {}", name, e);
+                    }
+                },
                 #[allow(non_snake_case)]
                 Ok(None) => {
                     debug!("Patch {} not found in storage", name);
@@ -424,7 +432,7 @@ impl PatchManager {
     fn parse_patch_content(
         &self,
         filename: &str,
-        content: &str
+        content: &str,
     ) -> Result<PatchFile, Box<dyn std::error::Error>> {
         let lines: Vec<&str> = content.lines().collect();
         let mut patches = Vec::new();
@@ -539,7 +547,10 @@ impl PatchManager {
 
             // Parse condition headers
             if line.starts_with("# QUERY_CONTAINS:") {
-                let value = line.trim_start_matches("# QUERY_CONTAINS:").trim().to_string();
+                let value = line
+                    .trim_start_matches("# QUERY_CONTAINS:")
+                    .trim()
+                    .to_string();
                 current_conditions.push(PatchCondition {
                     condition_type: ConditionType::QueryContains,
                     value,
@@ -550,7 +561,10 @@ impl PatchManager {
             }
 
             if line.starts_with("# RESPONSE_CONTAINS:") {
-                let value = line.trim_start_matches("# RESPONSE_CONTAINS:").trim().to_string();
+                let value = line
+                    .trim_start_matches("# RESPONSE_CONTAINS:")
+                    .trim()
+                    .to_string();
                 current_conditions.push(PatchCondition {
                     condition_type: ConditionType::ResponseContains,
                     value,
@@ -561,7 +575,10 @@ impl PatchManager {
             }
 
             if line.starts_with("# QUERY_MATCHES:") {
-                let pattern = line.trim_start_matches("# QUERY_MATCHES:").trim().to_string();
+                let pattern = line
+                    .trim_start_matches("# QUERY_MATCHES:")
+                    .trim()
+                    .to_string();
                 let regex = Regex::new(&pattern)?;
                 current_conditions.push(PatchCondition {
                     condition_type: ConditionType::QueryMatches,
@@ -573,7 +590,10 @@ impl PatchManager {
             }
 
             if line.starts_with("# RESPONSE_MATCHES:") {
-                let pattern = line.trim_start_matches("# RESPONSE_MATCHES:").trim().to_string();
+                let pattern = line
+                    .trim_start_matches("# RESPONSE_MATCHES:")
+                    .trim()
+                    .to_string();
                 let regex = Regex::new(&pattern)?;
                 current_conditions.push(PatchCondition {
                     condition_type: ConditionType::ResponseMatches,
@@ -622,7 +642,7 @@ impl PatchManager {
     fn parse_diff_hunk(
         &self,
         lines: &[&str],
-        index: &mut usize
+        index: &mut usize,
     ) -> Result<Option<DiffHunk>, Box<dyn std::error::Error>> {
         // Skip "---" line
         if *index >= lines.len() || !lines[*index].trim().starts_with("---") {
@@ -653,10 +673,9 @@ impl PatchManager {
             let line = lines[*index];
 
             // Stop at next diff section or condition
-            if
-                line.trim().starts_with("---") ||
-                line.trim().starts_with("# QUERY_") ||
-                line.trim().starts_with("# RESPONSE_")
+            if line.trim().starts_with("---")
+                || line.trim().starts_with("# QUERY_")
+                || line.trim().starts_with("# RESPONSE_")
             {
                 break;
             }
@@ -691,14 +710,12 @@ impl PatchManager {
         }
 
         if !remove_lines.is_empty() || !add_lines.is_empty() {
-            Ok(
-                Some(DiffHunk {
-                    remove_lines,
-                    add_lines,
-                    context_before,
-                    context_after,
-                })
-            )
+            Ok(Some(DiffHunk {
+                remove_lines,
+                add_lines,
+                context_before,
+                context_after,
+            }))
         } else {
             Ok(None)
         }
@@ -716,7 +733,10 @@ impl PatchManager {
             debug!("Checking {} patches from file", patch_file.patches.len());
             for patch in &patch_file.patches {
                 if self.check_conditions(query, &response, &patch.conditions) {
-                    debug!("Conditions matched, applying patch with {} hunks", patch.hunks.len());
+                    debug!(
+                        "Conditions matched, applying patch with {} hunks",
+                        patch.hunks.len()
+                    );
                     response = self.apply_patch(response, patch);
                 } else {
                     debug!(
@@ -792,7 +812,7 @@ impl PatchManager {
     fn check_context_rules(
         lines: &[&str],
         line_idx: usize,
-        rules: &[ContextRule]
+        rules: &[ContextRule],
     ) -> ContextCheckResult {
         if rules.is_empty() {
             return ContextCheckResult::Allow;
@@ -886,22 +906,20 @@ impl PatchManager {
             }
 
             // Check for user object types that should be patched
-            if
-                trimmed.starts_with("aut-num:") ||
-                trimmed.starts_with("organisation:") ||
-                trimmed.starts_with("person:") ||
-                trimmed.starts_with("role:")
+            if trimmed.starts_with("aut-num:")
+                || trimmed.starts_with("organisation:")
+                || trimmed.starts_with("person:")
+                || trimmed.starts_with("role:")
             {
                 return true;
             }
 
             // Check for registry object types that should NOT be patched
-            if
-                trimmed.starts_with("as-block:") ||
-                trimmed.starts_with("route:") ||
-                trimmed.starts_with("route6:") ||
-                trimmed.starts_with("inet6num:") ||
-                trimmed.starts_with("inetnum:")
+            if trimmed.starts_with("as-block:")
+                || trimmed.starts_with("route:")
+                || trimmed.starts_with("route6:")
+                || trimmed.starts_with("inet6num:")
+                || trimmed.starts_with("inetnum:")
             {
                 return false;
             }
@@ -917,7 +935,7 @@ impl PatchManager {
         response: String,
         hunk: &DiffHunk,
         excludes: &[String],
-        context_rules: &[ContextRule]
+        context_rules: &[ContextRule],
     ) -> String {
         if hunk.remove_lines.is_empty() {
             return response;
@@ -994,7 +1012,10 @@ impl PatchManager {
                     // Strip ANSI color codes for matching
                     let stripped_line = strip_ansi_codes(line);
                     if stripped_line.trim_start().starts_with(match_prefix) {
-                        debug!("Line-start match: replacing entire line starting with '{}'", match_prefix);
+                        debug!(
+                            "Line-start match: replacing entire line starting with '{}'",
+                            match_prefix
+                        );
                         result_lines.push(new.to_string());
                     } else {
                         result_lines.push(line.to_string());
@@ -1019,7 +1040,10 @@ impl PatchManager {
         // Check if any line in the match contains an excluded pattern
         for exclude_pattern in excludes {
             if old_text.contains(exclude_pattern) {
-                debug!("Skipping multi-line replacement due to excluded pattern: {}", exclude_pattern);
+                debug!(
+                    "Skipping multi-line replacement due to excluded pattern: {}",
+                    exclude_pattern
+                );
                 return response;
             }
         }
@@ -1036,21 +1060,22 @@ pub fn init_patches(_patches_dir: &str) -> Result<usize, Box<dyn std::error::Err
 
 /// Update patches from remote repository (async)
 pub async fn update_patches_from_remote(
-    update_url: Option<&str>
+    update_url: Option<&str>,
 ) -> Result<String, Box<dyn std::error::Error>> {
     // Spawn blocking task to avoid Send issues with RwLock
     let url = update_url.map(|s| s.to_string());
     let result = tokio::task::spawn_blocking(move || {
         let mut manager = PATCH_MANAGER.write().unwrap();
         // Use tokio runtime handle to run async code in blocking context
-        match tokio::runtime::Handle::current().block_on(
-            manager.update_patches_from_remote(url.as_deref())
-        ) {
+        match tokio::runtime::Handle::current()
+            .block_on(manager.update_patches_from_remote(url.as_deref()))
+        {
             Ok(output) => Ok(output),
             Err(e) => Err(e.to_string()),
         }
-    }).await?;
-    
+    })
+    .await?;
+
     result.map_err(|e| e.into())
 }
 
@@ -1059,14 +1084,16 @@ pub async fn process_update_patch_query() -> Result<String, Box<dyn std::error::
     match update_patches_from_remote(None).await {
         Ok(output) => Ok(output),
         Err(e) => {
-            let error_msg =
-                format!("% Patch Update Failed\n\
+            let error_msg = format!(
+                "% Patch Update Failed\n\
                  % Error: {}\n\
                  %\n\
                  % Please check:\n\
                  % - Internet connectivity\n\
                  % - GitHub repository accessibility\n\
-                 % - LMDB storage permissions\n", e);
+                 % - LMDB storage permissions\n",
+                e
+            );
             Ok(error_msg)
         }
     }
@@ -1092,10 +1119,7 @@ pub fn reload_patches(_patches_dir: &str) -> Result<usize, Box<dyn std::error::E
 pub fn get_patches_count() -> (usize, usize) {
     let manager = PATCH_MANAGER.read().unwrap();
     let files = manager.patch_files.len();
-    let patches = manager.patch_files
-        .iter()
-        .map(|pf| pf.patches.len())
-        .sum();
+    let patches = manager.patch_files.iter().map(|pf| pf.patches.len()).sum();
     (files, patches)
 }
 

@@ -7,93 +7,38 @@
 use anyhow::Result;
 use tracing::debug;
 
-use crate::services::{
-    process_bgptool_query,
-    process_email_search,
-    process_geo_query,
-    process_rir_geo_query,
-    process_prefixes_query,
-    process_irr_query,
-    process_looking_glass_query,
-    process_manrs_query,
-    process_rpki_query,
-    process_dns_query,
-    handle_ntp_query,
-    process_traceroute_query,
-    process_ssl_query,
-    process_crt_query,
-    process_minecraft_query,
-    process_minecraft_user_query,
-    process_steam_query,
-    process_steam_search_query,
-    process_imdb_query,
-    process_imdb_search_query,
-    process_acgc_query,
-    process_alma_query,
-    process_aosc_query,
-    process_aur_query,
-    process_debian_query,
-    process_epel_query,
-    process_ubuntu_query,
-    process_nixos_query,
-    process_opensuse_query,
-    process_openwrt_query,
-    process_npm_query,
-    process_pypi_query,
-    process_cargo_query,
-    query_modrinth,
-    query_curseforge,
-    process_github_query,
-    process_wikipedia_query,
-    process_lyric_query,
-    process_desc_query,
-    process_peeringdb_query,
-    query_random_meal,
-    query_random_chinese_meal,
-    query_whois,
-    query_with_iana_referral,
-};
 use crate::config::{
-    RADB_WHOIS_SERVER,
-    RADB_WHOIS_PORT,
-    ALTDB_WHOIS_SERVER,
-    ALTDB_WHOIS_PORT,
-    AFRINIC_WHOIS_SERVER,
-    AFRINIC_WHOIS_PORT,
-    APNIC_WHOIS_SERVER,
-    APNIC_WHOIS_PORT,
-    ARIN_WHOIS_SERVER,
-    ARIN_WHOIS_PORT,
-    BELL_WHOIS_SERVER,
-    BELL_WHOIS_PORT,
-    JPIRR_WHOIS_SERVER,
-    JPIRR_WHOIS_PORT,
-    LACNIC_WHOIS_SERVER,
-    LACNIC_WHOIS_PORT,
-    LEVEL3_WHOIS_SERVER,
-    LEVEL3_WHOIS_PORT,
-    NTTCOM_WHOIS_SERVER,
-    NTTCOM_WHOIS_PORT,
-    RIPE_WHOIS_SERVER,
-    RIPE_WHOIS_PORT,
-    TC_WHOIS_SERVER,
-    TC_WHOIS_PORT,
+    AFRINIC_WHOIS_PORT, AFRINIC_WHOIS_SERVER, ALTDB_WHOIS_PORT, ALTDB_WHOIS_SERVER,
+    APNIC_WHOIS_PORT, APNIC_WHOIS_SERVER, ARIN_WHOIS_PORT, ARIN_WHOIS_SERVER, BELL_WHOIS_PORT,
+    BELL_WHOIS_SERVER, JPIRR_WHOIS_PORT, JPIRR_WHOIS_SERVER, LACNIC_WHOIS_PORT,
+    LACNIC_WHOIS_SERVER, LEVEL3_WHOIS_PORT, LEVEL3_WHOIS_SERVER, NTTCOM_WHOIS_PORT,
+    NTTCOM_WHOIS_SERVER, RADB_WHOIS_PORT, RADB_WHOIS_SERVER, RIPE_WHOIS_PORT, RIPE_WHOIS_SERVER,
+    TC_WHOIS_PORT, TC_WHOIS_SERVER,
+};
+use crate::core::{
+    ColorScheme, Colorizer, QueryType, apply_response_patches, is_private_ipv4, is_private_ipv6,
 };
 use crate::dn42::process_dn42_query_managed;
-use crate::core::{
-    is_private_ipv4,
-    is_private_ipv6,
-    QueryType,
-    ColorScheme,
-    Colorizer,
-    apply_response_patches,
+use crate::services::{
+    handle_ntp_query, process_acgc_query, process_alma_query, process_aosc_query,
+    process_aur_query, process_bgptool_query, process_cargo_query, process_crt_query,
+    process_debian_query, process_desc_query, process_dns_query, process_email_search,
+    process_epel_query, process_geo_query, process_github_query, process_imdb_query,
+    process_imdb_search_query, process_irr_query, process_looking_glass_query, process_lyric_query,
+    process_manrs_query, process_minecraft_query, process_minecraft_user_query,
+    process_nixos_query, process_npm_query, process_opensuse_query, process_openwrt_query,
+    process_peeringdb_query, process_prefixes_query, process_pypi_query, process_rir_geo_query,
+    process_rpki_query, process_ssl_query, process_steam_query, process_steam_search_query,
+    process_traceroute_query, process_ubuntu_query, process_wikipedia_query, query_curseforge,
+    query_modrinth, query_random_chinese_meal, query_random_meal, query_whois,
+    query_with_iana_referral,
 };
 
 /// Process a WHOIS query and return the response (for use by SSH server and other modules)
 pub async fn process_query(
     query: &str,
     query_type: &QueryType,
-    color_scheme: Option<ColorScheme>
+    color_scheme: Option<ColorScheme>,
 ) -> Result<String> {
     debug!("Processing query: {} (type: {:?})", query, query_type);
 
@@ -316,7 +261,10 @@ pub async fn process_query(
             process_cargo_query(base_query).await
         }
         QueryType::Modrinth(base_query) => {
-            debug!("Processing Modrinth mod/resource pack query: {}", base_query);
+            debug!(
+                "Processing Modrinth mod/resource pack query: {}",
+                base_query
+            );
             query_modrinth(base_query).await
         }
         QueryType::CurseForge(base_query) => {
@@ -371,11 +319,11 @@ pub async fn process_query(
             } else {
                 let public_result = query_with_iana_referral(q).await;
                 match &public_result {
-                    Ok(response) if
-                        response.trim().is_empty() ||
-                        response.contains("No entries found") ||
-                        response.contains("Not found")
-                    => {
+                    Ok(response)
+                        if response.trim().is_empty()
+                            || response.contains("No entries found")
+                            || response.contains("Not found") =>
+                    {
                         debug!("Public query returned no results, trying DN42 for: {}", q);
                         process_dn42_query_managed(q).await
                     }

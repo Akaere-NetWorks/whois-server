@@ -18,31 +18,28 @@
 
 mod config;
 mod core;
-mod server;
-mod storage;
-mod services;
-mod web;
 mod dn42;
+mod server;
+mod services;
 mod ssh;
+mod storage;
+mod web;
 
 use anyhow::Result;
 use clap::Parser;
-use tracing::{ info, Level };
+use tracing::{Level, info};
 use tracing_subscriber::fmt::format::FmtSpan;
 
 use config::Cli;
-use server::{ create_dump_dir_if_needed, run_async_server };
-use core::{ create_stats_state, save_stats_on_shutdown, init_patches, get_patches_count };
-use web::run_web_server;
+use core::{create_stats_state, get_patches_count, init_patches, save_stats_on_shutdown};
 use dn42::{
+    dn42_manager_maintenance, get_dn42_platform_info, initialize_dn42_manager, is_dn42_online_mode,
     start_periodic_sync,
-    initialize_dn42_manager,
-    get_dn42_platform_info,
-    is_dn42_online_mode,
-    dn42_manager_maintenance,
 };
-use ssh::{ SshServer, server::SshServerConfig };
-use tokio::time::{ interval, Duration };
+use server::{create_dump_dir_if_needed, run_async_server};
+use ssh::{SshServer, server::SshServerConfig};
+use tokio::time::{Duration, interval};
+use web::run_web_server;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -60,7 +57,10 @@ async fn main() -> Result<()> {
         Level::INFO
     };
 
-    tracing_subscriber::fmt().with_max_level(log_level).with_span_events(FmtSpan::CLOSE).init();
+    tracing_subscriber::fmt()
+        .with_max_level(log_level)
+        .with_span_events(FmtSpan::CLOSE)
+        .init();
 
     // Create statistics state
     let stats = create_stats_state().await;
@@ -87,13 +87,11 @@ async fn main() -> Result<()> {
     } else {
         let platform_info = get_dn42_platform_info().await.unwrap_or("Unknown");
         let is_online = is_dn42_online_mode().await.unwrap_or(false);
-        info!("DN42 system initialized successfully - Platform: {}, Mode: {}", platform_info, if
-            is_online
-        {
-            "Online"
-        } else {
-            "Git"
-        });
+        info!(
+            "DN42 system initialized successfully - Platform: {}, Mode: {}",
+            platform_info,
+            if is_online { "Online" } else { "Git" }
+        );
     }
 
     // Start DN42 sync task (Git mode) or maintenance task (Online mode)
@@ -172,8 +170,9 @@ async fn main() -> Result<()> {
         args.dump_traffic,
         &args.dump_dir,
         stats.clone(),
-        args.enable_color
-    ).await;
+        args.enable_color,
+    )
+    .await;
 
     // Save stats on shutdown
     info!("Saving statistics before shutdown...");

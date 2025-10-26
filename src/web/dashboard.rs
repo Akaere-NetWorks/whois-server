@@ -16,18 +16,18 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-use axum::{ 
-    extract::{ State, Query }, 
-    response::{ Html, IntoResponse, Json }, 
-    routing::{ get, post }, 
-    Router 
+use crate::core::query_processor::process_query;
+use crate::core::{StatsState, analyze_query, get_stats_response};
+use crate::web::json_formatter::{JsonFormatter, WhoisApiResponse};
+use axum::{
+    Router,
+    extract::{Query, State},
+    response::{Html, IntoResponse, Json},
+    routing::{get, post},
 };
-use tower_http::cors::CorsLayer;
 use serde::Deserialize;
 use std::time::Instant;
-use crate::core::{ StatsState, get_stats_response, analyze_query };
-use crate::core::query_processor::process_query;
-use crate::web::json_formatter::{ JsonFormatter, WhoisApiResponse };
+use tower_http::cors::CorsLayer;
 
 #[derive(Debug, Deserialize)]
 struct ApiQuery {
@@ -36,7 +36,7 @@ struct ApiQuery {
 
 pub async fn run_web_server(
     stats: StatsState,
-    port: u16
+    port: u16,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let app = Router::new()
         .route("/", get(dashboard))
@@ -68,11 +68,11 @@ async fn get_stats_api(State(stats): State<StatsState>) -> impl IntoResponse {
 // GET /api/whois?q=query
 async fn whois_api_get(
     State(stats): State<StatsState>,
-    Query(params): Query<ApiQuery>
+    Query(params): Query<ApiQuery>,
 ) -> impl IntoResponse {
     let start_time = Instant::now();
     let query = params.q.trim();
-    
+
     if query.is_empty() {
         let formatter = JsonFormatter::new();
         return Json(formatter.format_error(
@@ -89,11 +89,11 @@ async fn whois_api_get(
 // POST /api/whois with JSON body: {"q": "query"}
 async fn whois_api_post(
     State(stats): State<StatsState>,
-    Json(query_data): Json<ApiQuery>
+    Json(query_data): Json<ApiQuery>,
 ) -> impl IntoResponse {
     let start_time = Instant::now();
     let query = query_data.q.trim();
-    
+
     if query.is_empty() {
         let formatter = JsonFormatter::new();
         return Json(formatter.format_error(
@@ -113,11 +113,11 @@ async fn process_whois_query(
     start_time: Instant,
 ) -> Json<WhoisApiResponse> {
     let formatter = JsonFormatter::new();
-    
+
     // 检测查询类型
     let query_type_str = detect_query_type(query);
     let query_type = analyze_query(query);
-    
+
     // 处理查询
     match process_query(query, &query_type, None).await {
         Ok(result) => {
@@ -126,7 +126,7 @@ async fn process_whois_query(
                 let mut stats_guard = stats.write().await;
                 stats_guard.total_requests += 1;
             }
-            
+
             Json(formatter.format_response(
                 query,
                 result,
@@ -134,21 +134,19 @@ async fn process_whois_query(
                 start_time.elapsed().as_millis() as u64,
             ))
         }
-        Err(e) => {
-            Json(formatter.format_error(
-                query,
-                &format!("Query processing failed: {}", e),
-                &query_type_str,
-                start_time.elapsed().as_millis() as u64,
-            ))
-        }
+        Err(e) => Json(formatter.format_error(
+            query,
+            &format!("Query processing failed: {}", e),
+            &query_type_str,
+            start_time.elapsed().as_millis() as u64,
+        )),
     }
 }
 
 fn detect_query_type(query: &str) -> String {
     let query_lower = query.to_lowercase();
     let query_trimmed = query.trim();
-    
+
     // 域名检测
     if query_trimmed.contains('.') && query_trimmed.parse::<std::net::IpAddr>().is_err() {
         if query_lower.ends_with("-geo") {
@@ -156,7 +154,7 @@ fn detect_query_type(query: &str) -> String {
         }
         return "domain".to_string();
     }
-    
+
     // IP地址检测
     if query_trimmed.parse::<std::net::IpAddr>().is_ok() {
         if query_lower.ends_with("-geo") {
@@ -164,45 +162,47 @@ fn detect_query_type(query: &str) -> String {
         }
         return "ip".to_string();
     }
-    
+
     // CIDR检测
     if query_trimmed.contains('/') {
         return "cidr".to_string();
     }
-    
+
     // ASN检测
-    if query_lower.starts_with("as") && query_trimmed.len() > 2
-        && query_trimmed[2..].parse::<u32>().is_ok() {
-            return "asn".to_string();
-        }
-    
+    if query_lower.starts_with("as")
+        && query_trimmed.len() > 2
+        && query_trimmed[2..].parse::<u32>().is_ok()
+    {
+        return "asn".to_string();
+    }
+
     // DN42相关检测
     if query_lower.ends_with("-dn42") || query_lower.ends_with("-mnt") {
         return "dn42".to_string();
     }
-    
+
     // 邮箱检测
     if query_trimmed.contains('@') {
         return "email".to_string();
     }
-    
+
     // 特殊服务检测
     if query_lower.starts_with("steam:") {
         return "steam".to_string();
     }
-    
+
     if query_lower.starts_with("github:") {
         return "github".to_string();
     }
-    
+
     if query_lower.starts_with("package:") {
         return "package".to_string();
     }
-    
+
     if query_lower.starts_with("minecraft:") {
         return "minecraft".to_string();
     }
-    
+
     // 其他
     "generic".to_string()
 }
@@ -218,6 +218,6 @@ async fn openapi_spec() -> impl IntoResponse {
     let spec = include_str!("openapi.json");
     (
         [(axum::http::header::CONTENT_TYPE, "application/json")],
-        spec
+        spec,
     )
 }

@@ -14,9 +14,10 @@ pub fn extract_ip_from_prefix(prefix: &str) -> String {
 
     // Handle IPv4 prefixes like "192.168.1.0/24"
     if prefix.contains("/")
-        && let Some(ip_part) = prefix.split("/").next() {
-            return ip_part.to_string();
-        }
+        && let Some(ip_part) = prefix.split("/").next()
+    {
+        return ip_part.to_string();
+    }
 
     // Return as-is if no special handling needed
     prefix.to_string()

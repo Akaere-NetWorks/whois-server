@@ -1,5 +1,5 @@
-use anyhow::{ Result, anyhow };
-use serde::{ Deserialize, Serialize };
+use anyhow::{Result, anyhow};
+use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use tracing::debug;
 
@@ -55,18 +55,26 @@ pub async fn process_rpki_query(prefix: &str, asn: &str) -> Result<String> {
     let url = format!("{}/{}/{}", RPKI_API_BASE, asn, prefix);
     debug!("Requesting RPKI API URL: {}", url);
 
-    let client = reqwest::Client::builder().timeout(Duration::from_secs(10)).build()?;
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(10))
+        .build()?;
 
-    let response = client.get(&url).header("User-Agent", "akaere-whois-server/1.0").send().await?;
+    let response = client
+        .get(&url)
+        .header("User-Agent", "akaere-whois-server/1.0")
+        .send()
+        .await?;
 
     if !response.status().is_success() {
-        return Err(anyhow!("RPKI API request failed with status: {}", response.status()));
+        return Err(anyhow!(
+            "RPKI API request failed with status: {}",
+            response.status()
+        ));
     }
 
     let rpki_response: RpkiResponse = response.json().await?;
     format_rpki_response(prefix, asn, &rpki_response)
 }
-
 
 /// Format RPKI response in RIPE-style format
 fn format_rpki_response(prefix: &str, asn: &str, response: &RpkiResponse) -> Result<String> {
@@ -81,18 +89,26 @@ fn format_rpki_response(prefix: &str, asn: &str, response: &RpkiResponse) -> Res
 
     // Route information
     formatted.push_str("route:\n");
-    formatted.push_str(
-        &format!("  origin-asn:     {}\n", response.validated_route.route.origin_asn)
-    );
-    formatted.push_str(&format!("  prefix:         {}\n", response.validated_route.route.prefix));
+    formatted.push_str(&format!(
+        "  origin-asn:     {}\n",
+        response.validated_route.route.origin_asn
+    ));
+    formatted.push_str(&format!(
+        "  prefix:         {}\n",
+        response.validated_route.route.prefix
+    ));
     formatted.push('\n');
 
     // Validity information
     formatted.push_str("validity:\n");
-    formatted.push_str(&format!("  state:          {}\n", response.validated_route.validity.state));
-    formatted.push_str(
-        &format!("  description:    {}\n", response.validated_route.validity.description)
-    );
+    formatted.push_str(&format!(
+        "  state:          {}\n",
+        response.validated_route.validity.state
+    ));
+    formatted.push_str(&format!(
+        "  description:    {}\n",
+        response.validated_route.validity.description
+    ));
 
     if let Some(reason) = &response.validated_route.validity.reason {
         formatted.push_str(&format!("  reason:         {}\n", reason));
@@ -117,7 +133,13 @@ fn format_rpki_response(prefix: &str, asn: &str, response: &RpkiResponse) -> Res
     }
 
     // Unmatched AS VRPs
-    if !response.validated_route.validity.vrps.unmatched_as.is_empty() {
+    if !response
+        .validated_route
+        .validity
+        .vrps
+        .unmatched_as
+        .is_empty()
+    {
         formatted.push_str("  unmatched-as:\n");
         for vrp in &response.validated_route.validity.vrps.unmatched_as {
             formatted.push_str(&format!("    asn:          {}\n", vrp.asn));
@@ -130,7 +152,13 @@ fn format_rpki_response(prefix: &str, asn: &str, response: &RpkiResponse) -> Res
     }
 
     // Unmatched length VRPs
-    if !response.validated_route.validity.vrps.unmatched_length.is_empty() {
+    if !response
+        .validated_route
+        .validity
+        .vrps
+        .unmatched_length
+        .is_empty()
+    {
         formatted.push_str("  unmatched-length:\n");
         for vrp in &response.validated_route.validity.vrps.unmatched_length {
             formatted.push_str(&format!("    asn:          {}\n", vrp.asn));

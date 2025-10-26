@@ -16,9 +16,9 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+use anyhow::Result;
 use reqwest::Client;
 use serde::Deserialize;
-use anyhow::Result;
 use std::env;
 
 #[allow(dead_code)]
@@ -168,10 +168,13 @@ pub async fn query_curseforge(query: &str) -> Result<String> {
 
 async fn get_project_by_id(client: &Client, api_key: &str, project_id: u64) -> Result<String> {
     let url = format!("https://api.curseforge.com/v1/mods/{}", project_id);
-    
+
     tracing::debug!("CurseForge request URL: {}", url);
-    tracing::debug!("CurseForge API key (first 10 chars): {}", &api_key[..10.min(api_key.len())]);
-    
+    tracing::debug!(
+        "CurseForge API key (first 10 chars): {}",
+        &api_key[..10.min(api_key.len())]
+    );
+
     let response = client
         .get(&url)
         .header("Accept", "application/json")
@@ -181,10 +184,19 @@ async fn get_project_by_id(client: &Client, api_key: &str, project_id: u64) -> R
 
     if !response.status().is_success() {
         let status = response.status();
-        let error_body = response.text().await.unwrap_or_else(|_| "Unable to read error body".to_string());
-        tracing::error!("CurseForge API error - Status: {}, Body: {}", status, error_body);
-        return Ok(format!("% CurseForge API error: {}\n% Project ID {} not found or API quota exceeded\n% Error details: {}", 
-            status, project_id, error_body));
+        let error_body = response
+            .text()
+            .await
+            .unwrap_or_else(|_| "Unable to read error body".to_string());
+        tracing::error!(
+            "CurseForge API error - Status: {}, Body: {}",
+            status,
+            error_body
+        );
+        return Ok(format!(
+            "% CurseForge API error: {}\n% Project ID {} not found or API quota exceeded\n% Error details: {}",
+            status, project_id, error_body
+        ));
     }
 
     let curse_response: CurseForgeResponse = response.json().await?;
@@ -198,7 +210,10 @@ async fn search_curseforge(client: &Client, api_key: &str, query: &str) -> Resul
     );
 
     tracing::debug!("CurseForge search URL: {}", url);
-    tracing::debug!("CurseForge API key (first 10 chars): {}", &api_key[..10.min(api_key.len())]);
+    tracing::debug!(
+        "CurseForge API key (first 10 chars): {}",
+        &api_key[..10.min(api_key.len())]
+    );
 
     let response = client
         .get(&url)
@@ -209,9 +224,19 @@ async fn search_curseforge(client: &Client, api_key: &str, query: &str) -> Resul
 
     if !response.status().is_success() {
         let status = response.status();
-        let error_body = response.text().await.unwrap_or_else(|_| "Unable to read error body".to_string());
-        tracing::error!("CurseForge search API error - Status: {}, Body: {}", status, error_body);
-        return Ok(format!("% CurseForge API error: {}\n% Error details: {}", status, error_body));
+        let error_body = response
+            .text()
+            .await
+            .unwrap_or_else(|_| "Unable to read error body".to_string());
+        tracing::error!(
+            "CurseForge search API error - Status: {}, Body: {}",
+            status,
+            error_body
+        );
+        return Ok(format!(
+            "% CurseForge API error: {}\n% Error details: {}",
+            status, error_body
+        ));
     }
 
     let search_response: SearchResponse = response.json().await?;
@@ -232,21 +257,27 @@ async fn search_curseforge(client: &Client, api_key: &str, query: &str) -> Resul
         output.push_str(&format!("project-name:         {}\n", project.name));
         output.push_str(&format!("project-slug:         {}\n", project.slug));
         output.push_str(&format!("summary:              {}\n", project.summary));
-        
+
         if !project.authors.is_empty() {
             let authors: Vec<String> = project.authors.iter().map(|a| a.name.clone()).collect();
             output.push_str(&format!("authors:              {}\n", authors.join(", ")));
         }
-        
-        output.push_str(&format!("downloads:            {:>12}\n", format_number(project.download_count)));
-        
+
+        output.push_str(&format!(
+            "downloads:            {:>12}\n",
+            format_number(project.download_count)
+        ));
+
         if !project.categories.is_empty() {
             let cats: Vec<String> = project.categories.iter().map(|c| c.name.clone()).collect();
             output.push_str(&format!("categories:           {}\n", cats.join(", ")));
         }
-        
-        output.push_str(&format!("curseforge-url:       https://www.curseforge.com/minecraft/mc-mods/{}\n", project.slug));
-        
+
+        output.push_str(&format!(
+            "curseforge-url:       https://www.curseforge.com/minecraft/mc-mods/{}\n",
+            project.slug
+        ));
+
         if i < search_response.data.len() - 1 {
             output.push_str("% \n");
         }
@@ -279,14 +310,20 @@ fn format_project_info(project: &CurseForgeProject) -> String {
         output.push_str("% \n");
         output.push_str("% --- Authors ---\n");
         for author in &project.authors {
-            output.push_str(&format!("author:               {} ({})\n", author.name, author.url));
+            output.push_str(&format!(
+                "author:               {} ({})\n",
+                author.name, author.url
+            ));
         }
     }
 
     // 统计信息
     output.push_str("% \n");
     output.push_str("% --- Statistics ---\n");
-    output.push_str(&format!("total-downloads:      {:>12}\n", format_number(project.download_count)));
+    output.push_str(&format!(
+        "total-downloads:      {:>12}\n",
+        format_number(project.download_count)
+    ));
 
     // 分类
     if !project.categories.is_empty() {
@@ -299,15 +336,27 @@ fn format_project_info(project: &CurseForgeProject) -> String {
     // 时间信息
     output.push_str("% \n");
     output.push_str("% --- Timeline ---\n");
-    output.push_str(&format!("created:              {}\n", format_date(&project.date_created)));
-    output.push_str(&format!("last-modified:        {}\n", format_date(&project.date_modified)));
-    output.push_str(&format!("last-release:         {}\n", format_date(&project.date_released)));
+    output.push_str(&format!(
+        "created:              {}\n",
+        format_date(&project.date_created)
+    ));
+    output.push_str(&format!(
+        "last-modified:        {}\n",
+        format_date(&project.date_modified)
+    ));
+    output.push_str(&format!(
+        "last-release:         {}\n",
+        format_date(&project.date_released)
+    ));
 
     // 链接
     output.push_str("% \n");
     output.push_str("% --- Links ---\n");
-    output.push_str(&format!("curseforge-url:       https://www.curseforge.com/minecraft/mc-mods/{}\n", project.slug));
-    
+    output.push_str(&format!(
+        "curseforge-url:       https://www.curseforge.com/minecraft/mc-mods/{}\n",
+        project.slug
+    ));
+
     if let Some(website) = &project.links.website_url {
         output.push_str(&format!("website:              {}\n", website));
     }
@@ -325,54 +374,80 @@ fn format_project_info(project: &CurseForgeProject) -> String {
     output.push_str("% \n");
     output.push_str("% --- Media ---\n");
     output.push_str(&format!("logo:                 {}\n", project.logo.url));
-    
+
     if !project.screenshots.is_empty() {
         output.push_str(&format!("% Screenshots: {}\n", project.screenshots.len()));
         for (i, screenshot) in project.screenshots.iter().take(3).enumerate() {
-            output.push_str(&format!("screenshot-{}:         {} ({})\n", 
-                i + 1, screenshot.title, screenshot.url));
+            output.push_str(&format!(
+                "screenshot-{}:         {} ({})\n",
+                i + 1,
+                screenshot.title,
+                screenshot.url
+            ));
         }
         if project.screenshots.len() > 3 {
-            output.push_str(&format!("% ... and {} more screenshots\n", project.screenshots.len() - 3));
+            output.push_str(&format!(
+                "% ... and {} more screenshots\n",
+                project.screenshots.len() - 3
+            ));
         }
     }
 
     // 最新文件/版本
     if !project.latest_files_indexes.is_empty() {
         output.push_str("% \n");
-        output.push_str(&format!("% --- Latest Files ({} available) ---\n", project.latest_files_indexes.len()));
-        
+        output.push_str(&format!(
+            "% --- Latest Files ({} available) ---\n",
+            project.latest_files_indexes.len()
+        ));
+
         // 获取支持的Minecraft版本
-        let mut versions: Vec<String> = project.latest_files_indexes
+        let mut versions: Vec<String> = project
+            .latest_files_indexes
             .iter()
             .map(|f| f.game_version.clone())
             .collect();
         versions.sort();
         versions.dedup();
-        
+
         if versions.len() > 10 {
-            output.push_str(&format!("minecraft-versions:   {} to {} ({} versions)\n", 
+            output.push_str(&format!(
+                "minecraft-versions:   {} to {} ({} versions)\n",
                 versions.first().unwrap_or(&"".to_string()),
                 versions.last().unwrap_or(&"".to_string()),
-                versions.len()));
+                versions.len()
+            ));
         } else if !versions.is_empty() {
             output.push_str(&format!("minecraft-versions:   {}\n", versions.join(", ")));
         }
-        
+
         // 显示最新几个文件
         for (i, file) in project.latest_files.iter().take(3).enumerate() {
-            output.push_str(&format!("latest-file-{}:        {}\n", i + 1, file.display_name));
+            output.push_str(&format!(
+                "latest-file-{}:        {}\n",
+                i + 1,
+                file.display_name
+            ));
             output.push_str(&format!("  filename:           {}\n", file.file_name));
-            output.push_str(&format!("  date:               {}\n", format_date(&file.file_date)));
+            output.push_str(&format!(
+                "  date:               {}\n",
+                format_date(&file.file_date)
+            ));
             if !file.game_versions.is_empty() {
-                output.push_str(&format!("  versions:           {}\n", file.game_versions.join(", ")));
+                output.push_str(&format!(
+                    "  versions:           {}\n",
+                    file.game_versions.join(", ")
+                ));
             }
         }
     }
 
     output.push_str("% \n");
     output.push_str("% ======================================================================\n");
-    output.push_str(&format!("% View on CurseForge: https://www.curseforge.com/minecraft/mc-mods/{}\n", project.slug));
+    output.push_str(&format!(
+        "% View on CurseForge: https://www.curseforge.com/minecraft/mc-mods/{}\n",
+        project.slug
+    ));
     output.push_str("% ======================================================================\n");
 
     output
@@ -383,14 +458,14 @@ fn format_number(n: u64) -> String {
     let s = n.to_string();
     let mut result = String::new();
     let chars: Vec<char> = s.chars().collect();
-    
+
     for (i, c) in chars.iter().enumerate() {
         if i > 0 && (chars.len() - i).is_multiple_of(3) {
             result.push(',');
         }
         result.push(*c);
     }
-    
+
     result
 }
 

@@ -1,5 +1,5 @@
-use std::collections::HashSet;
 use anyhow::Result;
+use std::collections::HashSet;
 use tracing::debug;
 
 // Removed unused import
@@ -16,7 +16,11 @@ pub async fn process_email_search(base_query: &str) -> Result<String> {
     // Start with emails from the base object itself
     let mut emails = HashSet::new();
     let base_emails = extract_emails(&base_response);
-    debug!("Found {} emails in base object: {:?}", base_emails.len(), base_emails);
+    debug!(
+        "Found {} emails in base object: {:?}",
+        base_emails.len(),
+        base_emails
+    );
     emails.extend(base_emails);
 
     // Extract references from the base object
@@ -56,8 +60,7 @@ pub async fn process_email_search(base_query: &str) -> Result<String> {
                         if !references.contains(&ref_name) {
                             debug!(
                                 "Querying additional reference from {}: {}",
-                                related_query,
-                                ref_name
+                                related_query, ref_name
                             );
                             match query_dn42_raw_managed(&ref_name).await {
                                 Ok(ref_response) => {
@@ -73,8 +76,7 @@ pub async fn process_email_search(base_query: &str) -> Result<String> {
                                 Err(e) => {
                                     debug!(
                                         "Failed to query additional reference {}: {}",
-                                        ref_name,
-                                        e
+                                        ref_name, e
                                     );
                                 }
                             }
@@ -94,7 +96,12 @@ pub async fn process_email_search(base_query: &str) -> Result<String> {
         match query_dn42_raw_managed(&reference).await {
             Ok(ref_response) => {
                 let ref_emails = extract_emails(&ref_response);
-                debug!("Found {} emails in {}: {:?}", ref_emails.len(), reference, ref_emails);
+                debug!(
+                    "Found {} emails in {}: {:?}",
+                    ref_emails.len(),
+                    reference,
+                    ref_emails
+                );
                 emails.extend(ref_emails);
             }
             Err(e) => {
@@ -203,8 +210,7 @@ mod tests {
 
     #[test]
     fn test_extract_emails() {
-        let whois_data =
-            r#"
+        let whois_data = r#"
 person:         Test Person
 e-mail:         test@example.com
 abuse-mailbox:  abuse@example.com
@@ -223,8 +229,7 @@ admin-c:        TEST-DN42
 
     #[test]
     fn test_extract_references() {
-        let whois_data =
-            r#"
+        let whois_data = r#"
 aut-num:        AS213605
 mnt-by:         LiuHaoRan-MNT
 admin-c:        PYSIO-DN42

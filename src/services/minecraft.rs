@@ -1,10 +1,10 @@
-use std::net::{ SocketAddr, ToSocketAddrs };
-use std::time::{ Duration, Instant };
 use anyhow::Result;
-use tracing::{ debug, error };
-use serde::{ Deserialize, Serialize };
+use serde::{Deserialize, Serialize};
+use std::net::{SocketAddr, ToSocketAddrs};
+use std::time::{Duration, Instant};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
-use tokio::io::{ AsyncReadExt, AsyncWriteExt };
+use tracing::{debug, error};
 
 /// Minecraft server status response structure
 #[derive(Debug, Deserialize, Serialize)]
@@ -91,22 +91,16 @@ impl MinecraftService {
                 let output = self.format_server_info(&server_info);
                 debug!(
                     "Minecraft query completed for {}:{}, latency: {}ms",
-                    host,
-                    port,
-                    server_info.latency
+                    host, port, server_info.latency
                 );
                 Ok(output)
             }
             Err(e) => {
                 error!("Failed to query Minecraft server {}:{}: {}", host, port, e);
-                Ok(
-                    format!(
-                        "Minecraft Server Query Failed for {}:{}\nError: {}\n\nPossible causes:\n- Server is offline or unreachable\n- Server is not running Minecraft\n- Firewall blocking connection\n- Invalid hostname or port\n",
-                        host,
-                        port,
-                        e
-                    )
-                )
+                Ok(format!(
+                    "Minecraft Server Query Failed for {}:{}\nError: {}\n\nPossible causes:\n- Server is offline or unreachable\n- Server is not running Minecraft\n- Firewall blocking connection\n- Invalid hostname or port\n",
+                    host, port, e
+                ))
             }
         }
     }
@@ -141,11 +135,14 @@ impl MinecraftService {
         debug!("Resolved {}:{} to {}", host, port, socket_addr);
 
         // Connect to server with timeout
-        let mut stream = tokio::time
-            ::timeout(self.timeout, TcpStream::connect(socket_addr)).await
-            .map_err(|_|
-                anyhow::anyhow!("Connection timeout after {} seconds", self.timeout.as_secs())
-            )?
+        let mut stream = tokio::time::timeout(self.timeout, TcpStream::connect(socket_addr))
+            .await
+            .map_err(|_| {
+                anyhow::anyhow!(
+                    "Connection timeout after {} seconds",
+                    self.timeout.as_secs()
+                )
+            })?
             .map_err(|e| anyhow::anyhow!("Failed to connect: {}", e))?;
 
         // Send handshake packet
@@ -158,8 +155,7 @@ impl MinecraftService {
         let status_json = self.read_status_response(&mut stream).await?;
 
         // Parse JSON response
-        let status: MinecraftStatus = serde_json
-            ::from_str(&status_json)
+        let status: MinecraftStatus = serde_json::from_str(&status_json)
             .map_err(|e| anyhow::anyhow!("Failed to parse server response: {}", e))?;
 
         // Send ping request for latency measurement
@@ -171,7 +167,9 @@ impl MinecraftService {
         let total_latency = start_time.elapsed().as_millis() as u64;
 
         // Extract player list
-        let player_list = status.players.sample
+        let player_list = status
+            .players
+            .sample
             .unwrap_or_default()
             .into_iter()
             .map(|p| p.name)
@@ -201,12 +199,14 @@ impl MinecraftService {
         let addr_str = format!("{}:{}", host, port);
 
         // Try to resolve the address
-        let mut addrs = tokio::task
-            ::spawn_blocking(move || { addr_str.to_socket_addrs() }).await
+        let mut addrs = tokio::task::spawn_blocking(move || addr_str.to_socket_addrs())
+            .await
             .map_err(|e| anyhow::anyhow!("DNS resolution task failed: {}", e))?
             .map_err(|e| anyhow::anyhow!("Failed to resolve hostname '{}': {}", host, e))?;
 
-        addrs.next().ok_or_else(|| anyhow::anyhow!("No addresses found for hostname: {}", host))
+        addrs
+            .next()
+            .ok_or_else(|| anyhow::anyhow!("No addresses found for hostname: {}", host))
     }
 
     /// Send handshake packet (Protocol state: Status)
@@ -259,8 +259,7 @@ impl MinecraftService {
         packet.push(0x01); // Packet ID: 0x01 (Ping)
 
         // Add payload (current timestamp)
-        let timestamp = std::time::SystemTime
-            ::now()
+        let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_millis() as i64;
@@ -286,7 +285,10 @@ impl MinecraftService {
         self.write_varint(&mut packet, data.len() as i32);
         packet.extend_from_slice(data);
 
-        stream.write_all(&packet).await.map_err(|e| anyhow::anyhow!("Failed to send packet: {}", e))
+        stream
+            .write_all(&packet)
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to send packet: {}", e))
     }
 
     /// Read packet with length prefix
@@ -306,7 +308,8 @@ impl MinecraftService {
         // Read packet data
         let mut buffer = vec![0u8; length];
         stream
-            .read_exact(&mut buffer).await
+            .read_exact(&mut buffer)
+            .await
             .map_err(|e| anyhow::anyhow!("Failed to read packet data: {}", e))?;
 
         Ok(buffer)
@@ -335,7 +338,8 @@ impl MinecraftService {
         loop {
             let mut byte = [0u8; 1];
             stream
-                .read_exact(&mut byte).await
+                .read_exact(&mut byte)
+                .await
                 .map_err(|e| anyhow::anyhow!("Failed to read varint byte: {}", e))?;
 
             let byte = byte[0];
@@ -387,7 +391,9 @@ impl MinecraftService {
 
         loop {
             if *offset >= data.len() {
-                return Err(anyhow::anyhow!("Unexpected end of data while reading varint"));
+                return Err(anyhow::anyhow!(
+                    "Unexpected end of data while reading varint"
+                ));
             }
 
             let byte = data[*offset];
@@ -441,7 +447,10 @@ impl MinecraftService {
         output.push_str(&format!("{}:{}\n", info.address, info.port));
 
         output.push_str("status:         ");
-        output.push_str(&format!("{}\n", if info.online { "ONLINE" } else { "OFFLINE" }));
+        output.push_str(&format!(
+            "{}\n",
+            if info.online { "ONLINE" } else { "OFFLINE" }
+        ));
 
         output.push_str("version:        ");
         output.push_str(&format!("{}\n", info.version));
@@ -463,12 +472,18 @@ impl MinecraftService {
 
         if let Some(secure_chat) = info.enforces_secure_chat {
             output.push_str("secure-chat:    ");
-            output.push_str(&format!("{}\n", if secure_chat { "enforced" } else { "optional" }));
+            output.push_str(&format!(
+                "{}\n",
+                if secure_chat { "enforced" } else { "optional" }
+            ));
         }
 
         if let Some(preview_chat) = info.previews_chat {
             output.push_str("chat-preview:   ");
-            output.push_str(&format!("{}\n", if preview_chat { "enabled" } else { "disabled" }));
+            output.push_str(&format!(
+                "{}\n",
+                if preview_chat { "enabled" } else { "disabled" }
+            ));
         }
 
         // Player list in RIPE-style (if available)
@@ -476,9 +491,10 @@ impl MinecraftService {
             for (i, player) in info.player_list.iter().enumerate() {
                 if i >= 10 {
                     output.push_str("remarks:        ");
-                    output.push_str(
-                        &format!("... and {} more players online\n", info.player_list.len() - 10)
-                    );
+                    output.push_str(&format!(
+                        "... and {} more players online\n",
+                        info.player_list.len() - 10
+                    ));
                     break;
                 }
                 output.push_str("player:         ");
@@ -530,9 +546,10 @@ pub async fn process_minecraft_query(query: &str) -> Result<String> {
     }
 
     error!("Invalid Minecraft query format: {}", query);
-    Ok(
-        format!("Invalid Minecraft query format. Use: target-MINECRAFT or target-MC\nTarget format: hostname:port or hostname (default port 25565)\nQuery: {}\nExamples:\n  - mc.hypixel.net-MC\n  - play.cubecraft.net:25565-MINECRAFT\n  - 192.168.1.100-MC\n", query)
-    )
+    Ok(format!(
+        "Invalid Minecraft query format. Use: target-MINECRAFT or target-MC\nTarget format: hostname:port or hostname (default port 25565)\nQuery: {}\nExamples:\n  - mc.hypixel.net-MC\n  - play.cubecraft.net:25565-MINECRAFT\n  - 192.168.1.100-MC\n",
+        query
+    ))
 }
 
 /// Minecraft user profile information from Mojang API
@@ -573,8 +590,7 @@ impl Default for MinecraftUserService {
 impl MinecraftUserService {
     /// Create a new Minecraft user service
     pub fn new() -> Self {
-        let client = reqwest::Client
-            ::builder()
+        let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(10))
             .user_agent("WhoisServer/1.0 Minecraft User API Client")
             .build()
@@ -591,7 +607,10 @@ impl MinecraftUserService {
         let uuid = match self.get_uuid_from_username(username).await {
             Ok(uuid) => uuid,
             Err(e) => {
-                return Ok(format!("Minecraft User Not Found: {}\nError: {}\n", username, e));
+                return Ok(format!(
+                    "Minecraft User Not Found: {}\nError: {}\n",
+                    username, e
+                ));
             }
         };
 
@@ -607,7 +626,10 @@ impl MinecraftUserService {
 
     /// Get UUID from username using Mojang API
     async fn get_uuid_from_username(&self, username: &str) -> Result<MinecraftUuidResponse> {
-        let url = format!("https://api.mojang.com/users/profiles/minecraft/{}", username);
+        let url = format!(
+            "https://api.mojang.com/users/profiles/minecraft/{}",
+            username
+        );
 
         let response = self.client.get(&url).send().await?;
 
@@ -625,12 +647,18 @@ impl MinecraftUserService {
 
     /// Get user profile from UUID using Mojang API
     async fn get_user_profile(&self, uuid: &str) -> Result<MinecraftUserProfile> {
-        let url = format!("https://sessionserver.mojang.com/session/minecraft/profile/{}", uuid);
+        let url = format!(
+            "https://sessionserver.mojang.com/session/minecraft/profile/{}",
+            uuid
+        );
 
         let response = self.client.get(&url).send().await?;
 
         if !response.status().is_success() {
-            return Err(anyhow::anyhow!("Profile request failed: {}", response.status()));
+            return Err(anyhow::anyhow!(
+                "Profile request failed: {}",
+                response.status()
+            ));
         }
 
         let profile: MinecraftUserProfile = response.json().await?;
@@ -641,7 +669,7 @@ impl MinecraftUserService {
     fn format_user_info(
         &self,
         uuid_info: &MinecraftUuidResponse,
-        profile: &MinecraftUserProfile
+        profile: &MinecraftUserProfile,
     ) -> String {
         let mut output = String::new();
 
@@ -663,17 +691,28 @@ impl MinecraftUserService {
                     }
                 }
                 _ => {
-                    output.push_str(
-                        &format!("property-{}: {}\n", property.name.to_lowercase(), "present")
-                    );
+                    output.push_str(&format!(
+                        "property-{}: {}\n",
+                        property.name.to_lowercase(),
+                        "present"
+                    ));
                 }
             }
         }
 
         // Add useful URLs
-        output.push_str(&format!("namemc-url: https://namemc.com/profile/{}\n", uuid_info.id));
-        output.push_str(&format!("skin-url: https://crafatar.com/skins/{}\n", uuid_info.id));
-        output.push_str(&format!("avatar-url: https://crafatar.com/avatars/{}\n", uuid_info.id));
+        output.push_str(&format!(
+            "namemc-url: https://namemc.com/profile/{}\n",
+            uuid_info.id
+        ));
+        output.push_str(&format!(
+            "skin-url: https://crafatar.com/skins/{}\n",
+            uuid_info.id
+        ));
+        output.push_str(&format!(
+            "avatar-url: https://crafatar.com/avatars/{}\n",
+            uuid_info.id
+        ));
 
         output.push_str("% Note: Player information is public data from Mojang API\n");
 
@@ -693,9 +732,18 @@ impl MinecraftUserService {
         output.push_str(&format!("uuid-short: {}\n", uuid_info.id));
         output.push_str(&format!("profile-status: {}\n", error));
 
-        output.push_str(&format!("namemc-url: https://namemc.com/profile/{}\n", uuid_info.id));
-        output.push_str(&format!("skin-url: https://crafatar.com/skins/{}\n", uuid_info.id));
-        output.push_str(&format!("avatar-url: https://crafatar.com/avatars/{}\n", uuid_info.id));
+        output.push_str(&format!(
+            "namemc-url: https://namemc.com/profile/{}\n",
+            uuid_info.id
+        ));
+        output.push_str(&format!(
+            "skin-url: https://crafatar.com/skins/{}\n",
+            uuid_info.id
+        ));
+        output.push_str(&format!(
+            "avatar-url: https://crafatar.com/avatars/{}\n",
+            uuid_info.id
+        ));
 
         output
     }
@@ -741,27 +789,29 @@ pub async fn process_minecraft_user_query(query: &str) -> Result<String> {
 
         if username.is_empty() {
             return Ok(
-                "Invalid Minecraft user query. Please provide a username.\nExample: Notch-MCU\n".to_string()
+                "Invalid Minecraft user query. Please provide a username.\nExample: Notch-MCU\n"
+                    .to_string(),
             );
         }
 
         // Validate username format (Minecraft usernames are 3-16 characters, alphanumeric and underscores)
-        if
-            username.len() < 3 ||
-            username.len() > 16 ||
-            !username.chars().all(|c| c.is_alphanumeric() || c == '_')
+        if username.len() < 3
+            || username.len() > 16
+            || !username.chars().all(|c| c.is_alphanumeric() || c == '_')
         {
-            return Ok(
-                format!("Invalid Minecraft username format. Usernames must be 3-16 characters, alphanumeric and underscores only.\nQuery: {}\n", username)
-            );
+            return Ok(format!(
+                "Invalid Minecraft username format. Usernames must be 3-16 characters, alphanumeric and underscores only.\nQuery: {}\n",
+                username
+            ));
         }
 
         user_service.query_user_info(&username).await
     } else {
         error!("Invalid Minecraft user query format: {}", query);
-        Ok(
-            format!("Invalid Minecraft user query format. Use: <username>-MCU\nExample: Notch-MCU\nQuery: {}\n", query)
-        )
+        Ok(format!(
+            "Invalid Minecraft user query format. Use: <username>-MCU\nExample: Notch-MCU\nQuery: {}\n",
+            query
+        ))
     }
 }
 
@@ -771,14 +821,20 @@ mod tests {
 
     #[test]
     fn test_minecraft_query_detection() {
-        assert!(MinecraftService::is_minecraft_query("mc.hypixel.net-MINECRAFT"));
+        assert!(MinecraftService::is_minecraft_query(
+            "mc.hypixel.net-MINECRAFT"
+        ));
         assert!(MinecraftService::is_minecraft_query("mc.hypixel.net-MC"));
-        assert!(MinecraftService::is_minecraft_query("play.cubecraft.net:25565-minecraft"));
+        assert!(MinecraftService::is_minecraft_query(
+            "play.cubecraft.net:25565-minecraft"
+        ));
         assert!(MinecraftService::is_minecraft_query("192.168.1.100-mc"));
 
         assert!(!MinecraftService::is_minecraft_query("mc.hypixel.net"));
         assert!(!MinecraftService::is_minecraft_query("mc.hypixel.net-SSL"));
-        assert!(!MinecraftService::is_minecraft_query("MINECRAFT-mc.hypixel.net"));
+        assert!(!MinecraftService::is_minecraft_query(
+            "MINECRAFT-mc.hypixel.net"
+        ));
     }
 
     #[test]
@@ -798,7 +854,10 @@ mod tests {
             Some("192.168.1.100".to_string())
         );
 
-        assert_eq!(MinecraftService::parse_minecraft_query("mc.hypixel.net"), None);
+        assert_eq!(
+            MinecraftService::parse_minecraft_query("mc.hypixel.net"),
+            None
+        );
     }
 
     #[test]
@@ -806,25 +865,33 @@ mod tests {
         let service = MinecraftService::new();
 
         // Test hostname with port
-        assert_eq!(service.parse_minecraft_target("mc.hypixel.net:25565").unwrap(), (
-            "mc.hypixel.net".to_string(),
-            25565,
-        ));
+        assert_eq!(
+            service
+                .parse_minecraft_target("mc.hypixel.net:25565")
+                .unwrap(),
+            ("mc.hypixel.net".to_string(), 25565,)
+        );
 
         // Test hostname without port (should default to 25565)
-        assert_eq!(service.parse_minecraft_target("mc.hypixel.net").unwrap(), (
-            "mc.hypixel.net".to_string(),
-            25565,
-        ));
+        assert_eq!(
+            service.parse_minecraft_target("mc.hypixel.net").unwrap(),
+            ("mc.hypixel.net".to_string(), 25565,)
+        );
 
         // Test IP with port
-        assert_eq!(service.parse_minecraft_target("192.168.1.100:25566").unwrap(), (
-            "192.168.1.100".to_string(),
-            25566,
-        ));
+        assert_eq!(
+            service
+                .parse_minecraft_target("192.168.1.100:25566")
+                .unwrap(),
+            ("192.168.1.100".to_string(), 25566,)
+        );
 
         // Test invalid port
-        assert!(service.parse_minecraft_target("mc.hypixel.net:invalid").is_err());
+        assert!(
+            service
+                .parse_minecraft_target("mc.hypixel.net:invalid")
+                .is_err()
+        );
 
         // Test empty hostname
         assert!(service.parse_minecraft_target(":25565").is_err());

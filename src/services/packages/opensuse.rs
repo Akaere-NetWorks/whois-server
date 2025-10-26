@@ -16,10 +16,10 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-use anyhow::{ Context, Result };
+use anyhow::{Context, Result};
 use reqwest;
-use serde::{ Deserialize, Serialize };
-use tracing::{ debug, error };
+use serde::{Deserialize, Serialize};
+use tracing::{debug, error};
 
 const OPENSUSE_SEARCH_URL: &str = "https://software.opensuse.org/search";
 const OPENSUSE_PACKAGES_URL: &str = "https://software.opensuse.org/package/";
@@ -61,10 +61,11 @@ pub async fn process_opensuse_query(package_name: &str) -> Result<String> {
     }
 
     // Validate package name
-    if
-        package_name.len() > 100 ||
-        package_name.contains(' ') ||
-        !package_name.chars().all(|c| c.is_ascii_alphanumeric() || "+-._".contains(c))
+    if package_name.len() > 100
+        || package_name.contains(' ')
+        || !package_name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || "+-._".contains(c))
     {
         return Err(anyhow::anyhow!("Invalid OpenSUSE package name format"));
     }
@@ -72,7 +73,10 @@ pub async fn process_opensuse_query(package_name: &str) -> Result<String> {
     match query_opensuse_packages(package_name).await {
         Ok(search_result) => {
             if !search_result.packages.is_empty() {
-                Ok(format_opensuse_response(&search_result.packages, package_name))
+                Ok(format_opensuse_response(
+                    &search_result.packages,
+                    package_name,
+                ))
             } else {
                 Ok(format_opensuse_not_found(package_name))
             }
@@ -95,21 +99,30 @@ async fn query_opensuse_packages(package_name: &str) -> Result<OpenSUSESearchRes
         .context("Failed to create HTTP client")?;
 
     // Use OpenSUSE software search web page
-    let search_url = format!("{}?q={}", OPENSUSE_SEARCH_URL, urlencoding::encode(package_name));
+    let search_url = format!(
+        "{}?q={}",
+        OPENSUSE_SEARCH_URL,
+        urlencoding::encode(package_name)
+    );
 
     debug!("Querying OpenSUSE search web page: {}", search_url);
 
     let response = client
         .get(&search_url)
-        .send().await
+        .send()
+        .await
         .context("Failed to send request to OpenSUSE search page")?;
 
     if !response.status().is_success() {
-        return Err(anyhow::anyhow!("OpenSUSE search page returned status: {}", response.status()));
+        return Err(anyhow::anyhow!(
+            "OpenSUSE search page returned status: {}",
+            response.status()
+        ));
     }
 
     let html_content = response
-        .text().await
+        .text()
+        .await
         .context("Failed to get HTML content from OpenSUSE search page")?;
 
     parse_opensuse_html(&html_content, package_name)
@@ -274,13 +287,11 @@ fn format_opensuse_response(packages: &[OpenSUSEPackage], query: &str) -> String
             output.push_str(&format!("modified-time: {}\n", mtime));
         }
 
-        output.push_str(
-            &format!(
-                "opensuse-url: {}{}\n",
-                OPENSUSE_PACKAGES_URL,
-                urlencoding::encode(&package.name)
-            )
-        );
+        output.push_str(&format!(
+            "opensuse-url: {}{}\n",
+            OPENSUSE_PACKAGES_URL,
+            urlencoding::encode(&package.name)
+        ));
     }
 
     output.push_str("distribution: openSUSE\n");

@@ -2,14 +2,14 @@
 // Copyright (C) 2025 Akaere Networks
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-use anyhow::{ Context, Result };
+use anyhow::{Context, Result};
 use russh::server;
 use russh_keys::key;
 use std::net::SocketAddr;
 use std::path::Path;
 use std::sync::Arc;
 use tokio::net::TcpListener;
-use tracing::{ info, warn, error, debug };
+use tracing::{debug, error, info, warn};
 
 use super::certificates::SshCertificateManager;
 use super::handler::WhoisSshHandler;
@@ -48,11 +48,17 @@ impl SshServer {
 
         // Initialize SSH connection history storage
         let history_db_path = Path::new(&config.cache_dir).join("history.lmdb");
-        debug!("Initializing SSH connection history at path: {:?}", history_db_path);
+        debug!(
+            "Initializing SSH connection history at path: {:?}",
+            history_db_path
+        );
         let history = Arc::new(
-            SshConnectionHistory::new(&history_db_path).with_context(||
-                format!("Failed to initialize SSH connection history at {:?}", history_db_path)
-            )?
+            SshConnectionHistory::new(&history_db_path).with_context(|| {
+                format!(
+                    "Failed to initialize SSH connection history at {:?}",
+                    history_db_path
+                )
+            })?,
         );
 
         Ok(Self {
@@ -67,12 +73,15 @@ impl SshServer {
     pub async fn initialize(&mut self) -> Result<()> {
         // Initialize certificate manager
         self.cert_manager
-            .initialize().await
+            .initialize()
+            .await
             .with_context(|| "Failed to initialize SSH certificate manager")?;
 
         // Load host key
-        let host_key = self.cert_manager
-            .load_host_key().await
+        let host_key = self
+            .cert_manager
+            .load_host_key()
+            .await
             .with_context(|| "Failed to load SSH host key")?;
 
         self.host_key = Some(Arc::new(host_key));
@@ -92,16 +101,17 @@ impl SshServer {
 
     /// Start the SSH server
     pub async fn start(&self) -> Result<()> {
-        let host_key = self.host_key
+        let host_key = self
+            .host_key
             .as_ref()
             .ok_or_else(|| anyhow::anyhow!("SSH server not initialized - host key not loaded"))?;
 
         let bind_addr = format!("{}:{}", self.config.listen_addr, self.config.port);
         info!("Starting SSH server on {}", bind_addr);
 
-        let listener = TcpListener::bind(&bind_addr).await.with_context(||
-            format!("Failed to bind SSH server to {}", bind_addr)
-        )?;
+        let listener = TcpListener::bind(&bind_addr)
+            .await
+            .with_context(|| format!("Failed to bind SSH server to {}", bind_addr))?;
 
         info!("SSH server listening on {}", bind_addr);
 
@@ -124,14 +134,9 @@ impl SshServer {
                     let config = Arc::clone(&server_config);
 
                     tokio::spawn(async move {
-                        if
-                            let Err(e) = Self::handle_connection(
-                                stream,
-                                client_addr,
-                                history,
-                                host_key,
-                                config
-                            ).await
+                        if let Err(e) =
+                            Self::handle_connection(stream, client_addr, history, host_key, config)
+                                .await
                         {
                             error!("SSH connection error from {}: {}", client_addr, e);
                         }
@@ -150,13 +155,13 @@ impl SshServer {
         client_addr: SocketAddr,
         history: Arc<SshConnectionHistory>,
         host_key: Arc<key::KeyPair>,
-        config: Arc<server::Config>
+        config: Arc<server::Config>,
     ) -> Result<()> {
         let mut handler = WhoisSshHandler::new(history, host_key);
         handler.set_client_addr(client_addr);
 
-        let _session = server
-            ::run_stream(config, stream, handler).await
+        let _session = server::run_stream(config, stream, handler)
+            .await
             .with_context(|| format!("SSH session failed for {}", client_addr))?;
 
         debug!("SSH session completed for {}", client_addr);
@@ -166,7 +171,8 @@ impl SshServer {
     /// Get SSH server statistics
     #[allow(dead_code)]
     pub async fn get_stats(&self) -> Result<SshServerStats> {
-        let total_records = self.history
+        let total_records = self
+            .history
             .get_total_records()
             .with_context(|| "Failed to get SSH history record count")?;
 

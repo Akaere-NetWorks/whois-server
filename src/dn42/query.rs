@@ -1,4 +1,4 @@
-use std::net::{ Ipv4Addr, Ipv6Addr };
+use std::net::{Ipv4Addr, Ipv6Addr};
 // Removed unused imports
 
 /// Parse ASN from query, handling various formats for DN42
@@ -18,15 +18,16 @@ pub fn parse_asn(query: &str) -> Option<String> {
 
     // Handle AS prefix
     if let Some(asn_part) = normalized.strip_prefix("AS")
-        && let Ok(num) = asn_part.parse::<u32>() {
-            return match asn_part.len() {
-                1 => Some(format!("AS424242000{}", num)),
-                2 => Some(format!("AS42424200{}", num)),
-                3 => Some(format!("AS4242420{}", num)),
-                4 => Some(format!("AS424242{}", num)),
-                _ => Some(normalized),
-            };
-        }
+        && let Ok(num) = asn_part.parse::<u32>()
+    {
+        return match asn_part.len() {
+            1 => Some(format!("AS424242000{}", num)),
+            2 => Some(format!("AS42424200{}", num)),
+            3 => Some(format!("AS4242420{}", num)),
+            4 => Some(format!("AS424242{}", num)),
+            _ => Some(normalized),
+        };
+    }
 
     None
 }
@@ -87,14 +88,16 @@ impl DN42QueryType {
         // Try to parse as IP address with CIDR
         if let Some((ip_str, mask_str)) = query.split_once('/') {
             if let (Ok(ipv4), Ok(mask)) = (ip_str.parse::<Ipv4Addr>(), mask_str.parse::<u8>())
-                && mask <= 32 {
-                    return DN42QueryType::IPv4Network { ip: ipv4, mask };
-                }
+                && mask <= 32
+            {
+                return DN42QueryType::IPv4Network { ip: ipv4, mask };
+            }
 
             if let (Ok(ipv6), Ok(mask)) = (ip_str.parse::<Ipv6Addr>(), mask_str.parse::<u8>())
-                && mask <= 128 {
-                    return DN42QueryType::IPv6Network { ip: ipv6, mask };
-                }
+                && mask <= 128
+            {
+                return DN42QueryType::IPv6Network { ip: ipv6, mask };
+            }
         }
 
         // Try to parse as single IP address (assume /32 for IPv4, /128 for IPv6)
@@ -103,7 +106,10 @@ impl DN42QueryType {
         }
 
         if let Ok(ipv6) = query.parse::<Ipv6Addr>() {
-            return DN42QueryType::IPv6Network { ip: ipv6, mask: 128 };
+            return DN42QueryType::IPv6Network {
+                ip: ipv6,
+                mask: 128,
+            };
         }
 
         // Handle ASN queries
@@ -113,57 +119,73 @@ impl DN42QueryType {
 
         // Handle person objects (-DN42 suffix)
         if normalized_query.ends_with("-DN42") {
-            return DN42QueryType::Person { handle: normalized_query };
+            return DN42QueryType::Person {
+                handle: normalized_query,
+            };
         }
 
         // Handle maintainer objects (-MNT suffix)
         if normalized_query.ends_with("-MNT") {
-            return DN42QueryType::Maintainer { handle: normalized_query };
+            return DN42QueryType::Maintainer {
+                handle: normalized_query,
+            };
         }
 
         // Handle schema objects (-SCHEMA suffix)
         if normalized_query.ends_with("-SCHEMA") {
-            return DN42QueryType::Schema { handle: normalized_query };
+            return DN42QueryType::Schema {
+                handle: normalized_query,
+            };
         }
 
         // Handle organisation objects (ORG- prefix)
         if normalized_query.starts_with("ORG-") {
-            return DN42QueryType::Organisation { handle: normalized_query };
+            return DN42QueryType::Organisation {
+                handle: normalized_query,
+            };
         }
 
         // Handle tinc-keyset objects (SET-*-TINC pattern)
         if normalized_query.starts_with("SET-") && normalized_query.ends_with("-TINC") {
-            return DN42QueryType::TincKeyset { handle: normalized_query };
+            return DN42QueryType::TincKeyset {
+                handle: normalized_query,
+            };
         }
 
         // Handle tinc-key objects (-TINC suffix)
         if normalized_query.ends_with("-TINC") && !normalized_query.starts_with("SET-") {
-            return DN42QueryType::TincKey { handle: normalized_query };
+            return DN42QueryType::TincKey {
+                handle: normalized_query,
+            };
         }
 
         // Handle route-set objects (RS- prefix)
         if normalized_query.starts_with("RS-") {
-            return DN42QueryType::RouteSet { handle: normalized_query };
+            return DN42QueryType::RouteSet {
+                handle: normalized_query,
+            };
         }
 
         // Handle as-block objects (AS*-AS* pattern)
         if normalized_query.contains("-AS") && normalized_query.starts_with("AS") {
-            return DN42QueryType::AsBlock { handle: normalized_query };
+            return DN42QueryType::AsBlock {
+                handle: normalized_query,
+            };
         }
 
         // Handle as-set objects (AS prefix, not an ASN)
-        if
-            normalized_query.starts_with("AS") &&
-            !normalized_query
-                .chars()
-                .skip(2)
-                .all(|c| c.is_ascii_digit())
+        if normalized_query.starts_with("AS")
+            && !normalized_query.chars().skip(2).all(|c| c.is_ascii_digit())
         {
-            return DN42QueryType::AsSet { handle: normalized_query };
+            return DN42QueryType::AsSet {
+                handle: normalized_query,
+            };
         }
 
         // Handle DNS objects (default fallback)
-        DN42QueryType::DNS { domain: query.to_lowercase() }
+        DN42QueryType::DNS {
+            domain: query.to_lowercase(),
+        }
     }
 
     /// Get the object type for file path construction
@@ -225,7 +247,7 @@ pub fn format_query_response(query: &str, content: Option<String>) -> String {
 pub fn format_ipv4_network_response(
     query: &str,
     inetnum_content: Option<String>,
-    route_content: Option<String>
+    route_content: Option<String>,
 ) -> String {
     let mut response = String::new();
     response.push_str(&format!("% Query: {}\n", query));
@@ -253,7 +275,7 @@ pub fn format_ipv4_network_response(
 pub fn format_ipv6_network_response(
     query: &str,
     inet6num_content: Option<String>,
-    route6_content: Option<String>
+    route6_content: Option<String>,
 ) -> String {
     let mut response = String::new();
     response.push_str(&format!("% Query: {}\n", query));

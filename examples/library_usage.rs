@@ -1,7 +1,7 @@
 // Example of using whois-server as a library
 // This demonstrates how to integrate whois-server functionality into your own application
 
-use whois_server::{ query, query_with_color, ColorScheme };
+use whois_server::{ColorScheme, query, query_with_color};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

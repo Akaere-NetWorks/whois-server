@@ -16,10 +16,10 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-use std::time::Duration;
 use anyhow::Result;
-use serde::{ Deserialize, Serialize };
-use tracing::{ debug, error, warn };
+use serde::{Deserialize, Serialize};
+use std::time::Duration;
+use tracing::{debug, error, warn};
 
 /// Steam API response structures
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -223,8 +223,7 @@ impl Default for SteamService {
 impl SteamService {
     /// Create a new Steam service
     pub fn new() -> Self {
-        let client = reqwest::Client
-            ::builder()
+        let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(15))
             .user_agent("WhoisServer/1.0 Steam API Client")
             .build()
@@ -248,19 +247,19 @@ impl SteamService {
     pub async fn query_app_info(&self, app_id: u32) -> Result<String> {
         debug!("Querying Steam app info for ID: {}", app_id);
 
-        let url =
-            format!("https://store.steampowered.com/api/appdetails?appids={}&l=english", app_id);
+        let url = format!(
+            "https://store.steampowered.com/api/appdetails?appids={}&l=english",
+            app_id
+        );
 
         let response = self.client.get(&url).send().await?;
 
         if !response.status().is_success() {
-            return Ok(
-                format!(
-                    "Steam App Query Failed for ID: {}\nHTTP Status: {}\n",
-                    app_id,
-                    response.status()
-                )
-            );
+            return Ok(format!(
+                "Steam App Query Failed for ID: {}\nHTTP Status: {}\n",
+                app_id,
+                response.status()
+            ));
         }
 
         let text = response.text().await?;
@@ -271,51 +270,50 @@ impl SteamService {
         match parsed {
             Ok(json) => {
                 if let Some(app_data) = json.get(app_id.to_string()) {
-                    let app_details: Result<SteamAppDetails, _> = serde_json::from_value(
-                        app_data.clone()
-                    );
+                    let app_details: Result<SteamAppDetails, _> =
+                        serde_json::from_value(app_data.clone());
                     match app_details {
                         Ok(details) => {
                             if details.success {
                                 if let Some(data) = details.data {
                                     Ok(self.format_app_info(&data))
                                 } else {
-                                    Ok(
-                                        format!("Steam App Not Found for ID: {}\nThe application may not exist or may be private.\n", app_id)
-                                    )
+                                    Ok(format!(
+                                        "Steam App Not Found for ID: {}\nThe application may not exist or may be private.\n",
+                                        app_id
+                                    ))
                                 }
                             } else {
-                                Ok(
-                                    format!("Steam App Query Failed for ID: {}\nApplication data not available.\n", app_id)
-                                )
+                                Ok(format!(
+                                    "Steam App Query Failed for ID: {}\nApplication data not available.\n",
+                                    app_id
+                                ))
                             }
                         }
                         Err(e) => {
                             error!("Failed to parse Steam app data for {}: {}", app_id, e);
-                            Ok(
-                                format!(
-                                    "Steam App Query Failed for ID: {}\nData parsing error: {}\n",
-                                    app_id,
-                                    e
-                                )
-                            )
+                            Ok(format!(
+                                "Steam App Query Failed for ID: {}\nData parsing error: {}\n",
+                                app_id, e
+                            ))
                         }
                     }
                 } else {
-                    Ok(
-                        format!("Steam App Not Found for ID: {}\nNo data returned from Steam API.\n", app_id)
-                    )
+                    Ok(format!(
+                        "Steam App Not Found for ID: {}\nNo data returned from Steam API.\n",
+                        app_id
+                    ))
                 }
             }
             Err(e) => {
-                error!("Failed to parse Steam API response for app {}: {}", app_id, e);
-                Ok(
-                    format!(
-                        "Steam App Query Failed for ID: {}\nAPI response parsing error: {}\n",
-                        app_id,
-                        e
-                    )
-                )
+                error!(
+                    "Failed to parse Steam API response for app {}: {}",
+                    app_id, e
+                );
+                Ok(format!(
+                    "Steam App Query Failed for ID: {}\nAPI response parsing error: {}\n",
+                    app_id, e
+                ))
             }
         }
     }
@@ -327,20 +325,17 @@ impl SteamService {
         if let Some(api_key) = &self.api_key {
             let url = format!(
                 "https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key={}&steamids={}",
-                api_key,
-                steam_id
+                api_key, steam_id
             );
 
             let response = self.client.get(&url).send().await?;
 
             if !response.status().is_success() {
-                return Ok(
-                    format!(
-                        "Steam User Query Failed for ID: {}\nHTTP Status: {}\n",
-                        steam_id,
-                        response.status()
-                    )
-                );
+                return Ok(format!(
+                    "Steam User Query Failed for ID: {}\nHTTP Status: {}\n",
+                    steam_id,
+                    response.status()
+                ));
             }
 
             let user_response: Result<SteamUserResponse, _> = response.json().await;
@@ -350,29 +345,28 @@ impl SteamService {
                     if let Some(profile) = response.response.players.first() {
                         Ok(self.format_user_info(profile))
                     } else {
-                        Ok(
-                            format!("Steam User Not Found for ID: {}\nProfile may not exist or may be private.\n", steam_id)
-                        )
+                        Ok(format!(
+                            "Steam User Not Found for ID: {}\nProfile may not exist or may be private.\n",
+                            steam_id
+                        ))
                     }
                 }
                 Err(e) => {
                     error!("Failed to parse Steam user data for {}: {}", steam_id, e);
-                    Ok(
-                        format!(
-                            "Steam User Query Failed for ID: {}\nData parsing error: {}\n",
-                            steam_id,
-                            e
-                        )
-                    )
+                    Ok(format!(
+                        "Steam User Query Failed for ID: {}\nData parsing error: {}\n",
+                        steam_id, e
+                    ))
                 }
             }
         } else {
-            Ok(
-                format!("Steam User Query Failed for ID: {}\nSteam API key not configured.\n\
+            Ok(format!(
+                "Steam User Query Failed for ID: {}\nSteam API key not configured.\n\
                  To enable user profile queries, set the STEAM_API_KEY environment variable\n\
                  or add it to a .env file in the project root.\n\
-                 You can get an API key from: https://steamcommunity.com/dev/apikey\n", steam_id)
-            )
+                 You can get an API key from: https://steamcommunity.com/dev/apikey\n",
+                steam_id
+            ))
         }
     }
 
@@ -384,7 +378,10 @@ impl SteamService {
         match self.search_games_via_store_api(query, limit).await {
             Ok(results) => Ok(results),
             Err(store_error) => {
-                debug!("Store API search failed, trying app list fallback: {}", store_error);
+                debug!(
+                    "Store API search failed, trying app list fallback: {}",
+                    store_error
+                );
                 // Fallback to app list search
                 self.search_games_via_app_list(query, limit).await
             }
@@ -402,9 +399,10 @@ impl SteamService {
         let response = self.client.get(&url).send().await?;
 
         if !response.status().is_success() {
-            return Err(
-                anyhow::anyhow!("Steam store search API returned status: {}", response.status())
-            );
+            return Err(anyhow::anyhow!(
+                "Steam store search API returned status: {}",
+                response.status()
+            ));
         }
 
         let search_data: serde_json::Value = response.json().await?;
@@ -414,16 +412,11 @@ impl SteamService {
             let mut results = Vec::new();
 
             for item in items.iter().take(limit) {
-                if
-                    let (Some(id), Some(name)) = (
-                        item.get("id").and_then(|v| v.as_u64()),
-                        item.get("name").and_then(|v| v.as_str()),
-                    )
-                {
-                    let app_type = item
-                        .get("type")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("game");
+                if let (Some(id), Some(name)) = (
+                    item.get("id").and_then(|v| v.as_u64()),
+                    item.get("name").and_then(|v| v.as_str()),
+                ) {
+                    let app_type = item.get("type").and_then(|v| v.as_str()).unwrap_or("game");
                     let price_info = self.extract_price_info_from_search(item);
                     let platforms = self.extract_platforms_from_search(item);
                     let coming_soon = item
@@ -448,7 +441,9 @@ impl SteamService {
                 Ok(self.format_search_results(query, &results))
             }
         } else {
-            Err(anyhow::anyhow!("Invalid response format from Steam store search API"))
+            Err(anyhow::anyhow!(
+                "Invalid response format from Steam store search API"
+            ))
         }
     }
 
@@ -460,9 +455,10 @@ impl SteamService {
         let response = self.client.get(url).send().await?;
 
         if !response.status().is_success() {
-            return Err(
-                anyhow::anyhow!("Steam app list API returned status: {}", response.status())
-            );
+            return Err(anyhow::anyhow!(
+                "Steam app list API returned status: {}",
+                response.status()
+            ));
         }
 
         let app_list_response: SteamAppListResponse = response.json().await?;
@@ -500,14 +496,9 @@ impl SteamService {
             // Convert to the format expected by format_search_results
             let results: Vec<(u32, String, String, Option<String>, String, bool)> = matches
                 .into_iter()
-                .map(|(id, name, _score)| (
-                    id,
-                    name,
-                    "app".to_string(),
-                    None,
-                    "N/A".to_string(),
-                    false,
-                ))
+                .map(|(id, name, _score)| {
+                    (id, name, "app".to_string(), None, "N/A".to_string(), false)
+                })
                 .collect();
 
             Ok(self.format_search_results(query, &results))
@@ -520,25 +511,24 @@ impl SteamService {
             // Handle free games
             if let Some(currency) = price_obj.get("currency").and_then(|v| v.as_str())
                 && currency == "USD"
-                    && let Some(final_price) = price_obj.get("final").and_then(|v| v.as_u64())
-                        && final_price == 0 {
-                            return Some("Free".to_string());
-                        }
+                && let Some(final_price) = price_obj.get("final").and_then(|v| v.as_u64())
+                && final_price == 0
+            {
+                return Some("Free".to_string());
+            }
 
             // Handle priced games with potential discounts
-            if
-                let (
-                    Some(final_formatted),
-                    Some(initial),
-                    Some(final_price),
-                    Some(discount_percent),
-                ) = (
-                    price_obj.get("final_formatted").and_then(|v| v.as_str()),
-                    price_obj.get("initial").and_then(|v| v.as_u64()),
-                    price_obj.get("final").and_then(|v| v.as_u64()),
-                    price_obj.get("discount_percent").and_then(|v| v.as_u64()),
-                )
-            {
+            if let (
+                Some(final_formatted),
+                Some(initial),
+                Some(final_price),
+                Some(discount_percent),
+            ) = (
+                price_obj.get("final_formatted").and_then(|v| v.as_str()),
+                price_obj.get("initial").and_then(|v| v.as_u64()),
+                price_obj.get("final").and_then(|v| v.as_u64()),
+                price_obj.get("discount_percent").and_then(|v| v.as_u64()),
+            ) {
                 if discount_percent > 0 && initial > final_price {
                     // Has discount
                     return Some(format!("{} ({}%↓)", final_formatted, discount_percent));
@@ -546,10 +536,8 @@ impl SteamService {
                     // No discount
                     return Some(final_formatted.to_string());
                 }
-            } else if
-                let Some(final_formatted) = price_obj
-                    .get("final_formatted")
-                    .and_then(|v| v.as_str())
+            } else if let Some(final_formatted) =
+                price_obj.get("final_formatted").and_then(|v| v.as_str())
             {
                 // Simple price without discount info
                 return Some(final_formatted.to_string());
@@ -564,27 +552,24 @@ impl SteamService {
         let mut platforms = Vec::new();
 
         if let Some(platform_info) = item.get("platforms") {
-            if
-                platform_info
-                    .get("windows")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false)
+            if platform_info
+                .get("windows")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false)
             {
                 platforms.push("Windows");
             }
-            if
-                platform_info
-                    .get("mac")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false)
+            if platform_info
+                .get("mac")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false)
             {
                 platforms.push("macOS");
             }
-            if
-                platform_info
-                    .get("linux")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false)
+            if platform_info
+                .get("linux")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false)
             {
                 platforms.push("Linux");
             }
@@ -601,7 +586,7 @@ impl SteamService {
     fn format_search_results(
         &self,
         query: &str,
-        results: &[(u32, String, String, Option<String>, String, bool)]
+        results: &[(u32, String, String, Option<String>, String, bool)],
     ) -> String {
         let mut output = String::new();
 
@@ -610,9 +595,9 @@ impl SteamService {
         output.push('\n');
         output.push_str(&format!("Found {} games:\n\n", results.len()));
 
-        for (i, (app_id, name, app_type, price, platforms, coming_soon)) in results
-            .iter()
-            .enumerate() {
+        for (i, (app_id, name, app_type, price, platforms, coming_soon)) in
+            results.iter().enumerate()
+        {
             output.push_str(&format!("{}. Game Information\n", i + 1));
             output.push_str("-".repeat(25).as_str());
             output.push('\n');
@@ -631,18 +616,17 @@ impl SteamService {
                 output.push_str("status: Coming Soon\n");
             }
 
-            output.push_str(
-                &format!("steam-url: https://store.steampowered.com/app/{}/\n", app_id)
-            );
+            output.push_str(&format!(
+                "steam-url: https://store.steampowered.com/app/{}/\n",
+                app_id
+            ));
             output.push('\n');
         }
 
-        output.push_str(
-            &format!(
-                "% Use '{}-STEAM' to get detailed information for a specific game\n",
-                results[0].0
-            )
-        );
+        output.push_str(&format!(
+            "% Use '{}-STEAM' to get detailed information for a specific game\n",
+            results[0].0
+        ));
         output.push_str("% Search limited to top 10 results\n");
 
         output
@@ -652,7 +636,10 @@ impl SteamService {
     fn format_app_info(&self, app: &SteamAppData) -> String {
         let mut output = String::new();
 
-        output.push_str(&format!("Steam Application Information for ID: {}\n", app.steam_appid));
+        output.push_str(&format!(
+            "Steam Application Information for ID: {}\n",
+            app.steam_appid
+        ));
         output.push_str("=".repeat(60).as_str());
         output.push('\n');
 
@@ -662,14 +649,16 @@ impl SteamService {
         output.push_str(&format!("is-free: {}\n", app.is_free));
 
         if let Some(developers) = &app.developers
-            && !developers.is_empty() {
-                output.push_str(&format!("developers: {}\n", developers.join(", ")));
-            }
+            && !developers.is_empty()
+        {
+            output.push_str(&format!("developers: {}\n", developers.join(", ")));
+        }
 
         if let Some(publishers) = &app.publishers
-            && !publishers.is_empty() {
-                output.push_str(&format!("publishers: {}\n", publishers.join(", ")));
-            }
+            && !publishers.is_empty()
+        {
+            output.push_str(&format!("publishers: {}\n", publishers.join(", ")));
+        }
 
         if let Some(release_date) = &app.release_date {
             output.push_str(&format!("release-date: {}\n", release_date.date));
@@ -693,9 +682,10 @@ impl SteamService {
         if let Some(price) = &app.price_overview {
             if price.discount_percent > 0 {
                 // Has discount - show discounted price with percentage
-                output.push_str(
-                    &format!("price: {} ({}%↓)\n", price.final_formatted, price.discount_percent)
-                );
+                output.push_str(&format!(
+                    "price: {} ({}%↓)\n",
+                    price.final_formatted, price.discount_percent
+                ));
                 output.push_str(&format!("original-price: {}\n", price.initial_formatted));
             } else {
                 // No discount - show regular price
@@ -722,41 +712,41 @@ impl SteamService {
         }
 
         if let Some(genres) = &app.genres
-            && !genres.is_empty() {
-                let genre_names: Vec<&str> = genres
-                    .iter()
-                    .map(|g| g.description.as_str())
-                    .collect();
-                output.push_str(&format!("genres: {}\n", genre_names.join(", ")));
-            }
+            && !genres.is_empty()
+        {
+            let genre_names: Vec<&str> = genres.iter().map(|g| g.description.as_str()).collect();
+            output.push_str(&format!("genres: {}\n", genre_names.join(", ")));
+        }
 
         if let Some(categories) = &app.categories
-            && !categories.is_empty() {
-                let category_names: Vec<&str> = categories
-                    .iter()
-                    .map(|c| c.description.as_str())
-                    .collect();
-                output.push_str(&format!("categories: {}\n", category_names.join(", ")));
-            }
+            && !categories.is_empty()
+        {
+            let category_names: Vec<&str> =
+                categories.iter().map(|c| c.description.as_str()).collect();
+            output.push_str(&format!("categories: {}\n", category_names.join(", ")));
+        }
 
         if let Some(languages) = &app.supported_languages {
-            output.push_str(
-                &format!(
-                    "supported-languages: {}\n",
-                    languages.replace("<br>", ", ").replace("<strong>", "").replace("</strong>", "")
-                )
-            );
+            output.push_str(&format!(
+                "supported-languages: {}\n",
+                languages
+                    .replace("<br>", ", ")
+                    .replace("<strong>", "")
+                    .replace("</strong>", "")
+            ));
         }
 
         if let Some(description) = &app.short_description {
-            output.push_str(
-                &format!("description: {}\n", description.replace("\r\n", " ").replace('\n', " "))
-            );
+            output.push_str(&format!(
+                "description: {}\n",
+                description.replace("\r\n", " ").replace('\n', " ")
+            ));
         }
 
-        output.push_str(
-            &format!("steam-url: https://store.steampowered.com/app/{}/\n", app.steam_appid)
-        );
+        output.push_str(&format!(
+            "steam-url: https://store.steampowered.com/app/{}/\n",
+            app.steam_appid
+        ));
 
         output
     }
@@ -765,7 +755,10 @@ impl SteamService {
     fn format_user_info(&self, profile: &SteamUserProfile) -> String {
         let mut output = String::new();
 
-        output.push_str(&format!("Steam User Profile Information for ID: {}\n", profile.steamid));
+        output.push_str(&format!(
+            "Steam User Profile Information for ID: {}\n",
+            profile.steamid
+        ));
         output.push_str("=".repeat(60).as_str());
         output.push('\n');
 
@@ -809,9 +802,11 @@ impl SteamService {
 
         if let Some(created) = profile.timecreated {
             let datetime = chrono::DateTime::from_timestamp(created as i64, 0).unwrap_or_default();
-            output.push_str(
-                &format!("created: {} ({})\n", datetime.format("%Y-%m-%d %H:%M:%S UTC"), created)
-            );
+            output.push_str(&format!(
+                "created: {} ({})\n",
+                datetime.format("%Y-%m-%d %H:%M:%S UTC"),
+                created
+            ));
         }
 
         if let Some(country) = &profile.loccountrycode {
@@ -900,9 +895,10 @@ pub async fn process_steam_query(query: &str) -> Result<String> {
         steam_service.query_user_info(&steam_query).await
     } else {
         error!("Invalid Steam query format: {}", query);
-        Ok(
-            format!("Invalid Steam query format. Use: <app_id>-STEAM or <steam_id>-STEAM\nQuery: {}\n", query)
-        )
+        Ok(format!(
+            "Invalid Steam query format. Use: <app_id>-STEAM or <steam_id>-STEAM\nQuery: {}\n",
+            query
+        ))
     }
 }
 
@@ -923,9 +919,10 @@ pub async fn process_steam_search_query(query: &str) -> Result<String> {
         steam_service.search_games(&search_query, 10).await
     } else {
         error!("Invalid Steam search query format: {}", query);
-        Ok(
-            format!("Invalid Steam search query format. Use: <search_term>-STEAMSEARCH\nExample: Counter-Strike-STEAMSEARCH\nQuery: {}\n", query)
-        )
+        Ok(format!(
+            "Invalid Steam search query format. Use: <search_term>-STEAMSEARCH\nExample: Counter-Strike-STEAMSEARCH\nQuery: {}\n",
+            query
+        ))
     }
 }
 
@@ -946,18 +943,25 @@ mod tests {
 
     #[test]
     fn test_steam_search_query_detection() {
-        assert!(SteamService::is_steam_search_query("Counter-Strike-STEAMSEARCH"));
+        assert!(SteamService::is_steam_search_query(
+            "Counter-Strike-STEAMSEARCH"
+        ));
         assert!(SteamService::is_steam_search_query("dota-STEAMSEARCH"));
         assert!(SteamService::is_steam_search_query("Half Life-STEAMSEARCH"));
 
         assert!(!SteamService::is_steam_search_query("Counter-Strike"));
         assert!(!SteamService::is_steam_search_query("Counter-Strike-STEAM"));
-        assert!(!SteamService::is_steam_search_query("STEAMSEARCH-Counter-Strike"));
+        assert!(!SteamService::is_steam_search_query(
+            "STEAMSEARCH-Counter-Strike"
+        ));
     }
 
     #[test]
     fn test_steam_query_parsing() {
-        assert_eq!(SteamService::parse_steam_query("730-STEAM"), Some("730".to_string()));
+        assert_eq!(
+            SteamService::parse_steam_query("730-STEAM"),
+            Some("730".to_string())
+        );
 
         assert_eq!(
             SteamService::parse_steam_query("76561198000000000-STEAM"),
@@ -979,7 +983,10 @@ mod tests {
             Some("dota".to_string())
         );
 
-        assert_eq!(SteamService::parse_steam_search_query("Counter-Strike"), None);
+        assert_eq!(
+            SteamService::parse_steam_search_query("Counter-Strike"),
+            None
+        );
     }
 
     #[test]

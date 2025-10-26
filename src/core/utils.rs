@@ -1,6 +1,6 @@
 use std::fs::File;
 use std::io::Write;
-use tracing::{ debug, error };
+use tracing::{debug, error};
 
 // Helper function to dump content to a file
 pub fn dump_to_file(filename: &str, content: &str) {

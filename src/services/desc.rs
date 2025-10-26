@@ -1,9 +1,9 @@
 use anyhow::Result;
 use tracing::debug;
 
-use crate::services::query_with_iana_referral;
+use crate::core::{QueryType, analyze_query};
 use crate::dn42::process_dn42_query_managed;
-use crate::core::{ analyze_query, QueryType };
+use crate::services::query_with_iana_referral;
 
 /// Process description-only queries ending with -DESC
 pub async fn process_desc_query(base_query: &str) -> Result<String> {
@@ -11,20 +11,25 @@ pub async fn process_desc_query(base_query: &str) -> Result<String> {
 
     // Determine what type of query this is without the -DESC suffix
     let query_type = analyze_query(base_query);
-    
+
     // Get the raw WHOIS response based on query type
     let raw_response = match query_type {
         QueryType::Domain(_) | QueryType::IPv4(_) | QueryType::IPv6(_) | QueryType::ASN(_) => {
             // Try public WHOIS first
             match query_with_iana_referral(base_query).await {
-                Ok(response) if !response.trim().is_empty() && 
-                               !response.contains("No entries found") && 
-                               !response.contains("Not found") => {
+                Ok(response)
+                    if !response.trim().is_empty()
+                        && !response.contains("No entries found")
+                        && !response.contains("Not found") =>
+                {
                     response
                 }
                 _ => {
                     // Fall back to DN42 if public query fails
-                    debug!("Public query failed or returned no results, trying DN42 for: {}", base_query);
+                    debug!(
+                        "Public query failed or returned no results, trying DN42 for: {}",
+                        base_query
+                    );
                     process_dn42_query_managed(base_query).await?
                 }
             }
@@ -32,9 +37,11 @@ pub async fn process_desc_query(base_query: &str) -> Result<String> {
         QueryType::Unknown(_) => {
             // For unknown types, try public first, then DN42
             match query_with_iana_referral(base_query).await {
-                Ok(response) if !response.trim().is_empty() && 
-                               !response.contains("No entries found") && 
-                               !response.contains("Not found") => {
+                Ok(response)
+                    if !response.trim().is_empty()
+                        && !response.contains("No entries found")
+                        && !response.contains("Not found") =>
+                {
                     response
                 }
                 _ => {
@@ -54,7 +61,7 @@ pub async fn process_desc_query(base_query: &str) -> Result<String> {
 
     // Extract descr and remarks fields from the response while preserving order
     let desc_remarks = extract_desc_and_remarks(&raw_response);
-    
+
     // Format the response
     format_desc_response(base_query, &desc_remarks)
 }
@@ -106,7 +113,7 @@ fn extract_desc_and_remarks(response: &str) -> Vec<DescField> {
 fn extract_field_value(line: &str, field_name: &str) -> Option<String> {
     let line_lower = line.to_lowercase();
     let field_lower = field_name.to_lowercase();
-    
+
     if line_lower.starts_with(&field_lower) {
         // Find the colon
         if let Some(colon_pos) = line.find(':') {
@@ -129,13 +136,19 @@ fn format_desc_response(query: &str, fields: &[DescField]) -> Result<String> {
     }
 
     let mut response = format!("% Description Query Results for: {}\n", query);
-    
+
     // Count by field type
-    let descr_count = fields.iter().filter(|f| f.field_type == "descr" || f.field_type == "description").count();
+    let descr_count = fields
+        .iter()
+        .filter(|f| f.field_type == "descr" || f.field_type == "description")
+        .count();
     let remarks_count = fields.iter().filter(|f| f.field_type == "remarks").count();
-    
+
     if descr_count > 0 && remarks_count > 0 {
-        response.push_str(&format!("% {} description(s) and {} remarks found\n\n", descr_count, remarks_count));
+        response.push_str(&format!(
+            "% {} description(s) and {} remarks found\n\n",
+            descr_count, remarks_count
+        ));
     } else if descr_count > 0 {
         response.push_str(&format!("% {} description(s) found\n\n", descr_count));
     } else {
@@ -144,12 +157,19 @@ fn format_desc_response(query: &str, fields: &[DescField]) -> Result<String> {
 
     // Add each field in original order, preserving the exact field name from the original response
     for field in fields {
-        response.push_str(&format!("{}:             {}\n", field.field_type, field.value));
+        response.push_str(&format!(
+            "{}:             {}\n",
+            field.field_type, field.value
+        ));
     }
 
     // Add a summary line
-    response.push_str(&format!("\n% Total fields: {} (descriptions: {}, remarks: {})\n", 
-                              fields.len(), descr_count, remarks_count));
+    response.push_str(&format!(
+        "\n% Total fields: {} (descriptions: {}, remarks: {})\n",
+        fields.len(),
+        descr_count,
+        remarks_count
+    ));
 
     Ok(response)
 }
@@ -178,7 +198,7 @@ source:         DN42
         println!("Extracted fields: {:?}", fields);
 
         assert_eq!(fields.len(), 5);
-        
+
         // Check order is preserved
         assert_eq!(fields[0].field_type, "descr");
         assert_eq!(fields[0].value, "Test Autonomous System");
@@ -215,9 +235,18 @@ source:         DN42
     #[test]
     fn test_format_desc_response() {
         let fields = vec![
-            DescField { field_type: "descr".to_string(), value: "Test Autonomous System".to_string() },
-            DescField { field_type: "remarks".to_string(), value: "This is a test ASN".to_string() },
-            DescField { field_type: "descr".to_string(), value: "Example AS for testing".to_string() },
+            DescField {
+                field_type: "descr".to_string(),
+                value: "Test Autonomous System".to_string(),
+            },
+            DescField {
+                field_type: "remarks".to_string(),
+                value: "This is a test ASN".to_string(),
+            },
+            DescField {
+                field_type: "descr".to_string(),
+                value: "Example AS for testing".to_string(),
+            },
         ];
 
         let response = format_desc_response("AS64512", &fields).unwrap();
@@ -233,9 +262,10 @@ source:         DN42
 
     #[test]
     fn test_format_single_desc_response() {
-        let fields = vec![
-            DescField { field_type: "descr".to_string(), value: "Single description".to_string() }
-        ];
+        let fields = vec![DescField {
+            field_type: "descr".to_string(),
+            value: "Single description".to_string(),
+        }];
 
         let response = format_desc_response("example.com", &fields).unwrap();
         println!("Single description response:\n{}", response);

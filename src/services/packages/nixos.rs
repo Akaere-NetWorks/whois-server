@@ -16,10 +16,10 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-use anyhow::{ Context, Result };
+use anyhow::{Context, Result};
 use reqwest;
-use serde::{ Deserialize, Serialize };
-use tracing::{ debug, error };
+use serde::{Deserialize, Serialize};
+use tracing::{debug, error};
 
 const NIXOS_SEARCH_API: &str = "https://search.nixos.org/packages";
 const NIXOS_SEARCH_URL: &str = "https://search.nixos.org/packages?query=";
@@ -107,15 +107,20 @@ async fn query_nixos_packages(package_name: &str) -> Result<NixOSSearchResponse>
 
     let response = client
         .get(&search_url)
-        .send().await
+        .send()
+        .await
         .context("Failed to send request to NixOS search page")?;
 
     if !response.status().is_success() {
-        return Err(anyhow::anyhow!("NixOS search page returned status: {}", response.status()));
+        return Err(anyhow::anyhow!(
+            "NixOS search page returned status: {}",
+            response.status()
+        ));
     }
 
     let html_content = response
-        .text().await
+        .text()
+        .await
         .context("Failed to get HTML content from NixOS search page")?;
 
     parse_nixos_html(&html_content, package_name)
@@ -292,9 +297,10 @@ fn format_nixos_response(packages: &[NixOSPackage], query: &str) -> String {
         }
 
         if let Some(homepage) = &package.package_homepage
-            && !homepage.is_empty() {
-                output.push_str(&format!("homepage: {}\n", homepage[0]));
-            }
+            && !homepage.is_empty()
+        {
+            output.push_str(&format!("homepage: {}\n", homepage[0]));
+        }
 
         if let Some(position) = &package.package_position {
             output.push_str(&format!("nixpkgs-position: {}\n", position));
@@ -304,13 +310,11 @@ fn format_nixos_response(packages: &[NixOSPackage], query: &str) -> String {
             output.push_str(&format!("outputs: {}\n", outputs.join(", ")));
         }
 
-        output.push_str(
-            &format!(
-                "nixos-url: {}{}\n",
-                NIXOS_SEARCH_URL,
-                urlencoding::encode(&package.package_pname)
-            )
-        );
+        output.push_str(&format!(
+            "nixos-url: {}{}\n",
+            NIXOS_SEARCH_URL,
+            urlencoding::encode(&package.package_pname)
+        ));
     }
 
     output.push_str("repository: NixOS\n");

@@ -16,10 +16,10 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-use std::time::Duration;
 use anyhow::Result;
-use serde::{ Deserialize, Serialize };
-use tracing::{ debug, error, warn };
+use serde::{Deserialize, Serialize};
+use std::time::Duration;
+use tracing::{debug, error, warn};
 
 /// IMDb API response structures for movie/TV show information
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -137,8 +137,7 @@ impl Default for ImdbService {
 impl ImdbService {
     /// Create a new IMDb service
     pub fn new() -> Self {
-        let client = reqwest::Client
-            ::builder()
+        let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(15))
             .user_agent("WhoisServer/1.0 IMDb API Client")
             .build()
@@ -173,20 +172,17 @@ impl ImdbService {
 
             let url = format!(
                 "http://www.omdbapi.com/?{}&apikey={}&plot=full",
-                search_param,
-                api_key
+                search_param, api_key
             );
 
             let response = self.client.get(&url).send().await?;
 
             if !response.status().is_success() {
-                return Ok(
-                    format!(
-                        "IMDb Query Failed for: {}\nHTTP Status: {}\n",
-                        query,
-                        response.status()
-                    )
-                );
+                return Ok(format!(
+                    "IMDb Query Failed for: {}\nHTTP Status: {}\n",
+                    query,
+                    response.status()
+                ));
             }
 
             let imdb_data: ImdbResponse = response.json().await?;
@@ -196,7 +192,10 @@ impl ImdbService {
             } else {
                 // If direct lookup failed and it's not an IMDb ID, try search
                 if !query.starts_with("tt") {
-                    debug!("Direct lookup failed for '{}', attempting fuzzy search", query);
+                    debug!(
+                        "Direct lookup failed for '{}', attempting fuzzy search",
+                        query
+                    );
                     match self.search_and_get_first_result(query).await {
                         Ok(result) => {
                             debug!("Search successful for '{}'", query);
@@ -205,36 +204,35 @@ impl ImdbService {
                         Err(search_err) => {
                             debug!("Search also failed for '{}': {}", query, search_err);
                             // Try alternative search approaches for non-English titles
-                            Ok(
-                                format!(
-                                    "IMDb Information Not Found for: {}\n{}\n\
+                            Ok(format!(
+                                "IMDb Information Not Found for: {}\n{}\n\
                                 Note: For non-English titles, try using the English title or IMDb ID (e.g., tt1234567-IMDB)\n\
                                 Use '<title>-IMDBSEARCH' for broader search results.\n",
-                                    query,
-                                    imdb_data.error.unwrap_or_else(||
-                                        "Movie not found!".to_string()
-                                    )
-                                )
-                            )
+                                query,
+                                imdb_data
+                                    .error
+                                    .unwrap_or_else(|| "Movie not found!".to_string())
+                            ))
                         }
                     }
                 } else {
-                    Ok(
-                        format!(
-                            "IMDb Information Not Found for: {}\n{}\n",
-                            query,
-                            imdb_data.error.unwrap_or_else(|| "Movie not found!".to_string())
-                        )
-                    )
+                    Ok(format!(
+                        "IMDb Information Not Found for: {}\n{}\n",
+                        query,
+                        imdb_data
+                            .error
+                            .unwrap_or_else(|| "Movie not found!".to_string())
+                    ))
                 }
             }
         } else {
-            Ok(
-                format!("IMDb Query Failed for: {}\nOMDB API key not configured.\n\
+            Ok(format!(
+                "IMDb Query Failed for: {}\nOMDB API key not configured.\n\
                  To enable IMDb queries, set the OMDB_API_KEY environment variable\n\
                  or add it to a .env file in the project root.\n\
-                 You can get a free API key from: http://www.omdbapi.com/apikey.aspx\n", query)
-            )
+                 You can get a free API key from: http://www.omdbapi.com/apikey.aspx\n",
+                query
+            ))
         }
     }
 
@@ -252,21 +250,25 @@ impl ImdbService {
             let response = self.client.get(&url).send().await?;
 
             if !response.status().is_success() {
-                return Err(anyhow::anyhow!("Search request failed: {}", response.status()));
+                return Err(anyhow::anyhow!(
+                    "Search request failed: {}",
+                    response.status()
+                ));
             }
 
             let search_data: ImdbSearchResponse = response.json().await?;
 
             if search_data.response == "True"
                 && let Some(results) = search_data.search
-                    && let Some(first_result) = results.first() {
-                        // Get detailed info for the first search result using direct API call
-                        debug!(
-                            "Found search result, getting details for: {}",
-                            first_result.imdb_id
-                        );
-                        return self.get_movie_details_by_id(&first_result.imdb_id).await;
-                    }
+                && let Some(first_result) = results.first()
+            {
+                // Get detailed info for the first search result using direct API call
+                debug!(
+                    "Found search result, getting details for: {}",
+                    first_result.imdb_id
+                );
+                return self.get_movie_details_by_id(&first_result.imdb_id).await;
+            }
 
             Err(anyhow::anyhow!("No search results found"))
         } else {
@@ -279,7 +281,10 @@ impl ImdbService {
         debug!("Getting movie details for ID: {}", imdb_id);
 
         if let Some(api_key) = &self.api_key {
-            let url = format!("http://www.omdbapi.com/?i={}&apikey={}&plot=full", imdb_id, api_key);
+            let url = format!(
+                "http://www.omdbapi.com/?i={}&apikey={}&plot=full",
+                imdb_id, api_key
+            );
 
             let response = self.client.get(&url).send().await?;
 
@@ -292,12 +297,12 @@ impl ImdbService {
             if imdb_data.response == "True" {
                 Ok(self.format_imdb_info(&imdb_data))
             } else {
-                Err(
-                    anyhow::anyhow!(
-                        "Movie details not found: {}",
-                        imdb_data.error.unwrap_or_else(|| "Unknown error".to_string())
-                    )
-                )
+                Err(anyhow::anyhow!(
+                    "Movie details not found: {}",
+                    imdb_data
+                        .error
+                        .unwrap_or_else(|| "Unknown error".to_string())
+                ))
             }
         } else {
             Err(anyhow::anyhow!("No API key configured"))
@@ -318,43 +323,40 @@ impl ImdbService {
             let response = self.client.get(&url).send().await?;
 
             if !response.status().is_success() {
-                return Ok(
-                    format!(
-                        "IMDb Search Failed for: {}\nHTTP Status: {}\n",
-                        query,
-                        response.status()
-                    )
-                );
+                return Ok(format!(
+                    "IMDb Search Failed for: {}\nHTTP Status: {}\n",
+                    query,
+                    response.status()
+                ));
             }
 
             let search_data: ImdbSearchResponse = response.json().await?;
 
             if search_data.response == "True" {
                 if let Some(results) = search_data.search {
-                    let limited_results: Vec<&ImdbSearchResult> = results
-                        .iter()
-                        .take(limit)
-                        .collect();
+                    let limited_results: Vec<&ImdbSearchResult> =
+                        results.iter().take(limit).collect();
                     Ok(self.format_search_results(query, &limited_results))
                 } else {
                     Ok(format!("No IMDb search results found for: {}\n", query))
                 }
             } else {
-                Ok(
-                    format!(
-                        "IMDb Search Failed for: {}\n{}\n",
-                        query,
-                        search_data.error.unwrap_or_else(|| "Unknown error".to_string())
-                    )
-                )
+                Ok(format!(
+                    "IMDb Search Failed for: {}\n{}\n",
+                    query,
+                    search_data
+                        .error
+                        .unwrap_or_else(|| "Unknown error".to_string())
+                ))
             }
         } else {
-            Ok(
-                format!("IMDb Search Failed for: {}\nOMDB API key not configured.\n\
+            Ok(format!(
+                "IMDb Search Failed for: {}\nOMDB API key not configured.\n\
                  To enable IMDb searches, set the OMDB_API_KEY environment variable\n\
                  or add it to a .env file in the project root.\n\
-                 You can get a free API key from: http://www.omdbapi.com/apikey.aspx\n", query)
-            )
+                 You can get a free API key from: http://www.omdbapi.com/apikey.aspx\n",
+                query
+            ))
         }
     }
 
@@ -436,13 +438,11 @@ impl ImdbService {
 
         if let Some(ratings) = &imdb.ratings {
             for rating in ratings {
-                output.push_str(
-                    &format!(
-                        "rating-{}: {}\n",
-                        rating.source.to_lowercase().replace(' ', "-"),
-                        rating.value
-                    )
-                );
+                output.push_str(&format!(
+                    "rating-{}: {}\n",
+                    rating.source.to_lowercase().replace(' ', "-"),
+                    rating.value
+                ));
             }
         }
 
@@ -451,33 +451,41 @@ impl ImdbService {
         }
 
         if let Some(awards) = &imdb.awards
-            && awards != "N/A" {
-                output.push_str(&format!("awards: {}\n", awards));
-            }
+            && awards != "N/A"
+        {
+            output.push_str(&format!("awards: {}\n", awards));
+        }
 
         if let Some(production) = &imdb.production
-            && production != "N/A" {
-                output.push_str(&format!("production: {}\n", production));
-            }
+            && production != "N/A"
+        {
+            output.push_str(&format!("production: {}\n", production));
+        }
 
         if let Some(website) = &imdb.website
-            && website != "N/A" {
-                output.push_str(&format!("website: {}\n", website));
-            }
+            && website != "N/A"
+        {
+            output.push_str(&format!("website: {}\n", website));
+        }
 
         if let Some(total_seasons) = &imdb.total_seasons {
             output.push_str(&format!("total-seasons: {}\n", total_seasons));
         }
 
         if let Some(plot) = &imdb.plot
-            && plot != "N/A" {
-                output.push_str(
-                    &format!("plot: {}\n", plot.replace("\r\n", " ").replace('\n', " "))
-                );
-            }
+            && plot != "N/A"
+        {
+            output.push_str(&format!(
+                "plot: {}\n",
+                plot.replace("\r\n", " ").replace('\n', " ")
+            ));
+        }
 
         if let Some(imdb_id) = &imdb.imdb_id {
-            output.push_str(&format!("imdb-url: https://www.imdb.com/title/{}/\n", imdb_id));
+            output.push_str(&format!(
+                "imdb-url: https://www.imdb.com/title/{}/\n",
+                imdb_id
+            ));
         }
 
         output
@@ -501,16 +509,17 @@ impl ImdbService {
             output.push_str(&format!("title: {}\n", result.title));
             output.push_str(&format!("year: {}\n", result.year));
             output.push_str(&format!("type: {}\n", result.content_type));
-            output.push_str(&format!("imdb-url: https://www.imdb.com/title/{}/\n", result.imdb_id));
+            output.push_str(&format!(
+                "imdb-url: https://www.imdb.com/title/{}/\n",
+                result.imdb_id
+            ));
             output.push('\n');
         }
 
-        output.push_str(
-            &format!(
-                "% Use '{}-IMDB' to get detailed information for a specific title\n",
-                results[0].imdb_id
-            )
-        );
+        output.push_str(&format!(
+            "% Use '{}-IMDB' to get detailed information for a specific title\n",
+            results[0].imdb_id
+        ));
         output.push_str("% Search limited to top 10 results\n");
 
         output
@@ -556,9 +565,10 @@ pub async fn process_imdb_query(query: &str) -> Result<String> {
         imdb_service.query_imdb_info(&imdb_query).await
     } else {
         error!("Invalid IMDb query format: {}", query);
-        Ok(
-            format!("Invalid IMDb query format. Use: <title_or_imdb_id>-IMDB\nExample: Inception-IMDB or tt1375666-IMDB\nQuery: {}\n", query)
-        )
+        Ok(format!(
+            "Invalid IMDb query format. Use: <title_or_imdb_id>-IMDB\nExample: Inception-IMDB or tt1375666-IMDB\nQuery: {}\n",
+            query
+        ))
     }
 }
 
@@ -579,9 +589,10 @@ pub async fn process_imdb_search_query(query: &str) -> Result<String> {
         imdb_service.search_imdb(&search_query, 10).await
     } else {
         error!("Invalid IMDb search query format: {}", query);
-        Ok(
-            format!("Invalid IMDb search query format. Use: <search_term>-IMDBSEARCH\nExample: Batman-IMDBSEARCH\nQuery: {}\n", query)
-        )
+        Ok(format!(
+            "Invalid IMDb search query format. Use: <search_term>-IMDBSEARCH\nExample: Batman-IMDBSEARCH\nQuery: {}\n",
+            query
+        ))
     }
 }
 
@@ -613,9 +624,15 @@ mod tests {
 
     #[test]
     fn test_imdb_query_parsing() {
-        assert_eq!(ImdbService::parse_imdb_query("Inception-IMDB"), Some("Inception".to_string()));
+        assert_eq!(
+            ImdbService::parse_imdb_query("Inception-IMDB"),
+            Some("Inception".to_string())
+        );
 
-        assert_eq!(ImdbService::parse_imdb_query("tt1375666-IMDB"), Some("tt1375666".to_string()));
+        assert_eq!(
+            ImdbService::parse_imdb_query("tt1375666-IMDB"),
+            Some("tt1375666".to_string())
+        );
 
         assert_eq!(ImdbService::parse_imdb_query("Inception"), None);
     }

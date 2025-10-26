@@ -1,8 +1,8 @@
 use anyhow::Result;
 use tracing::debug;
 
-use crate::config::DEFAULT_WHOIS_PORT;
 use super::whois::query_whois;
+use crate::config::DEFAULT_WHOIS_PORT;
 
 // BGP Tools WHOIS server
 const BGPTOOLS_WHOIS_SERVER: &str = "bgp.tools";

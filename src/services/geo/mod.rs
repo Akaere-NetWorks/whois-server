@@ -1,26 +1,22 @@
 // Sub-modules
-pub mod types;
-pub mod constants;
-pub mod utils;
-pub mod ripe_api;
-pub mod ipinfo_api;
-pub mod ipapi;
 pub mod bilibili;
-pub mod meituan;
+pub mod constants;
 pub mod formatters;
+pub mod ipapi;
+pub mod ipinfo_api;
+pub mod meituan;
+pub mod ripe_api;
 pub mod services;
+pub mod types;
+pub mod utils;
 
 // Re-export public API
-pub use services::{
-    process_geo_query,
-    process_rir_geo_query,
-    process_prefixes_query,
-};
+pub use services::{process_geo_query, process_prefixes_query, process_rir_geo_query};
 
 #[cfg(test)]
 mod tests {
     use super::formatters::format_rir_geo_response;
-    use super::types::{ RirGeoResponse, RirGeoData, RirGeoResource, RirGeoParameters };
+    use super::types::{RirGeoData, RirGeoParameters, RirGeoResource, RirGeoResponse};
 
     #[test]
     fn test_format_rir_geo_response_empty() {
@@ -51,12 +47,10 @@ mod tests {
     fn test_format_rir_geo_response_with_data() {
         let response = RirGeoResponse {
             data: Some(RirGeoData {
-                located_resources: Some(
-                    vec![RirGeoResource {
-                        resource: "2001:67c:2e8::/48".to_string(),
-                        location: "NL".to_string(),
-                    }]
-                ),
+                located_resources: Some(vec![RirGeoResource {
+                    resource: "2001:67c:2e8::/48".to_string(),
+                    location: "NL".to_string(),
+                }]),
                 result_time: "2025-06-07T00:00:00".to_string(),
                 parameters: RirGeoParameters {
                     resource: "2001:67c:2e8::/48".to_string(),

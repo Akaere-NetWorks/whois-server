@@ -16,14 +16,14 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+use chrono::{Duration as ChronoDuration, Utc};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::sync::Arc;
-use tokio::sync::RwLock;
-use chrono::{ Utc, Duration as ChronoDuration };
-use serde::{ Deserialize, Serialize };
 use std::path::Path;
+use std::sync::Arc;
 use tokio::fs;
-use tracing::{ info, error };
+use tokio::sync::RwLock;
+use tracing::{error, info};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DailyStats {
@@ -31,15 +31,13 @@ pub struct DailyStats {
     pub bytes_served: u64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct TotalStats {
     pub total_requests: u64,
     pub total_bytes_served: u64,
     pub daily_stats: HashMap<String, DailyStats>, // Date in YYYY-MM-DD format
     pub hourly_stats: HashMap<String, DailyStats>, // DateTime in YYYY-MM-DD HH format
 }
-
 
 pub type StatsState = Arc<RwLock<TotalStats>>;
 
@@ -70,8 +68,12 @@ async fn save_stats_to_file(stats: &TotalStats) -> Result<(), Box<dyn std::error
 
 async fn cleanup_old_stats(stats: &mut TotalStats) {
     let now = Utc::now();
-    let one_month_ago = (now - ChronoDuration::days(31)).format("%Y-%m-%d").to_string();
-    let one_day_ago = (now - ChronoDuration::hours(25)).format("%Y-%m-%d %H").to_string();
+    let one_month_ago = (now - ChronoDuration::days(31))
+        .format("%Y-%m-%d")
+        .to_string();
+    let one_day_ago = (now - ChronoDuration::hours(25))
+        .format("%Y-%m-%d %H")
+        .to_string();
 
     // Clean up old daily stats (older than 31 days)
     let mut daily_to_remove = Vec::new();
@@ -82,7 +84,10 @@ async fn cleanup_old_stats(stats: &mut TotalStats) {
     }
 
     if !daily_to_remove.is_empty() {
-        info!("Cleaning up {} old daily stats entries", daily_to_remove.len());
+        info!(
+            "Cleaning up {} old daily stats entries",
+            daily_to_remove.len()
+        );
         for date in daily_to_remove {
             stats.daily_stats.remove(&date);
         }
@@ -97,7 +102,10 @@ async fn cleanup_old_stats(stats: &mut TotalStats) {
     }
 
     if !hourly_to_remove.is_empty() {
-        info!("Cleaning up {} old hourly stats entries", hourly_to_remove.len());
+        info!(
+            "Cleaning up {} old hourly stats entries",
+            hourly_to_remove.len()
+        );
         for datetime in hourly_to_remove {
             stats.hourly_stats.remove(&datetime);
         }
@@ -124,10 +132,13 @@ pub async fn record_request(stats: &StatsState, response_size: usize) {
     daily_stats.bytes_served += response_size as u64;
 
     // Update hourly stats
-    let hourly_stats = stats_guard.hourly_stats.entry(current_hour).or_insert(DailyStats {
-        requests: 0,
-        bytes_served: 0,
-    });
+    let hourly_stats = stats_guard
+        .hourly_stats
+        .entry(current_hour)
+        .or_insert(DailyStats {
+            requests: 0,
+            bytes_served: 0,
+        });
 
     hourly_stats.requests += 1;
     hourly_stats.bytes_served += response_size as u64;
@@ -191,7 +202,9 @@ pub async fn get_stats_response(stats: &StatsState) -> StatsResponse {
     // Generate last 30 days (using daily data, ensure today is included)
     let mut daily_30d = Vec::new();
     for i in 0..30 {
-        let date = (now - ChronoDuration::days(29 - i)).format("%Y-%m-%d").to_string();
+        let date = (now - ChronoDuration::days(29 - i))
+            .format("%Y-%m-%d")
+            .to_string();
         let daily_stat = stats_data.daily_stats.get(&date);
         daily_30d.push(DailyStatsEntry {
             date: date.clone(),

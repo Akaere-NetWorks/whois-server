@@ -16,9 +16,9 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+use anyhow::Result;
 use reqwest::Client;
 use serde::Deserialize;
-use anyhow::Result;
 
 #[allow(dead_code)]
 #[derive(Debug, Deserialize)]
@@ -126,15 +126,13 @@ struct SearchHit {
 }
 
 pub async fn query_modrinth(package_name: &str) -> Result<String> {
-    let client = Client::builder()
-        .user_agent("Akaere-WHOIS/0.2.0")
-        .build()?;
+    let client = Client::builder().user_agent("Akaere-WHOIS/0.2.0").build()?;
 
     // 先尝试直接通过 slug/ID 获取项目
     let project_url = format!("https://api.modrinth.com/v2/project/{}", package_name);
-    
+
     let project_result = client.get(&project_url).send().await;
-    
+
     let result = if let Ok(response) = project_result {
         if response.status().is_success() {
             let project: ModrinthProject = response.json().await?;
@@ -158,7 +156,7 @@ async fn search_modrinth(client: &Client, query: &str) -> Result<String> {
     );
 
     let response = client.get(&search_url).send().await?;
-    
+
     if !response.status().is_success() {
         return Ok(format!("% Modrinth query failed: {}", response.status()));
     }
@@ -183,23 +181,32 @@ async fn search_modrinth(client: &Client, query: &str) -> Result<String> {
         output.push_str(&format!("author:               {}\n", hit.author));
         output.push_str(&format!("downloads:            {}\n", hit.downloads));
         output.push_str(&format!("followers:            {}\n", hit.follows));
-        output.push_str(&format!("categories:           {}\n", hit.categories.join(", ")));
+        output.push_str(&format!(
+            "categories:           {}\n",
+            hit.categories.join(", ")
+        ));
         output.push_str(&format!("client-side:          {}\n", hit.client_side));
         output.push_str(&format!("server-side:          {}\n", hit.server_side));
         output.push_str(&format!("license:              {}\n", hit.license));
-        
+
         if !hit.versions.is_empty() {
-            output.push_str(&format!("mc-versions:          {} versions available\n", hit.versions.len()));
+            output.push_str(&format!(
+                "mc-versions:          {} versions available\n",
+                hit.versions.len()
+            ));
         }
-        
+
         if let Some(icon) = &hit.icon_url {
             output.push_str(&format!("icon-url:             {}\n", icon));
         }
-        
+
         output.push_str(&format!("created:              {}\n", hit.date_created));
         output.push_str(&format!("updated:              {}\n", hit.date_modified));
-        output.push_str(&format!("modrinth-url:         https://modrinth.com/mod/{}\n", hit.slug));
-        
+        output.push_str(&format!(
+            "modrinth-url:         https://modrinth.com/mod/{}\n",
+            hit.slug
+        ));
+
         if i < search_result.hits.len() - 1 {
             output.push_str("% \n");
         }
@@ -215,27 +222,43 @@ fn format_project_info(project: &ModrinthProject) -> String {
 
     // 标题和基本信息
     output.push_str("% ======================================================================\n");
-    output.push_str(&format!("% Modrinth: {} ({})\n", project.title, project.project_type.to_uppercase()));
+    output.push_str(&format!(
+        "% Modrinth: {} ({})\n",
+        project.title,
+        project.project_type.to_uppercase()
+    ));
     output.push_str("% ======================================================================\n");
     output.push_str("% \n");
-    
+
     output.push_str(&format!("project-slug:         {}\n", project.slug));
     output.push_str(&format!("project-name:         {}\n", project.title));
     output.push_str(&format!("project-type:         {}\n", project.project_type));
     output.push_str(&format!("description:          {}\n", project.description));
-    
+
     // 统计信息
     output.push_str("% \n");
     output.push_str("% --- Statistics ---\n");
-    output.push_str(&format!("downloads:            {:>12}\n", format_number(project.downloads)));
-    output.push_str(&format!("followers:            {:>12}\n", format_number(project.followers as u64)));
-    
+    output.push_str(&format!(
+        "downloads:            {:>12}\n",
+        format_number(project.downloads)
+    ));
+    output.push_str(&format!(
+        "followers:            {:>12}\n",
+        format_number(project.followers as u64)
+    ));
+
     // 分类
     if !project.categories.is_empty() {
-        output.push_str(&format!("categories:           {}\n", project.categories.join(", ")));
+        output.push_str(&format!(
+            "categories:           {}\n",
+            project.categories.join(", ")
+        ));
     }
     if !project.additional_categories.is_empty() {
-        output.push_str(&format!("extra-categories:     {}\n", project.additional_categories.join(", ")));
+        output.push_str(&format!(
+            "extra-categories:     {}\n",
+            project.additional_categories.join(", ")
+        ));
     }
 
     // 兼容性信息
@@ -243,11 +266,14 @@ fn format_project_info(project: &ModrinthProject) -> String {
     output.push_str("% --- Compatibility ---\n");
     output.push_str(&format!("client-side:          {}\n", project.client_side));
     output.push_str(&format!("server-side:          {}\n", project.server_side));
-    
+
     if !project.loaders.is_empty() {
-        output.push_str(&format!("mod-loaders:          {}\n", project.loaders.join(", ")));
+        output.push_str(&format!(
+            "mod-loaders:          {}\n",
+            project.loaders.join(", ")
+        ));
     }
-    
+
     if !project.game_versions.is_empty() {
         let total_versions = project.game_versions.len();
         let versions_display = if total_versions > 10 {
@@ -263,7 +289,10 @@ fn format_project_info(project: &ModrinthProject) -> String {
     // 许可证
     output.push_str("% \n");
     output.push_str("% --- License ---\n");
-    output.push_str(&format!("license:              {} ({})\n", project.license.name, project.license.id));
+    output.push_str(&format!(
+        "license:              {} ({})\n",
+        project.license.name, project.license.id
+    ));
     if let Some(license_url) = &project.license.url {
         output.push_str(&format!("license-url:          {}\n", license_url));
     }
@@ -274,30 +303,41 @@ fn format_project_info(project: &ModrinthProject) -> String {
     if let Some(created) = &project.date_created {
         output.push_str(&format!("created:              {}\n", format_date(created)));
     }
-    output.push_str(&format!("published:            {}\n", format_date(&project.published)));
-    output.push_str(&format!("last-updated:         {}\n", format_date(&project.updated)));
+    output.push_str(&format!(
+        "published:            {}\n",
+        format_date(&project.published)
+    ));
+    output.push_str(&format!(
+        "last-updated:         {}\n",
+        format_date(&project.updated)
+    ));
     if let Some(approved) = &project.approved {
-        output.push_str(&format!("approved:             {}\n", format_date(approved)));
+        output.push_str(&format!(
+            "approved:             {}\n",
+            format_date(approved)
+        ));
     }
 
     // 链接
     output.push_str("% \n");
     output.push_str("% --- Links ---\n");
-    output.push_str(&format!("modrinth-url:         https://modrinth.com/{}/{}\n", 
-        project.project_type, project.slug));
-    
+    output.push_str(&format!(
+        "modrinth-url:         https://modrinth.com/{}/{}\n",
+        project.project_type, project.slug
+    ));
+
     if let Some(source) = &project.source_url {
         output.push_str(&format!("source-code:          {}\n", source));
     }
-    
+
     if let Some(issues) = &project.issues_url {
         output.push_str(&format!("issue-tracker:        {}\n", issues));
     }
-    
+
     if let Some(wiki) = &project.wiki_url {
         output.push_str(&format!("wiki:                 {}\n", wiki));
     }
-    
+
     if let Some(discord) = &project.discord_url {
         output.push_str(&format!("discord:              {}\n", discord));
     }
@@ -307,46 +347,80 @@ fn format_project_info(project: &ModrinthProject) -> String {
         output.push_str("% \n");
         output.push_str("% --- Support the Author ---\n");
         for donation in &project.donation_urls {
-            output.push_str(&format!("{:<20}  {}\n", 
-                format!("{}:", donation.platform), donation.url));
+            output.push_str(&format!(
+                "{:<20}  {}\n",
+                format!("{}:", donation.platform),
+                donation.url
+            ));
         }
     }
 
     // 画廊
     if !project.gallery.is_empty() {
         output.push_str("% \n");
-        output.push_str(&format!("% --- Gallery ({} images) ---\n", project.gallery.len()));
+        output.push_str(&format!(
+            "% --- Gallery ({} images) ---\n",
+            project.gallery.len()
+        ));
         for (i, image) in project.gallery.iter().take(3).enumerate() {
             if let Some(title) = &image.title {
-                output.push_str(&format!("image-{}:              {} ({})\n", 
-                    i + 1, title, if image.featured { "featured" } else { "" }));
+                output.push_str(&format!(
+                    "image-{}:              {} ({})\n",
+                    i + 1,
+                    title,
+                    if image.featured { "featured" } else { "" }
+                ));
             } else {
-                output.push_str(&format!("image-{}:              {}\n", i + 1, 
-                    if image.featured { "featured" } else { "screenshot" }));
+                output.push_str(&format!(
+                    "image-{}:              {}\n",
+                    i + 1,
+                    if image.featured {
+                        "featured"
+                    } else {
+                        "screenshot"
+                    }
+                ));
             }
             output.push_str(&format!("  url:                {}\n", image.url));
         }
         if project.gallery.len() > 3 {
-            output.push_str(&format!("% ... and {} more images on Modrinth\n", project.gallery.len() - 3));
+            output.push_str(&format!(
+                "% ... and {} more images on Modrinth\n",
+                project.gallery.len() - 3
+            ));
         }
     }
 
     // 版本
     if !project.versions.is_empty() {
         output.push_str("% \n");
-        output.push_str(&format!("% --- Versions ({} available) ---\n", project.versions.len()));
+        output.push_str(&format!(
+            "% --- Versions ({} available) ---\n",
+            project.versions.len()
+        ));
         if project.versions.len() > 5 {
-            output.push_str(&format!("latest-versions:      {}\n", project.versions[..5].join(", ")));
-            output.push_str(&format!("% ... and {} more versions available\n", project.versions.len() - 5));
+            output.push_str(&format!(
+                "latest-versions:      {}\n",
+                project.versions[..5].join(", ")
+            ));
+            output.push_str(&format!(
+                "% ... and {} more versions available\n",
+                project.versions.len() - 5
+            ));
         } else {
-            output.push_str(&format!("available-versions:   {}\n", project.versions.join(", ")));
+            output.push_str(&format!(
+                "available-versions:   {}\n",
+                project.versions.join(", ")
+            ));
         }
     }
 
     output.push_str("% \n");
     output.push_str("% ======================================================================\n");
-    output.push_str(&format!("% View full details at: https://modrinth.com/{}/{}\n", 
-        project.project_type, project.slug));
+    output.push_str(&format!(
+        "% View full details at: https://modrinth.com/{}/{}\n",
+        project.project_type, project.slug
+    ));
     output.push_str("% ======================================================================\n");
 
     output
@@ -357,14 +431,14 @@ fn format_number(n: u64) -> String {
     let s = n.to_string();
     let mut result = String::new();
     let chars: Vec<char> = s.chars().collect();
-    
+
     for (i, c) in chars.iter().enumerate() {
         if i > 0 && (chars.len() - i).is_multiple_of(3) {
             result.push(',');
         }
         result.push(*c);
     }
-    
+
     result
 }
 

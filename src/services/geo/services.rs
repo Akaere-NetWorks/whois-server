@@ -1,27 +1,23 @@
 use anyhow::Result;
-use tracing::debug;
 use std::time::Duration;
+use tracing::debug;
 
-use super::ripe_api::{
-    query_ripe_api,
-    query_rir_geo_api,
-    query_prefixes_api,
-};
-use super::ipinfo_api::query_ipinfo_api;
-use super::ipapi::query_ipapi;
 use super::bilibili::query_bilibili;
-use super::meituan::query_meituan;
 use super::formatters::{
-    format_ultimate_geo_response,
-    format_rir_geo_response,
-    format_prefixes_response,
+    format_prefixes_response, format_rir_geo_response, format_ultimate_geo_response,
 };
+use super::ipapi::query_ipapi;
+use super::ipinfo_api::query_ipinfo_api;
+use super::meituan::query_meituan;
+use super::ripe_api::{query_prefixes_api, query_ripe_api, query_rir_geo_api};
 
 /// Process geo location queries ending with -GEO
 pub async fn process_geo_query(resource: &str) -> Result<String> {
     debug!("Processing ultimate geo query for: {}", resource);
 
-    let client = reqwest::Client::builder().timeout(Duration::from_secs(10)).build()?;
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(10))
+        .build()?;
 
     // Query all five APIs in parallel
     let ripe_future = query_ripe_api(&client, resource);
@@ -44,7 +40,7 @@ pub async fn process_geo_query(resource: &str) -> Result<String> {
         ipinfo_result,
         ipapi_result,
         bilibili_result,
-        meituan_result
+        meituan_result,
     )
 }
 
@@ -52,7 +48,9 @@ pub async fn process_geo_query(resource: &str) -> Result<String> {
 pub async fn process_rir_geo_query(resource: &str) -> Result<String> {
     debug!("Processing RIR geo query for: {}", resource);
 
-    let client = reqwest::Client::builder().timeout(Duration::from_secs(10)).build()?;
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(10))
+        .build()?;
 
     let response = query_rir_geo_api(&client, resource).await?;
     format_rir_geo_response(resource, &response)
@@ -62,15 +60,15 @@ pub async fn process_rir_geo_query(resource: &str) -> Result<String> {
 pub async fn process_prefixes_query(asn: &str) -> Result<String> {
     debug!("Processing prefixes query for ASN: {}", asn);
 
-    let client = reqwest::Client::builder().timeout(Duration::from_secs(10)).build()?;
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(10))
+        .build()?;
 
     // Query prefixes API
     let prefixes_result = query_prefixes_api(&client, asn).await;
 
     match prefixes_result {
-        Ok(prefixes_response) => {
-            format_prefixes_response(asn, &prefixes_response, &client).await
-        }
+        Ok(prefixes_response) => format_prefixes_response(asn, &prefixes_response, &client).await,
         Err(e) => {
             let mut formatted = String::new();
             formatted.push_str("% ASN Announced Prefixes Query\n");

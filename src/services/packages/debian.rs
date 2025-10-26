@@ -8,10 +8,10 @@
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 
-use anyhow::{ Context, Result };
+use anyhow::{Context, Result};
 use reqwest;
-use serde::{ Deserialize, Serialize };
-use tracing::{ debug, error };
+use serde::{Deserialize, Serialize};
+use tracing::{debug, error};
 
 const DEBIAN_API_BASE: &str = "https://sources.debian.org/api/src";
 const DEBIAN_PACKAGES_BASE: &str = "https://packages.debian.org";
@@ -60,10 +60,11 @@ pub async fn process_debian_query(package_name: &str) -> Result<String> {
     }
 
     // Validate package name (Debian package names should follow specific rules)
-    if
-        package_name.len() > 100 ||
-        package_name.contains(' ') ||
-        !package_name.chars().all(|c| c.is_ascii_alphanumeric() || "+-._".contains(c))
+    if package_name.len() > 100
+        || package_name.contains(' ')
+        || !package_name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || "+-._".contains(c))
     {
         return Err(anyhow::anyhow!("Invalid Debian package name format"));
     }
@@ -78,8 +79,7 @@ pub async fn process_debian_query(package_name: &str) -> Result<String> {
 }
 
 async fn query_debian_api(package_name: &str) -> Result<DebianPackageResponse> {
-    let client = reqwest::Client
-        ::builder()
+    let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(15))
         .user_agent("whois-server/1.0 (Debian package lookup)")
         .build()
@@ -88,17 +88,25 @@ async fn query_debian_api(package_name: &str) -> Result<DebianPackageResponse> {
     let url = format!("{}/{}/", DEBIAN_API_BASE, package_name);
     debug!("Querying Debian API: {}", url);
 
-    let response = client.get(&url).send().await.context("Failed to send Debian API request")?;
+    let response = client
+        .get(&url)
+        .send()
+        .await
+        .context("Failed to send Debian API request")?;
 
     if !response.status().is_success() {
         if response.status() == 404 {
             return Err(anyhow::anyhow!("Package not found in Debian repository"));
         }
-        return Err(anyhow::anyhow!("Debian API returned status: {}", response.status()));
+        return Err(anyhow::anyhow!(
+            "Debian API returned status: {}",
+            response.status()
+        ));
     }
 
     let package_response: DebianPackageResponse = response
-        .json().await
+        .json()
+        .await
         .context("Failed to parse Debian API response")?;
 
     debug!(
@@ -136,9 +144,10 @@ fn format_debian_response(package: &DebianPackageResponse, _query: &str) -> Stri
 
     // Binary packages built from this source
     if let Some(binaries) = &latest_version.binaries
-        && !binaries.is_empty() {
-            response.push_str(&format!("binary-packages: {}\n", binaries.join(", ")));
-        }
+        && !binaries.is_empty()
+    {
+        response.push_str(&format!("binary-packages: {}\n", binaries.join(", ")));
+    }
 
     // Package repository information
     response.push_str("repository: Debian Source Repository\n");
@@ -149,17 +158,18 @@ fn format_debian_response(package: &DebianPackageResponse, _query: &str) -> Stri
     for (index, version) in package.versions.iter().enumerate() {
         if index >= 5 {
             // Limit to first 5 versions to avoid too much output
-            response.push_str(&format!("% ... and {} more versions\n", package.versions.len() - 5));
+            response.push_str(&format!(
+                "% ... and {} more versions\n",
+                package.versions.len() - 5
+            ));
             break;
         }
-        response.push_str(
-            &format!(
-                "% {}: {} ({})\n",
-                version.version,
-                version.suites.join(", "),
-                version.area.as_deref().unwrap_or("unknown")
-            )
-        );
+        response.push_str(&format!(
+            "% {}: {} ({})\n",
+            version.version,
+            version.suites.join(", "),
+            version.area.as_deref().unwrap_or("unknown")
+        ));
     }
 
     // Installation instructions
@@ -169,19 +179,26 @@ fn format_debian_response(package: &DebianPackageResponse, _query: &str) -> Stri
 
     // Package information URLs
     response.push_str("\n% Additional Information:\n");
-    response.push_str(
-        &format!("% Debian Package: {}/search?keywords={}\n", DEBIAN_PACKAGES_BASE, package.package)
-    );
-    response.push_str(
-        &format!("% Ubuntu Package: {}/search?keywords={}\n", UBUNTU_PACKAGES_BASE, package.package)
-    );
-    response.push_str(
-        &format!("% Source Code: https://sources.debian.org/src/{}/\n", package.package)
-    );
-    response.push_str(&format!("% Bug Reports: https://bugs.debian.org/{}\n", package.package));
-    response.push_str(
-        &format!("% Package Tracker: https://tracker.debian.org/pkg/{}\n", package.package)
-    );
+    response.push_str(&format!(
+        "% Debian Package: {}/search?keywords={}\n",
+        DEBIAN_PACKAGES_BASE, package.package
+    ));
+    response.push_str(&format!(
+        "% Ubuntu Package: {}/search?keywords={}\n",
+        UBUNTU_PACKAGES_BASE, package.package
+    ));
+    response.push_str(&format!(
+        "% Source Code: https://sources.debian.org/src/{}/\n",
+        package.package
+    ));
+    response.push_str(&format!(
+        "% Bug Reports: https://bugs.debian.org/{}\n",
+        package.package
+    ));
+    response.push_str(&format!(
+        "% Package Tracker: https://tracker.debian.org/pkg/{}\n",
+        package.package
+    ));
 
     response
 }

@@ -1,17 +1,13 @@
 #![allow(non_snake_case)]
 
-use std::time::Duration;
 use anyhow::Result;
-use tokio::io::{ AsyncReadExt, AsyncWriteExt };
+use std::time::Duration;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream as AsyncTcpStream;
-use tracing::{ debug, warn };
+use tracing::{debug, warn};
 
 use crate::config::{
-    DEFAULT_WHOIS_SERVER,
-    DEFAULT_WHOIS_PORT,
-    TIMEOUT_SECONDS,
-    RADB_WHOIS_SERVER,
-    RADB_WHOIS_PORT,
+    DEFAULT_WHOIS_PORT, DEFAULT_WHOIS_SERVER, RADB_WHOIS_PORT, RADB_WHOIS_SERVER, TIMEOUT_SECONDS,
 };
 use crate::services::iana_cache::IanaCache;
 
@@ -35,7 +31,10 @@ pub async fn query_with_iana_referral(query: &str) -> Result<String> {
         Ok(response) => {
             // Check if response indicates transferred/no data and try RADB fallback
             if should_try_radb_fallback(&response, query) {
-                debug!("Primary response suggests transferred resource, trying RADB fallback for: {}", query);
+                debug!(
+                    "Primary response suggests transferred resource, trying RADB fallback for: {}",
+                    query
+                );
                 match query_whois(query, RADB_WHOIS_SERVER, RADB_WHOIS_PORT).await {
                     Ok(radb_response) => {
                         if is_meaningful_response(&radb_response, query) {
@@ -70,7 +69,10 @@ pub async fn query_with_iana_referral(query: &str) -> Result<String> {
             }
         }
         Err(e) => {
-            warn!("Query failed on {}, attempting to refresh IANA cache: {}", whois_server, e);
+            warn!(
+                "Query failed on {}, attempting to refresh IANA cache: {}",
+                whois_server, e
+            );
 
             // Query failed, try to refresh IANA cache
             if let Some(refreshed_server) = iana_cache.refresh_cache_on_failure(query).await {
@@ -79,11 +81,15 @@ pub async fn query_with_iana_referral(query: &str) -> Result<String> {
                     Ok(response) => Ok(response),
                     Err(_) => {
                         // If refreshed server also fails, try RADB as final fallback
-                        debug!("Refreshed server failed, trying RADB as final fallback for: {}", query);
+                        debug!(
+                            "Refreshed server failed, trying RADB as final fallback for: {}",
+                            query
+                        );
                         match query_whois(query, RADB_WHOIS_SERVER, RADB_WHOIS_PORT).await {
                             Ok(radb_resp) => Ok(radb_resp),
-                            Err(_) =>
-                                query_whois(query, DEFAULT_WHOIS_SERVER, DEFAULT_WHOIS_PORT).await,
+                            Err(_) => {
+                                query_whois(query, DEFAULT_WHOIS_SERVER, DEFAULT_WHOIS_PORT).await
+                            }
                         }
                     }
                 }
@@ -113,10 +119,17 @@ pub async fn query_whois(query: &str, server: &str, port: u16) -> Result<String>
     let mut stream = match tokio::time::timeout(timeout, connect_future).await {
         Ok(Ok(stream)) => stream,
         Ok(Err(e)) => {
-            return Err(anyhow::anyhow!("Cannot connect to WHOIS server {}: {}", address, e));
+            return Err(anyhow::anyhow!(
+                "Cannot connect to WHOIS server {}: {}",
+                address,
+                e
+            ));
         }
         Err(_) => {
-            return Err(anyhow::anyhow!("Connection to WHOIS server timed out: {}", address));
+            return Err(anyhow::anyhow!(
+                "Connection to WHOIS server timed out: {}",
+                address
+            ));
         }
     };
 
@@ -131,11 +144,17 @@ pub async fn query_whois(query: &str, server: &str, port: u16) -> Result<String>
         Ok(Ok(_)) => {
             // Flush to ensure the query is sent immediately
             if let Err(e) = stream.flush().await {
-                return Err(anyhow::anyhow!("Failed to flush query to WHOIS server: {}", e));
+                return Err(anyhow::anyhow!(
+                    "Failed to flush query to WHOIS server: {}",
+                    e
+                ));
             }
         }
         Ok(Err(e)) => {
-            return Err(anyhow::anyhow!("Failed to write query to WHOIS server: {}", e));
+            return Err(anyhow::anyhow!(
+                "Failed to write query to WHOIS server: {}",
+                e
+            ));
         }
         Err(_) => {
             return Err(anyhow::anyhow!("Query write timed out"));
@@ -173,7 +192,10 @@ pub async fn query_whois(query: &str, server: &str, port: u16) -> Result<String>
                 }
             }
             Ok(Err(e)) => {
-                return Err(anyhow::anyhow!("Failed to read WHOIS server response: {}", e));
+                return Err(anyhow::anyhow!(
+                    "Failed to read WHOIS server response: {}",
+                    e
+                ));
             }
             Err(_) => {
                 debug!("Timeout reading WHOIS response after {} bytes", total_bytes);
@@ -231,13 +253,12 @@ fn should_try_radb_fallback(response: &str, query: &str) -> bool {
     }
 
     // Check if response lacks routing-specific information (suggests network registry vs routing registry)
-    let has_routing_info =
-        response_lower.contains("route:") ||
-        response_lower.contains("descr:") ||
-        response_lower.contains("origin:") ||
-        response_lower.contains("as-path:") ||
-        response_lower.contains("source:") ||
-        response_lower.contains("remarks:");
+    let has_routing_info = response_lower.contains("route:")
+        || response_lower.contains("descr:")
+        || response_lower.contains("origin:")
+        || response_lower.contains("as-path:")
+        || response_lower.contains("source:")
+        || response_lower.contains("remarks:");
 
     // If query looks like a CIDR block but response has no routing info, try RADB
     if (query.contains('/') || query.contains('-')) && !has_routing_info {
@@ -250,7 +271,10 @@ fn should_try_radb_fallback(response: &str, query: &str) -> bool {
     // Check for transfer indicators
     for indicator in &transfer_indicators {
         if response_lower.contains(indicator) {
-            debug!("Found transfer indicator '{}', suggesting RADB fallback", indicator);
+            debug!(
+                "Found transfer indicator '{}', suggesting RADB fallback",
+                indicator
+            );
             return true;
         }
     }
@@ -264,11 +288,11 @@ fn is_meaningful_response(response: &str, query: &str) -> bool {
         .filter(|line| {
             let line = line.trim();
             // Skip comments, empty lines, and generic headers
-            !line.is_empty() &&
-                !line.starts_with('%') &&
-                !line.starts_with('#') &&
-                !line.contains("Please report any issues") &&
-                !line.contains("The objects are in RPSL format")
+            !line.is_empty()
+                && !line.starts_with('%')
+                && !line.starts_with('#')
+                && !line.contains("Please report any issues")
+                && !line.contains("The objects are in RPSL format")
         })
         .collect();
 

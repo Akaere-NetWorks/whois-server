@@ -1,9 +1,9 @@
-use std::net::{ IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr };
 use anyhow::Result;
-use tracing::{ debug, warn, error };
-use tokio::net::UdpSocket;
-use tokio::time::{ timeout, Duration };
 use rand::random;
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
+use tokio::net::UdpSocket;
+use tokio::time::{Duration, timeout};
+use tracing::{debug, error, warn};
 
 /// DNS message header
 #[derive(Debug)]
@@ -106,12 +106,12 @@ impl DnsService {
 
         // Query different record types
         let record_types = [
-            (1, "A"), // A record
+            (1, "A"),     // A record
             (28, "AAAA"), // AAAA record
-            (15, "MX"), // MX record
-            (16, "TXT"), // TXT record
-            (2, "NS"), // NS record
-            (6, "SOA"), // SOA record
+            (15, "MX"),   // MX record
+            (16, "TXT"),  // TXT record
+            (2, "NS"),    // NS record
+            (6, "SOA"),   // SOA record
         ];
 
         for (qtype, type_name) in record_types {
@@ -126,7 +126,10 @@ impl DnsService {
                     }
                 }
                 Err(e) => {
-                    debug!("Failed to resolve {} records for {}: {}", type_name, domain, e);
+                    debug!(
+                        "Failed to resolve {} records for {}: {}",
+                        type_name, domain, e
+                    );
                 }
             }
         }
@@ -134,10 +137,17 @@ impl DnsService {
         if output.is_empty() {
             output = format!("No DNS records found for domain: {}\n", domain);
         } else {
-            output = format!("Recursive DNS Resolution Results for: {}\n{}", domain, output);
+            output = format!(
+                "Recursive DNS Resolution Results for: {}\n{}",
+                domain, output
+            );
         }
 
-        debug!("DNS query completed for {}, result length: {} bytes", domain, output.len());
+        debug!(
+            "DNS query completed for {}, result length: {} bytes",
+            domain,
+            output.len()
+        );
         Ok(output)
     }
 
@@ -155,8 +165,10 @@ impl DnsService {
         match self.resolve_recursive(&ptr_name, 12).await {
             // 12 = PTR record type
             Ok(records) => {
-                let mut output =
-                    format!("Recursive Reverse DNS Results for {}:\n\nPTR Records:\n", ip);
+                let mut output = format!(
+                    "Recursive Reverse DNS Results for {}:\n\nPTR Records:\n",
+                    ip
+                );
                 for record in records {
                     let formatted = self.format_record(&record, "PTR");
                     output.push_str(&formatted);
@@ -164,7 +176,11 @@ impl DnsService {
                 if output.lines().count() <= 3 {
                     output = format!("No reverse DNS record found for IP: {}\n", ip);
                 }
-                debug!("rDNS query completed for {}, result length: {} bytes", ip, output.len());
+                debug!(
+                    "rDNS query completed for {}, result length: {} bytes",
+                    ip,
+                    output.len()
+                );
                 Ok(output)
             }
             Err(e) => {
@@ -177,7 +193,10 @@ impl DnsService {
     /// Create IPv4 PTR name (e.g., 1.1.1.1 -> 1.1.1.1.in-addr.arpa)
     fn create_ipv4_ptr_name(&self, ip: Ipv4Addr) -> String {
         let octets = ip.octets();
-        format!("{}.{}.{}.{}.in-addr.arpa", octets[3], octets[2], octets[1], octets[0])
+        format!(
+            "{}.{}.{}.{}.in-addr.arpa",
+            octets[3], octets[2], octets[1], octets[0]
+        )
     }
 
     /// Create IPv6 PTR name (e.g., 2001:db8::1 -> 1.0.0.0...ip6.arpa)
@@ -198,7 +217,10 @@ impl DnsService {
 
     /// Recursive DNS resolution
     async fn resolve_recursive(&self, domain: &str, qtype: u16) -> Result<Vec<DnsRecord>> {
-        debug!("Starting recursive resolution for {} (type {})", domain, qtype);
+        debug!(
+            "Starting recursive resolution for {} (type {})",
+            domain, qtype
+        );
 
         // Start with root servers
         let mut nameservers = self.root_servers.clone();
@@ -211,7 +233,11 @@ impl DnsService {
             }
 
             depth += 1;
-            debug!("Recursion depth: {}, querying {} servers", depth, nameservers.len());
+            debug!(
+                "Recursion depth: {}, querying {} servers",
+                depth,
+                nameservers.len()
+            );
 
             let mut best_response = None;
 
@@ -262,7 +288,7 @@ impl DnsService {
         &self,
         server: SocketAddr,
         domain: &str,
-        qtype: u16
+        qtype: u16,
     ) -> Result<DnsResponse> {
         let socket = UdpSocket::bind("0.0.0.0:0").await?;
 
@@ -280,7 +306,10 @@ impl DnsService {
         packet.extend_from_slice(&(1u16).to_be_bytes()); // QCLASS (IN)
 
         // Send query with timeout
-        debug!("Sending DNS query to {} for {} (type {})", server, domain, qtype);
+        debug!(
+            "Sending DNS query to {} for {} (type {})",
+            server, domain, qtype
+        );
         socket.send_to(&packet, server).await?;
 
         let mut buffer = vec![0; 512];
@@ -316,9 +345,7 @@ impl DnsService {
         let header = DnsHeader::from_bytes(buffer)?;
         debug!(
             "Parsed DNS header: {} answers, {} authority, {} additional",
-            header.ancount,
-            header.nscount,
-            header.arcount
+            header.ancount, header.nscount, header.arcount
         );
 
         let mut offset = 12;
@@ -406,7 +433,9 @@ impl DnsService {
 
         loop {
             if offset >= buffer.len() {
-                return Err(anyhow::anyhow!("Unexpected end of buffer while parsing name"));
+                return Err(anyhow::anyhow!(
+                    "Unexpected end of buffer while parsing name"
+                ));
             }
 
             let len = buffer[offset];
@@ -479,7 +508,7 @@ impl DnsService {
                                 additional.data[0],
                                 additional.data[1],
                                 additional.data[2],
-                                additional.data[3]
+                                additional.data[3],
                             );
                             nameservers.push(SocketAddr::from((ip, 53)));
                         }
@@ -513,7 +542,7 @@ impl DnsService {
                         record.data[0],
                         record.data[1],
                         record.data[2],
-                        record.data[3]
+                        record.data[3],
                     );
                     format!("  {} (TTL: {})\n", ip, record.ttl)
                 } else {
@@ -536,8 +565,9 @@ impl DnsService {
                 if record.data.len() >= 2 {
                     let preference = u16::from_be_bytes([record.data[0], record.data[1]]);
                     match self.parse_name_from_data(&record.data[2..]) {
-                        Ok(exchange) =>
-                            format!("  {} {} (TTL: {})\n", preference, exchange, record.ttl),
+                        Ok(exchange) => {
+                            format!("  {} {} (TTL: {})\n", preference, exchange, record.ttl)
+                        }
                         Err(_) => format!("  Invalid MX record (TTL: {})\n", record.ttl),
                     }
                 } else {
@@ -642,9 +672,10 @@ pub async fn process_dns_query(query: &str) -> Result<String> {
 
     // Neither IP nor valid domain
     error!("Invalid DNS query format: {}", clean_query);
-    Ok(
-        format!("Invalid DNS query format. Please provide a valid domain name or IP address.\nQuery: {}\n", clean_query)
-    )
+    Ok(format!(
+        "Invalid DNS query format. Please provide a valid domain name or IP address.\nQuery: {}\n",
+        clean_query
+    ))
 }
 
 #[cfg(test)]

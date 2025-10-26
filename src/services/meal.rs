@@ -15,11 +15,11 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use serde::{ Deserialize, Serialize };
-use std::fmt::Write;
 use anyhow::Result;
-use std::collections::HashMap;
 use rand::seq::SliceRandom;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::fmt::Write;
 
 #[derive(Debug, Deserialize, Serialize)]
 struct MealResponse {
@@ -104,14 +104,16 @@ impl Meal {
 
         for (ingredient, measure) in ingredient_fields {
             if let Some(ing) = ingredient
-                && !ing.trim().is_empty() {
-                    let mut ingredient_line = ing.trim().to_string();
-                    if let Some(measure) = measure
-                        && !measure.trim().is_empty() {
-                            ingredient_line = format!("{} - {}", measure.trim(), ingredient_line);
-                        }
-                    ingredients.push(ingredient_line);
+                && !ing.trim().is_empty()
+            {
+                let mut ingredient_line = ing.trim().to_string();
+                if let Some(measure) = measure
+                    && !measure.trim().is_empty()
+                {
+                    ingredient_line = format!("{} - {}", measure.trim(), ingredient_line);
                 }
+                ingredients.push(ingredient_line);
+            }
         }
         ingredients
     }
@@ -121,18 +123,26 @@ pub async fn query_random_meal() -> Result<String> {
     let client = reqwest::Client::new();
     let url = "https://www.themealdb.com/api/json/v1/1/random.php";
 
-    let response = client.get(url).timeout(std::time::Duration::from_secs(10)).send().await?;
+    let response = client
+        .get(url)
+        .timeout(std::time::Duration::from_secs(10))
+        .send()
+        .await?;
 
     if !response.status().is_success() {
-        return Err(anyhow::anyhow!("MealDB API returned status: {}", response.status()));
+        return Err(anyhow::anyhow!(
+            "MealDB API returned status: {}",
+            response.status()
+        ));
     }
 
     let meal_response: MealResponse = response.json().await?;
 
     if let Some(meals) = meal_response.meals
-        && let Some(meal) = meals.first() {
-            return Ok(format_meal_info(meal));
-        }
+        && let Some(meal) = meals.first()
+    {
+        return Ok(format_meal_info(meal));
+    }
 
     Err(anyhow::anyhow!("No meal found in API response"))
 }
@@ -156,9 +166,10 @@ fn format_meal_info(meal: &Meal) -> String {
     }
 
     if let Some(tags) = &meal.str_tags
-        && !tags.trim().is_empty() {
-            writeln!(result, "tags:              {}", tags).unwrap();
-        }
+        && !tags.trim().is_empty()
+    {
+        writeln!(result, "tags:              {}", tags).unwrap();
+    }
 
     let ingredients = meal.get_ingredients();
     if !ingredients.is_empty() {
@@ -170,27 +181,30 @@ fn format_meal_info(meal: &Meal) -> String {
     }
 
     if let Some(instructions) = &meal.str_instructions
-        && !instructions.trim().is_empty() {
-            writeln!(result).unwrap();
-            writeln!(result, "% Instructions").unwrap();
-            let instructions = instructions.replace('\r', "");
-            for (i, line) in instructions.lines().enumerate() {
-                if !line.trim().is_empty() {
-                    writeln!(result, "instruction-{}:     {}", i + 1, line.trim()).unwrap();
-                }
+        && !instructions.trim().is_empty()
+    {
+        writeln!(result).unwrap();
+        writeln!(result, "% Instructions").unwrap();
+        let instructions = instructions.replace('\r', "");
+        for (i, line) in instructions.lines().enumerate() {
+            if !line.trim().is_empty() {
+                writeln!(result, "instruction-{}:     {}", i + 1, line.trim()).unwrap();
             }
         }
+    }
 
     if let Some(youtube) = &meal.str_youtube
-        && !youtube.trim().is_empty() {
-            writeln!(result).unwrap();
-            writeln!(result, "youtube-video:     {}", youtube).unwrap();
-        }
+        && !youtube.trim().is_empty()
+    {
+        writeln!(result).unwrap();
+        writeln!(result, "youtube-video:     {}", youtube).unwrap();
+    }
 
     if let Some(image) = &meal.str_meal_thumb
-        && !image.trim().is_empty() {
-            writeln!(result, "meal-image:        {}", image).unwrap();
-        }
+        && !image.trim().is_empty()
+    {
+        writeln!(result, "meal-image:        {}", image).unwrap();
+    }
 
     writeln!(result).unwrap();
     writeln!(result, "% Query: 今天吃什么 or -MEAL").unwrap();
@@ -218,8 +232,9 @@ struct ChineseRecipe {
 pub async fn query_random_chinese_meal() -> Result<String> {
     // 读取 recipes.json 文件
     let recipes_content = include_str!("../../data/recipes.json");
-    let recipes: HashMap<String, HashMap<String, ChineseRecipe>> = serde_json::from_str(recipes_content)?;
-    
+    let recipes: HashMap<String, HashMap<String, ChineseRecipe>> =
+        serde_json::from_str(recipes_content)?;
+
     // 收集所有菜谱
     let mut all_recipes = Vec::new();
     for (category, category_recipes) in recipes.iter() {
@@ -227,81 +242,91 @@ pub async fn query_random_chinese_meal() -> Result<String> {
             all_recipes.push((category.clone(), name.clone(), recipe));
         }
     }
-    
+
     if all_recipes.is_empty() {
         return Err(anyhow::anyhow!("No recipes found in recipes.json"));
     }
-    
+
     // 随机选择一个菜谱
     let mut rng = rand::thread_rng();
-    let (category, name, recipe) = all_recipes.choose(&mut rng)
+    let (category, name, recipe) = all_recipes
+        .choose(&mut rng)
         .ok_or_else(|| anyhow::anyhow!("Failed to select random recipe"))?;
-    
+
     Ok(format_chinese_meal_info(category, name, recipe))
 }
 
 fn format_chinese_meal_info(category: &str, name: &str, recipe: &ChineseRecipe) -> String {
     let mut result = String::new();
-    
+
     writeln!(result, "% 中国菜谱 - Chinese Recipe").unwrap();
     writeln!(result, "% 数据来源：程序员做饭指南").unwrap();
     writeln!(result).unwrap();
-    
+
     writeln!(result, "dish-name:         {}", name).unwrap();
     writeln!(result, "category:          {}", category).unwrap();
-    
+
     if let Some(difficulty) = recipe.difficulty {
         writeln!(result, "difficulty:        {} / 10", difficulty).unwrap();
     }
-    
+
     if let Some(descriptions) = &recipe.description
-        && !descriptions.is_empty() {
-            writeln!(result).unwrap();
-            writeln!(result, "% 描述 (Description)").unwrap();
-            for desc in descriptions {
-                writeln!(result, "description:       {}", desc).unwrap();
-            }
+        && !descriptions.is_empty()
+    {
+        writeln!(result).unwrap();
+        writeln!(result, "% 描述 (Description)").unwrap();
+        for desc in descriptions {
+            writeln!(result, "description:       {}", desc).unwrap();
         }
-    
+    }
+
     if let Some(ingredients) = &recipe.ingredients_tools
-        && !ingredients.is_empty() {
-            writeln!(result).unwrap();
-            writeln!(result, "% 原料和工具 (Ingredients & Tools)").unwrap();
-            for (i, ingredient) in ingredients.iter().enumerate() {
-                writeln!(result, "ingredient-{}:      {}", i + 1, ingredient).unwrap();
-            }
+        && !ingredients.is_empty()
+    {
+        writeln!(result).unwrap();
+        writeln!(result, "% 原料和工具 (Ingredients & Tools)").unwrap();
+        for (i, ingredient) in ingredients.iter().enumerate() {
+            writeln!(result, "ingredient-{}:      {}", i + 1, ingredient).unwrap();
         }
-    
+    }
+
     if let Some(amounts) = &recipe.ingredient_amounts
-        && !amounts.is_empty() {
-            writeln!(result).unwrap();
-            writeln!(result, "% 食材用量 (Ingredient Amounts)").unwrap();
-            for (i, amount) in amounts.iter().enumerate() {
-                writeln!(result, "amount-{}:          {}", i + 1, amount).unwrap();
-            }
+        && !amounts.is_empty()
+    {
+        writeln!(result).unwrap();
+        writeln!(result, "% 食材用量 (Ingredient Amounts)").unwrap();
+        for (i, amount) in amounts.iter().enumerate() {
+            writeln!(result, "amount-{}:          {}", i + 1, amount).unwrap();
         }
-    
+    }
+
     if let Some(steps) = &recipe.steps
-        && !steps.is_empty() {
-            writeln!(result).unwrap();
-            writeln!(result, "% 操作步骤 (Cooking Steps)").unwrap();
-            for (i, step) in steps.iter().enumerate() {
-                writeln!(result, "step-{}:            {}", i + 1, step).unwrap();
-            }
+        && !steps.is_empty()
+    {
+        writeln!(result).unwrap();
+        writeln!(result, "% 操作步骤 (Cooking Steps)").unwrap();
+        for (i, step) in steps.iter().enumerate() {
+            writeln!(result, "step-{}:            {}", i + 1, step).unwrap();
         }
-    
+    }
+
     if let Some(additional) = &recipe.additional
-        && !additional.is_empty() {
-            writeln!(result).unwrap();
-            writeln!(result, "% 附加信息 (Additional Info)").unwrap();
-            for info in additional {
-                writeln!(result, "info:              {}", info).unwrap();
-            }
+        && !additional.is_empty()
+    {
+        writeln!(result).unwrap();
+        writeln!(result, "% 附加信息 (Additional Info)").unwrap();
+        for info in additional {
+            writeln!(result, "info:              {}", info).unwrap();
         }
-    
+    }
+
     writeln!(result).unwrap();
     writeln!(result, "% Query: 今天吃什么中国 or -MEAL-CN").unwrap();
-    writeln!(result, "% Source: 程序员做饭指南 https://github.com/Anduin2017/HowToCook").unwrap();
-    
+    writeln!(
+        result,
+        "% Source: 程序员做饭指南 https://github.com/Anduin2017/HowToCook"
+    )
+    .unwrap();
+
     result
 }

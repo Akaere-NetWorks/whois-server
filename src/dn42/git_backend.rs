@@ -1,12 +1,12 @@
-use std::path::Path;
-use std::net::{ Ipv4Addr, Ipv6Addr };
-use std::process::Command;
 use anyhow::Result;
-use tracing::{ debug, info, warn, error };
-use tokio::time::{ interval, Duration };
+use std::net::{Ipv4Addr, Ipv6Addr};
+use std::path::Path;
+use std::process::Command;
+use tokio::time::{Duration, interval};
+use tracing::{debug, error, info, warn};
 
-use crate::config::{ DN42_REGISTRY_PATH, DN42_LMDB_PATH };
-use crate::storage::{ SharedLmdbStorage, create_shared_storage };
+use crate::config::{DN42_LMDB_PATH, DN42_REGISTRY_PATH};
+use crate::storage::{SharedLmdbStorage, create_shared_storage};
 
 const DN42_REGISTRY_URL: &str = "https://git.pysio.online/pysio/mirrors-dn42.git";
 
@@ -18,9 +18,8 @@ pub struct DN42Registry {
 impl DN42Registry {
     /// Create a new DN42 registry instance with LMDB storage
     pub async fn new() -> Result<Self> {
-        let storage = create_shared_storage(DN42_LMDB_PATH).map_err(|e|
-            anyhow::anyhow!("Failed to create LMDB storage: {}", e)
-        )?;
+        let storage = create_shared_storage(DN42_LMDB_PATH)
+            .map_err(|e| anyhow::anyhow!("Failed to create LMDB storage: {}", e))?;
 
         info!("DN42Registry created successfully with LMDB storage");
         Ok(DN42Registry { storage })
@@ -42,7 +41,10 @@ impl DN42Registry {
 
     /// Sync DN42 registry from git repository
     async fn sync_registry(&self) -> Result<()> {
-        info!("Starting DN42 registry synchronization from {}", DN42_REGISTRY_URL);
+        info!(
+            "Starting DN42 registry synchronization from {}",
+            DN42_REGISTRY_URL
+        );
 
         let registry_path = Path::new(DN42_REGISTRY_PATH);
 
@@ -61,16 +63,23 @@ impl DN42Registry {
                     // Remove directory and clone fresh
                     if let Err(remove_err) = std::fs::remove_dir_all(registry_path) {
                         error!("Failed to remove directory: {}", remove_err);
-                        return Err(anyhow::anyhow!("Failed to remove directory: {}", remove_err));
+                        return Err(anyhow::anyhow!(
+                            "Failed to remove directory: {}",
+                            remove_err
+                        ));
                     }
                     clone_repository()
                 }
             } else {
                 // Directory doesn't exist, clone repository
-                info!("Repository doesn't exist, cloning from {}", DN42_REGISTRY_URL);
+                info!(
+                    "Repository doesn't exist, cloning from {}",
+                    DN42_REGISTRY_URL
+                );
                 clone_repository()
             }
-        }).await?;
+        })
+        .await?;
 
         match result {
             Ok(_) => {
@@ -91,23 +100,25 @@ impl DN42Registry {
         // Verify the registry directory exists
         let registry_path = Path::new(DN42_REGISTRY_PATH);
         if !registry_path.exists() {
-            return Err(
-                anyhow::anyhow!("DN42 registry directory does not exist: {}", DN42_REGISTRY_PATH)
-            );
+            return Err(anyhow::anyhow!(
+                "DN42 registry directory does not exist: {}",
+                DN42_REGISTRY_PATH
+            ));
         }
 
         let data_dir = registry_path.join("data");
         if !data_dir.exists() {
-            return Err(
-                anyhow::anyhow!("DN42 registry data directory does not exist: {:?}", data_dir)
-            );
+            return Err(anyhow::anyhow!(
+                "DN42 registry data directory does not exist: {:?}",
+                data_dir
+            ));
         }
 
         let storage = self.storage.clone();
         let registry_path_str = DN42_REGISTRY_PATH.to_string();
 
-        tokio::task
-            ::spawn_blocking(move || { storage.populate_from_registry(&registry_path_str) }).await?
+        tokio::task::spawn_blocking(move || storage.populate_from_registry(&registry_path_str))
+            .await?
             .map_err(|e| anyhow::anyhow!("Failed to populate LMDB from registry: {}", e))
     }
 
@@ -137,8 +148,8 @@ impl DN42Registry {
         let storage = self.storage.clone();
         let registry_path_str = DN42_REGISTRY_PATH.to_string();
 
-        tokio::task
-            ::spawn_blocking(move || { storage.force_full_refresh(&registry_path_str) }).await?
+        tokio::task::spawn_blocking(move || storage.force_full_refresh(&registry_path_str))
+            .await?
             .map_err(|e| anyhow::anyhow!("Failed to force full LMDB refresh: {}", e))?;
 
         info!("DN42 registry full refresh completed");
@@ -194,14 +205,16 @@ impl DN42Registry {
         // Parse IPv4 CIDR
         if let Some((ip_str, mask_str)) = query.split_once('/') {
             if let (Ok(ipv4), Ok(mask)) = (ip_str.parse::<Ipv4Addr>(), mask_str.parse::<u8>())
-                && mask <= 32 {
-                    return Ok(Some(self.handle_ipv4_query(ipv4, mask).await?));
-                }
+                && mask <= 32
+            {
+                return Ok(Some(self.handle_ipv4_query(ipv4, mask).await?));
+            }
 
             if let (Ok(ipv6), Ok(mask)) = (ip_str.parse::<Ipv6Addr>(), mask_str.parse::<u8>())
-                && mask <= 128 {
-                    return Ok(Some(self.handle_ipv6_query(ipv6, mask).await?));
-                }
+                && mask <= 128
+            {
+                return Ok(Some(self.handle_ipv6_query(ipv6, mask).await?));
+            }
         }
 
         // Parse single IP address (assume /32 for IPv4, /128 for IPv6)
@@ -222,7 +235,10 @@ impl DN42Registry {
 
         // Look up inetnum
         if let Some(target) = self.find_ipv4_network("inetnum", ip, mask).await? {
-            if let Some(content) = self.get_from_storage(&format!("inetnum/{}", target)).await? {
+            if let Some(content) = self
+                .get_from_storage(&format!("inetnum/{}", target))
+                .await?
+            {
                 response.push_str(&content);
             } else {
                 response.push_str("% 404 - inetnum not found\n");
@@ -253,7 +269,10 @@ impl DN42Registry {
 
         // Look up inet6num
         if let Some(target) = self.find_ipv6_network("inet6num", ip, mask).await? {
-            if let Some(content) = self.get_from_storage(&format!("inet6num/{}", target)).await? {
+            if let Some(content) = self
+                .get_from_storage(&format!("inet6num/{}", target))
+                .await?
+            {
                 response.push_str(&content);
             } else {
                 response.push_str("% 404 - inet6num not found\n");
@@ -284,110 +303,100 @@ impl DN42Registry {
 
         // Handle ASN queries
         if let Some(asn) = parse_asn(&normalized_query)
-            && let Some(content) = self.get_from_storage(&format!("aut-num/{}", asn)).await? {
-                return Ok(Some(content));
-            }
+            && let Some(content) = self.get_from_storage(&format!("aut-num/{}", asn)).await?
+        {
+            return Ok(Some(content));
+        }
 
         // Handle person objects (-DN42 suffix)
         if normalized_query.ends_with("-DN42")
-            &&
-                let Some(content) = self.get_from_storage(
-                    &format!("person/{}", normalized_query)
-                ).await?
-            {
-                return Ok(Some(content));
-            }
+            && let Some(content) = self
+                .get_from_storage(&format!("person/{}", normalized_query))
+                .await?
+        {
+            return Ok(Some(content));
+        }
 
         // Handle maintainer objects (-MNT suffix)
         if normalized_query.ends_with("-MNT")
-            &&
-                let Some(content) = self.get_from_storage(
-                    &format!("mntner/{}", normalized_query)
-                ).await?
-            {
-                return Ok(Some(content));
-            }
+            && let Some(content) = self
+                .get_from_storage(&format!("mntner/{}", normalized_query))
+                .await?
+        {
+            return Ok(Some(content));
+        }
 
         // Handle schema objects (-SCHEMA suffix)
         if normalized_query.ends_with("-SCHEMA")
-            &&
-                let Some(content) = self.get_from_storage(
-                    &format!("schema/{}", normalized_query)
-                ).await?
-            {
-                return Ok(Some(content));
-            }
+            && let Some(content) = self
+                .get_from_storage(&format!("schema/{}", normalized_query))
+                .await?
+        {
+            return Ok(Some(content));
+        }
 
         // Handle organisation objects (ORG- prefix)
         if normalized_query.starts_with("ORG-")
-            &&
-                let Some(content) = self.get_from_storage(
-                    &format!("organisation/{}", normalized_query)
-                ).await?
-            {
-                return Ok(Some(content));
-            }
+            && let Some(content) = self
+                .get_from_storage(&format!("organisation/{}", normalized_query))
+                .await?
+        {
+            return Ok(Some(content));
+        }
 
         // Handle tinc-keyset objects (SET-*-TINC pattern)
-        if normalized_query.starts_with("SET-") && normalized_query.ends_with("-TINC")
-            &&
-                let Some(content) = self.get_from_storage(
-                    &format!("tinc-keyset/{}", normalized_query)
-                ).await?
-            {
-                return Ok(Some(content));
-            }
+        if normalized_query.starts_with("SET-")
+            && normalized_query.ends_with("-TINC")
+            && let Some(content) = self
+                .get_from_storage(&format!("tinc-keyset/{}", normalized_query))
+                .await?
+        {
+            return Ok(Some(content));
+        }
 
         // Handle tinc-key objects (-TINC suffix)
-        if normalized_query.ends_with("-TINC") && !normalized_query.starts_with("SET-")
-            &&
-                let Some(content) = self.get_from_storage(
-                    &format!("tinc-key/{}", normalized_query)
-                ).await?
-            {
-                return Ok(Some(content));
-            }
+        if normalized_query.ends_with("-TINC")
+            && !normalized_query.starts_with("SET-")
+            && let Some(content) = self
+                .get_from_storage(&format!("tinc-key/{}", normalized_query))
+                .await?
+        {
+            return Ok(Some(content));
+        }
 
         // Handle route-set objects (RS- prefix)
         if normalized_query.starts_with("RS-")
-            &&
-                let Some(content) = self.get_from_storage(
-                    &format!("route-set/{}", normalized_query)
-                ).await?
-            {
-                return Ok(Some(content));
-            }
+            && let Some(content) = self
+                .get_from_storage(&format!("route-set/{}", normalized_query))
+                .await?
+        {
+            return Ok(Some(content));
+        }
 
         // Handle as-block objects (AS*-AS* pattern)
-        if normalized_query.contains("-AS") && normalized_query.starts_with("AS")
-            &&
-                let Some(content) = self.get_from_storage(
-                    &format!("as-block/{}", normalized_query)
-                ).await?
-            {
-                return Ok(Some(content));
-            }
+        if normalized_query.contains("-AS")
+            && normalized_query.starts_with("AS")
+            && let Some(content) = self
+                .get_from_storage(&format!("as-block/{}", normalized_query))
+                .await?
+        {
+            return Ok(Some(content));
+        }
 
         // Handle as-set objects (AS prefix, not an ASN)
-        if
-            normalized_query.starts_with("AS") &&
-            !normalized_query
-                .chars()
-                .skip(2)
-                .all(|c| c.is_ascii_digit())
-            &&
-                let Some(content) = self.get_from_storage(
-                    &format!("as-set/{}", normalized_query)
-                ).await?
-            {
-                return Ok(Some(content));
-            }
+        if normalized_query.starts_with("AS")
+            && !normalized_query.chars().skip(2).all(|c| c.is_ascii_digit())
+            && let Some(content) = self
+                .get_from_storage(&format!("as-set/{}", normalized_query))
+                .await?
+        {
+            return Ok(Some(content));
+        }
 
         // Handle DNS objects (default fallback)
-        if
-            let Some(content) = self.get_from_storage(
-                &format!("dns/{}", query.to_lowercase())
-            ).await?
+        if let Some(content) = self
+            .get_from_storage(&format!("dns/{}", query.to_lowercase()))
+            .await?
         {
             return Ok(Some(content));
         }
@@ -401,27 +410,31 @@ impl DN42Registry {
         if let Some((ip_str, mask_str)) = query.split_once('/') {
             if let (Ok(ipv4), Ok(mask)) = (ip_str.parse::<Ipv4Addr>(), mask_str.parse::<u8>())
                 && mask <= 32
-                    && let Some(target) = self.find_ipv4_network("inetnum", ipv4, mask).await? {
-                        return self.get_from_storage(&format!("inetnum/{}", target)).await;
-                    }
+                && let Some(target) = self.find_ipv4_network("inetnum", ipv4, mask).await?
+            {
+                return self.get_from_storage(&format!("inetnum/{}", target)).await;
+            }
 
             if let (Ok(ipv6), Ok(mask)) = (ip_str.parse::<Ipv6Addr>(), mask_str.parse::<u8>())
                 && mask <= 128
-                    && let Some(target) = self.find_ipv6_network("inet6num", ipv6, mask).await? {
-                        return self.get_from_storage(&format!("inet6num/{}", target)).await;
-                    }
+                && let Some(target) = self.find_ipv6_network("inet6num", ipv6, mask).await?
+            {
+                return self.get_from_storage(&format!("inet6num/{}", target)).await;
+            }
         }
 
         // Parse single IP address (assume /32 for IPv4, /128 for IPv6)
         if let Ok(ipv4) = query.parse::<Ipv4Addr>()
-            && let Some(target) = self.find_ipv4_network("inetnum", ipv4, 32).await? {
-                return self.get_from_storage(&format!("inetnum/{}", target)).await;
-            }
+            && let Some(target) = self.find_ipv4_network("inetnum", ipv4, 32).await?
+        {
+            return self.get_from_storage(&format!("inetnum/{}", target)).await;
+        }
 
         if let Ok(ipv6) = query.parse::<Ipv6Addr>()
-            && let Some(target) = self.find_ipv6_network("inet6num", ipv6, 128).await? {
-                return self.get_from_storage(&format!("inet6num/{}", target)).await;
-            }
+            && let Some(target) = self.find_ipv6_network("inet6num", ipv6, 128).await?
+        {
+            return self.get_from_storage(&format!("inet6num/{}", target)).await;
+        }
 
         Ok(None)
     }
@@ -432,110 +445,100 @@ impl DN42Registry {
 
         // Handle ASN queries
         if let Some(asn) = parse_asn(&normalized_query)
-            && let Some(content) = self.get_from_storage(&format!("aut-num/{}", asn)).await? {
-                return Ok(Some(content));
-            }
+            && let Some(content) = self.get_from_storage(&format!("aut-num/{}", asn)).await?
+        {
+            return Ok(Some(content));
+        }
 
         // Handle person objects (-DN42 suffix)
         if normalized_query.ends_with("-DN42")
-            &&
-                let Some(content) = self.get_from_storage(
-                    &format!("person/{}", normalized_query)
-                ).await?
-            {
-                return Ok(Some(content));
-            }
+            && let Some(content) = self
+                .get_from_storage(&format!("person/{}", normalized_query))
+                .await?
+        {
+            return Ok(Some(content));
+        }
 
         // Handle maintainer objects (-MNT suffix)
         if normalized_query.ends_with("-MNT")
-            &&
-                let Some(content) = self.get_from_storage(
-                    &format!("mntner/{}", normalized_query)
-                ).await?
-            {
-                return Ok(Some(content));
-            }
+            && let Some(content) = self
+                .get_from_storage(&format!("mntner/{}", normalized_query))
+                .await?
+        {
+            return Ok(Some(content));
+        }
 
         // Handle schema objects (-SCHEMA suffix)
         if normalized_query.ends_with("-SCHEMA")
-            &&
-                let Some(content) = self.get_from_storage(
-                    &format!("schema/{}", normalized_query)
-                ).await?
-            {
-                return Ok(Some(content));
-            }
+            && let Some(content) = self
+                .get_from_storage(&format!("schema/{}", normalized_query))
+                .await?
+        {
+            return Ok(Some(content));
+        }
 
         // Handle organisation objects (ORG- prefix)
         if normalized_query.starts_with("ORG-")
-            &&
-                let Some(content) = self.get_from_storage(
-                    &format!("organisation/{}", normalized_query)
-                ).await?
-            {
-                return Ok(Some(content));
-            }
+            && let Some(content) = self
+                .get_from_storage(&format!("organisation/{}", normalized_query))
+                .await?
+        {
+            return Ok(Some(content));
+        }
 
         // Handle tinc-keyset objects (SET-*-TINC pattern)
-        if normalized_query.starts_with("SET-") && normalized_query.ends_with("-TINC")
-            &&
-                let Some(content) = self.get_from_storage(
-                    &format!("tinc-keyset/{}", normalized_query)
-                ).await?
-            {
-                return Ok(Some(content));
-            }
+        if normalized_query.starts_with("SET-")
+            && normalized_query.ends_with("-TINC")
+            && let Some(content) = self
+                .get_from_storage(&format!("tinc-keyset/{}", normalized_query))
+                .await?
+        {
+            return Ok(Some(content));
+        }
 
         // Handle tinc-key objects (-TINC suffix)
-        if normalized_query.ends_with("-TINC") && !normalized_query.starts_with("SET-")
-            &&
-                let Some(content) = self.get_from_storage(
-                    &format!("tinc-key/{}", normalized_query)
-                ).await?
-            {
-                return Ok(Some(content));
-            }
+        if normalized_query.ends_with("-TINC")
+            && !normalized_query.starts_with("SET-")
+            && let Some(content) = self
+                .get_from_storage(&format!("tinc-key/{}", normalized_query))
+                .await?
+        {
+            return Ok(Some(content));
+        }
 
         // Handle route-set objects (RS- prefix)
         if normalized_query.starts_with("RS-")
-            &&
-                let Some(content) = self.get_from_storage(
-                    &format!("route-set/{}", normalized_query)
-                ).await?
-            {
-                return Ok(Some(content));
-            }
+            && let Some(content) = self
+                .get_from_storage(&format!("route-set/{}", normalized_query))
+                .await?
+        {
+            return Ok(Some(content));
+        }
 
         // Handle as-block objects (AS*-AS* pattern)
-        if normalized_query.contains("-AS") && normalized_query.starts_with("AS")
-            &&
-                let Some(content) = self.get_from_storage(
-                    &format!("as-block/{}", normalized_query)
-                ).await?
-            {
-                return Ok(Some(content));
-            }
+        if normalized_query.contains("-AS")
+            && normalized_query.starts_with("AS")
+            && let Some(content) = self
+                .get_from_storage(&format!("as-block/{}", normalized_query))
+                .await?
+        {
+            return Ok(Some(content));
+        }
 
         // Handle as-set objects (AS prefix, not an ASN)
-        if
-            normalized_query.starts_with("AS") &&
-            !normalized_query
-                .chars()
-                .skip(2)
-                .all(|c| c.is_ascii_digit())
-            &&
-                let Some(content) = self.get_from_storage(
-                    &format!("as-set/{}", normalized_query)
-                ).await?
-            {
-                return Ok(Some(content));
-            }
+        if normalized_query.starts_with("AS")
+            && !normalized_query.chars().skip(2).all(|c| c.is_ascii_digit())
+            && let Some(content) = self
+                .get_from_storage(&format!("as-set/{}", normalized_query))
+                .await?
+        {
+            return Ok(Some(content));
+        }
 
         // Handle DNS objects (default fallback)
-        if
-            let Some(content) = self.get_from_storage(
-                &format!("dns/{}", query.to_lowercase())
-            ).await?
+        if let Some(content) = self
+            .get_from_storage(&format!("dns/{}", query.to_lowercase()))
+            .await?
         {
             return Ok(Some(content));
         }
@@ -548,19 +551,21 @@ impl DN42Registry {
         &self,
         subdir: &str,
         ip: Ipv4Addr,
-        query_mask: u8
+        query_mask: u8,
     ) -> Result<Option<String>> {
         debug!(
             "DN42: Searching for IPv4 network in '{}' for IP {} with mask /{}",
-            subdir,
-            ip,
-            query_mask
+            subdir, ip, query_mask
         );
         let ip_int = u32::from(ip);
 
         // Search from the query mask down to /0
         for mask in (0..=query_mask).rev() {
-            let network_int = if mask > 0 { ip_int & (0xffffffff << (32 - mask)) } else { 0 };
+            let network_int = if mask > 0 {
+                ip_int & (0xffffffff << (32 - mask))
+            } else {
+                0
+            };
 
             let network_ip = Ipv4Addr::from(network_int);
             let network_str = format!("{}/{}", network_ip, mask);
@@ -573,7 +578,10 @@ impl DN42Registry {
             }
         }
 
-        debug!("DN42: No matching IPv4 network found in '{}' for IP {}", subdir, ip);
+        debug!(
+            "DN42: No matching IPv4 network found in '{}' for IP {}",
+            subdir, ip
+        );
         Ok(None)
     }
 
@@ -582,13 +590,11 @@ impl DN42Registry {
         &self,
         subdir: &str,
         ip: Ipv6Addr,
-        query_mask: u8
+        query_mask: u8,
     ) -> Result<Option<String>> {
         debug!(
             "DN42: Searching for IPv6 network in '{}' for IP {} with mask /{}",
-            subdir,
-            ip,
-            query_mask
+            subdir, ip, query_mask
         );
         let ip_int = u128::from(ip);
 
@@ -611,7 +617,10 @@ impl DN42Registry {
             }
         }
 
-        debug!("DN42: No matching IPv6 network found in '{}' for IP {}", subdir, ip);
+        debug!(
+            "DN42: No matching IPv6 network found in '{}' for IP {}",
+            subdir, ip
+        );
         Ok(None)
     }
 
@@ -622,18 +631,19 @@ impl DN42Registry {
         let key_copy = key.to_string();
         let key_for_log = key.to_string();
 
-        let result = tokio::task::spawn_blocking(move || { storage.get(&key_copy) }).await?;
+        let result = tokio::task::spawn_blocking(move || storage.get(&key_copy)).await?;
 
         match &result {
-            Ok(Some(data)) =>
-                debug!(
-                    "DN42: Retrieved data from LMDB for key '{}', length: {} bytes",
-                    key_for_log,
-                    data.len()
-                ),
+            Ok(Some(data)) => debug!(
+                "DN42: Retrieved data from LMDB for key '{}', length: {} bytes",
+                key_for_log,
+                data.len()
+            ),
             Ok(None) => debug!("DN42: No data found in LMDB for key: {}", key_for_log),
-            Err(e) =>
-                warn!("DN42: Failed to retrieve data from LMDB for key '{}': {}", key_for_log, e),
+            Err(e) => warn!(
+                "DN42: Failed to retrieve data from LMDB for key '{}': {}",
+                key_for_log, e
+            ),
         }
 
         result
@@ -646,13 +656,15 @@ impl DN42Registry {
         let key_copy = key.to_string();
         let key_for_log = key.to_string();
 
-        let result = tokio::task::spawn_blocking(move || { storage.exists(&key_copy) }).await?;
+        let result = tokio::task::spawn_blocking(move || storage.exists(&key_copy)).await?;
 
         match &result {
             Ok(true) => debug!("DN42: Key exists in LMDB: {}", key_for_log),
             Ok(false) => debug!("DN42: Key does not exist in LMDB: {}", key_for_log),
-            Err(e) =>
-                warn!("DN42: Error checking key existence in LMDB for '{}': {}", key_for_log, e),
+            Err(e) => warn!(
+                "DN42: Error checking key existence in LMDB for '{}': {}",
+                key_for_log, e
+            ),
         }
 
         result
@@ -663,20 +675,22 @@ impl DN42Registry {
 fn clone_repository() -> Result<()> {
     // Create parent directory if it doesn't exist
     if let Some(parent) = Path::new(DN42_REGISTRY_PATH).parent()
-        && !parent.exists() {
-            std::fs
-                ::create_dir_all(parent)
-                .map_err(|e|
-                    anyhow::anyhow!(
-                        "Failed to create git repository parent directory {:?}: {}",
-                        parent,
-                        e
-                    )
-                )?;
-            info!("Created git repository parent directory: {:?}", parent);
-        }
+        && !parent.exists()
+    {
+        std::fs::create_dir_all(parent).map_err(|e| {
+            anyhow::anyhow!(
+                "Failed to create git repository parent directory {:?}: {}",
+                parent,
+                e
+            )
+        })?;
+        info!("Created git repository parent directory: {:?}", parent);
+    }
 
-    info!("Cloning repository from {} to {}", DN42_REGISTRY_URL, DN42_REGISTRY_PATH);
+    info!(
+        "Cloning repository from {} to {}",
+        DN42_REGISTRY_URL, DN42_REGISTRY_PATH
+    );
 
     // Check if git is available
     let git_check = Command::new("git").args(["--version"]).output();
@@ -691,19 +705,29 @@ fn clone_repository() -> Result<()> {
             return Err(anyhow::anyhow!("Git version check failed: {}", stderr));
         }
         Err(e) => {
-            return Err(
-                anyhow::anyhow!("Git not found or not executable: {}. Please install git.", e)
-            );
+            return Err(anyhow::anyhow!(
+                "Git not found or not executable: {}. Please install git.",
+                e
+            ));
         }
     }
 
     let output = Command::new("git")
-        .args(["clone", "--depth", "1", DN42_REGISTRY_URL, DN42_REGISTRY_PATH])
+        .args([
+            "clone",
+            "--depth",
+            "1",
+            DN42_REGISTRY_URL,
+            DN42_REGISTRY_PATH,
+        ])
         .output()
         .map_err(|e| anyhow::anyhow!("Failed to execute git clone command: {}", e))?;
 
     if output.status.success() {
-        info!("Successfully cloned DN42 registry to {}", DN42_REGISTRY_PATH);
+        info!(
+            "Successfully cloned DN42 registry to {}",
+            DN42_REGISTRY_PATH
+        );
 
         // Log any output from git command
         if !output.stdout.is_empty() {
@@ -714,12 +738,16 @@ fn clone_repository() -> Result<()> {
         // Verify the data directory exists
         let data_dir = Path::new(DN42_REGISTRY_PATH).join("data");
         if !data_dir.exists() {
-            return Err(
-                anyhow::anyhow!("Cloned repository is missing data directory: {:?}", data_dir)
-            );
+            return Err(anyhow::anyhow!(
+                "Cloned repository is missing data directory: {:?}",
+                data_dir
+            ));
         }
 
-        info!("Verified DN42 registry data directory exists: {:?}", data_dir);
+        info!(
+            "Verified DN42 registry data directory exists: {:?}",
+            data_dir
+        );
         Ok(())
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -762,7 +790,10 @@ fn pull_latest_changes() -> Result<()> {
         Ok(output) => {
             // Try origin/main if origin/master failed
             let stderr = String::from_utf8_lossy(&output.stderr);
-            debug!("Reset to origin/master failed: {}, trying origin/main", stderr);
+            debug!(
+                "Reset to origin/master failed: {}, trying origin/main",
+                stderr
+            );
 
             let main_output = Command::new("git")
                 .args(["reset", "--hard", "origin/main"])
@@ -810,15 +841,16 @@ fn parse_asn(query: &str) -> Option<String> {
 
     // Handle AS prefix
     if let Some(asn_part) = normalized.strip_prefix("AS")
-        && let Ok(num) = asn_part.parse::<u32>() {
-            return match asn_part.len() {
-                1 => Some(format!("AS424242000{}", num)),
-                2 => Some(format!("AS42424200{}", num)),
-                3 => Some(format!("AS4242420{}", num)),
-                4 => Some(format!("AS424242{}", num)),
-                _ => Some(normalized),
-            };
-        }
+        && let Ok(num) = asn_part.parse::<u32>()
+    {
+        return match asn_part.len() {
+            1 => Some(format!("AS424242000{}", num)),
+            2 => Some(format!("AS42424200{}", num)),
+            3 => Some(format!("AS4242420{}", num)),
+            4 => Some(format!("AS424242{}", num)),
+            _ => Some(normalized),
+        };
+    }
 
     None
 }

@@ -16,11 +16,11 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-use std::time::Duration;
 use anyhow::Result;
-use serde::{ Deserialize, Serialize };
-use tracing::{ debug, error };
 use regex::Regex;
+use serde::{Deserialize, Serialize};
+use std::time::Duration;
+use tracing::{debug, error};
 
 /// MediaWiki API response structures for page information
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -101,12 +101,16 @@ impl AcgcService {
                 if !search_results.is_empty() {
                     // Get detailed info for the first search result
                     let first_result = &search_results[0];
-                    debug!("Found character, getting details for: {}", first_result.title);
+                    debug!(
+                        "Found character, getting details for: {}",
+                        first_result.title
+                    );
                     self.get_character_details(&first_result.title).await
                 } else {
-                    Ok(
-                        format!("ACGC Character Not Found: {}\nNo matching characters found on Moegirl Wiki.\n", query)
-                    )
+                    Ok(format!(
+                        "ACGC Character Not Found: {}\nNo matching characters found on Moegirl Wiki.\n",
+                        query
+                    ))
                 }
             }
             Err(e) => {
@@ -129,10 +133,18 @@ impl AcgcService {
             ("srnamespace", "0"), // Main namespace
         ];
 
-        let response = self.client.get(&self.base_url).query(&params).send().await?;
+        let response = self
+            .client
+            .get(&self.base_url)
+            .query(&params)
+            .send()
+            .await?;
 
         if !response.status().is_success() {
-            return Err(anyhow::anyhow!("Search request failed: {}", response.status()));
+            return Err(anyhow::anyhow!(
+                "Search request failed: {}",
+                response.status()
+            ));
         }
 
         let wiki_data: MediaWikiResponse = response.json().await?;
@@ -165,22 +177,31 @@ impl AcgcService {
             ("exlimit", "1"),
         ];
 
-        let response = self.client.get(&self.base_url).query(&params).send().await?;
+        let response = self
+            .client
+            .get(&self.base_url)
+            .query(&params)
+            .send()
+            .await?;
 
         if !response.status().is_success() {
-            return Err(anyhow::anyhow!("Details request failed: {}", response.status()));
+            return Err(anyhow::anyhow!(
+                "Details request failed: {}",
+                response.status()
+            ));
         }
 
         let wiki_data: MediaWikiResponse = response.json().await?;
 
         if let Some(query_data) = wiki_data.query
-            && let Some(pages) = query_data.pages {
-                for (_, page) in pages {
-                    if page.pageid.is_some() {
-                        return Ok(self.format_character_info(&page));
-                    }
+            && let Some(pages) = query_data.pages
+        {
+            for (_, page) in pages {
+                if page.pageid.is_some() {
+                    return Ok(self.format_character_info(&page));
                 }
             }
+        }
 
         Err(anyhow::anyhow!("No character details found"))
     }
@@ -202,24 +223,29 @@ impl AcgcService {
 
         // Add character description from extract
         if let Some(extract) = &page.extract
-            && !extract.is_empty() {
-                let cleaned_extract = self.clean_wiki_text(extract);
-                if !cleaned_extract.is_empty() {
-                    output.push_str(&format!("description: {}\n", cleaned_extract));
-                }
+            && !extract.is_empty()
+        {
+            let cleaned_extract = self.clean_wiki_text(extract);
+            if !cleaned_extract.is_empty() {
+                output.push_str(&format!("description: {}\n", cleaned_extract));
             }
+        }
 
         // Try to extract additional information from the page content
         if let Some(revisions) = &page.revisions
             && let Some(revision) = revisions.first()
-                && let Some(content) = &revision.content {
-                    let info = self.extract_character_info(content);
-                    output.push_str(&info);
-                }
+            && let Some(content) = &revision.content
+        {
+            let info = self.extract_character_info(content);
+            output.push_str(&info);
+        }
 
         // Add wiki URL
         let encoded_title = urlencoding::encode(&page.title);
-        output.push_str(&format!("moegirl-url: https://zh.moegirl.org.cn/{}\n", encoded_title));
+        output.push_str(&format!(
+            "moegirl-url: https://zh.moegirl.org.cn/{}\n",
+            encoded_title
+        ));
 
         output
     }
@@ -234,14 +260,12 @@ impl AcgcService {
             (r"角色\s*\|\s*[^=]*=\s*([^|\n\}]+)", "character-template"),
             (r"作品\s*=\s*([^|\n\}]+)", "source-work"),
             (r"系列\s*=\s*([^|\n\}]+)", "series"),
-
             // 声优/配音信息 (多种格式)
             (r"声优\s*[：=:|]\s*([^|\n\}]+)", "voice-actor"),
             (r"配音\s*[：=:|]\s*([^|\n\}]+)", "voice-actor"),
             (r"CV\s*[：=:|]\s*([^|\n\}]+)", "voice-actor"),
             (r"日配\s*[：=:|]\s*([^|\n\}]+)", "voice-actor-jp"),
             (r"中配\s*[：=:|]\s*([^|\n\}]+)", "voice-actor-cn"),
-
             // 基本信息
             (r"年龄\s*[：=:|]\s*([^|\n\}]+)", "age"),
             (r"生日\s*[：=:|]\s*([^|\n\}]+)", "birthday"),
@@ -250,7 +274,6 @@ impl AcgcService {
             (r"性别\s*[：=:|]\s*([^|\n\}]+)", "gender"),
             (r"种族\s*[：=:|]\s*([^|\n\}]+)", "species"),
             (r"血型\s*[：=:|]\s*([^|\n\}]+)", "blood-type"),
-
             // 外观特征
             (r"发色\s*[：=:|]\s*([^|\n\}]+)", "hair-color"),
             (r"瞳色\s*[：=:|]\s*([^|\n\}]+)", "eye-color"),
@@ -258,7 +281,6 @@ impl AcgcService {
             (r"头发颜色\s*[：=:|]\s*([^|\n\}]+)", "hair-color"),
             (r"服装\s*[：=:|]\s*([^|\n\}]+)", "clothing"),
             (r"装扮\s*[：=:|]\s*([^|\n\}]+)", "appearance"),
-
             // 身份和角色信息
             (r"出身\s*[：=:|]\s*([^|\n\}]+)", "origin"),
             (r"职业\s*[：=:|]\s*([^|\n\}]+)", "occupation"),
@@ -266,13 +288,11 @@ impl AcgcService {
             (r"身份\s*[：=:|]\s*([^|\n\}]+)", "identity"),
             (r"等级\s*[：=:|]\s*([^|\n\}]+)", "level"),
             (r"阶级\s*[：=:|]\s*([^|\n\}]+)", "class"),
-
             // 性格和特征
             (r"性格\s*[：=:|]\s*([^|\n\}]+)", "personality"),
             (r"萌点\s*[：=:|]\s*([^|\n\}]+)", "moe-points"),
             (r"属性\s*[：=:|]\s*([^|\n\}]+)", "attributes"),
             (r"特征\s*[：=:|]\s*([^|\n\}]+)", "traits"),
-
             // 能力和技能
             (r"喜好\s*[：=:|]\s*([^|\n\}]+)", "hobby"),
             (r"爱好\s*[：=:|]\s*([^|\n\}]+)", "hobby"),
@@ -281,13 +301,11 @@ impl AcgcService {
             (r"技能\s*[：=:|]\s*([^|\n\}]+)", "skill"),
             (r"武器\s*[：=:|]\s*([^|\n\}]+)", "weapon"),
             (r"装备\s*[：=:|]\s*([^|\n\}]+)", "equipment"),
-
             // 称号和别名
             (r"称号\s*[：=:|]\s*([^|\n\}]+)", "title"),
             (r"别名\s*[：=:|]\s*([^|\n\}]+)", "alias"),
             (r"外号\s*[：=:|]\s*([^|\n\}]+)", "nickname"),
             (r"绰号\s*[：=:|]\s*([^|\n\}]+)", "nickname"),
-
             // 关系信息
             (r"亲属\s*[：=:|]\s*([^|\n\}]+)", "family"),
             (r"朋友\s*[：=:|]\s*([^|\n\}]+)", "friends"),
@@ -299,7 +317,7 @@ impl AcgcService {
         // Extract using enhanced patterns with deduplication
         let mut extracted_info: std::collections::HashMap<
             String,
-            std::collections::HashSet<String>
+            std::collections::HashSet<String>,
         > = std::collections::HashMap::new();
 
         for (pattern, field_name) in template_patterns {
@@ -309,21 +327,18 @@ impl AcgcService {
                         let cleaned_value = self.clean_wiki_text(value.as_str());
 
                         // Filter out invalid/meaningless content
-                        if
-                            !cleaned_value.is_empty() &&
-                            cleaned_value.len() < 300 &&
-                            cleaned_value.len() > 1 &&
-                            !cleaned_value.starts_with("Category:") &&
-                            !cleaned_value.contains("内容=") &&
-                            cleaned_value != "Race" &&
-                            cleaned_value != "Skill" &&
-                            cleaned_value != "Ultimate Skill" &&
-                            !cleaned_value.contains("{{") &&
-                            !cleaned_value.contains("}}")
+                        if !cleaned_value.is_empty()
+                            && cleaned_value.len() < 300
+                            && cleaned_value.len() > 1
+                            && !cleaned_value.starts_with("Category:")
+                            && !cleaned_value.contains("内容=")
+                            && cleaned_value != "Race"
+                            && cleaned_value != "Skill"
+                            && cleaned_value != "Ultimate Skill"
+                            && !cleaned_value.contains("{{")
+                            && !cleaned_value.contains("}}")
                         {
-                            let entry = extracted_info
-                                .entry(field_name.to_string())
-                                .or_default();
+                            let entry = extracted_info.entry(field_name.to_string()).or_default();
                             entry.insert(cleaned_value);
                         }
                     }
@@ -350,13 +365,12 @@ impl AcgcService {
                 if let Some(category) = captures.get(1) {
                     let cat = category.as_str();
                     // 只保留角色相关的分类
-                    if
-                        cat.contains("角色") ||
-                        cat.contains("人物") ||
-                        cat.contains("萌点") ||
-                        cat.contains("属性") ||
-                        cat.contains("声优") ||
-                        cat.contains("CV")
+                    if cat.contains("角色")
+                        || cat.contains("人物")
+                        || cat.contains("萌点")
+                        || cat.contains("属性")
+                        || cat.contains("声优")
+                        || cat.contains("CV")
                     {
                         categories.push(cat);
                     }
@@ -427,15 +441,20 @@ impl AcgcService {
 
         // Remove trailing incomplete content that might cause issues
         if let Ok(re) = Regex::new(r"[{<[].*$")
-            && text.len() > 20 && re.is_match(&text)
-                && let Some(pos) = text.find(['{', '<', '['])
-                    && pos > 10 {
-                        // Keep some content before the incomplete markup
-                        text = text[..pos].to_string();
-                    }
+            && text.len() > 20
+            && re.is_match(&text)
+            && let Some(pos) = text.find(['{', '<', '['])
+            && pos > 10
+        {
+            // Keep some content before the incomplete markup
+            text = text[..pos].to_string();
+        }
 
         // Remove trailing commas and unnecessary punctuation
-        text = text.trim_end_matches(',').trim_end_matches('、').to_string();
+        text = text
+            .trim_end_matches(',')
+            .trim_end_matches('、')
+            .to_string();
 
         let result = text.trim().to_string();
 
@@ -472,16 +491,18 @@ pub async fn process_acgc_query(query: &str) -> Result<String> {
 
         if character_query.is_empty() {
             return Ok(
-                "Invalid ACGC query. Please provide a character name.\nExample: 利姆鲁-ACGC\n".to_string()
+                "Invalid ACGC query. Please provide a character name.\nExample: 利姆鲁-ACGC\n"
+                    .to_string(),
             );
         }
 
         acgc_service.query_character_info(&character_query).await
     } else {
         error!("Invalid ACGC query format: {}", query);
-        Ok(
-            format!("Invalid ACGC query format. Use: <character_name>-ACGC\nExample: 利姆鲁-ACGC\nQuery: {}\n", query)
-        )
+        Ok(format!(
+            "Invalid ACGC query format. Use: <character_name>-ACGC\nExample: 利姆鲁-ACGC\nQuery: {}\n",
+            query
+        ))
     }
 }
 
@@ -502,7 +523,10 @@ mod tests {
 
     #[test]
     fn test_acgc_query_parsing() {
-        assert_eq!(AcgcService::parse_acgc_query("利姆鲁-ACGC"), Some("利姆鲁".to_string()));
+        assert_eq!(
+            AcgcService::parse_acgc_query("利姆鲁-ACGC"),
+            Some("利姆鲁".to_string())
+        );
 
         assert_eq!(
             AcgcService::parse_acgc_query("Rimuru Tempest-ACGC"),
@@ -518,7 +542,10 @@ mod tests {
 
         assert_eq!(service.clean_wiki_text("{{角色|利姆鲁}}"), "角色|利姆鲁");
 
-        assert_eq!(service.clean_wiki_text("[[转生史莱姆]]的主角"), "转生史莱姆的主角");
+        assert_eq!(
+            service.clean_wiki_text("[[转生史莱姆]]的主角"),
+            "转生史莱姆的主角"
+        );
 
         assert_eq!(service.clean_wiki_text("'''史莱姆'''"), "史莱姆");
     }

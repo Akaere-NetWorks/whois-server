@@ -16,10 +16,10 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-use anyhow::{ Context, Result };
+use anyhow::{Context, Result};
 use reqwest;
-use serde::{ Deserialize, Serialize };
-use tracing::{ debug, error };
+use serde::{Deserialize, Serialize};
+use tracing::{debug, error};
 
 const ALMA_REPO_BASE: &str = "https://repo.almalinux.org/almalinux/9/BaseOS/x86_64/os";
 const ALMA_APPSTREAM_BASE: &str = "https://repo.almalinux.org/almalinux/9/AppStream/x86_64/os";
@@ -58,10 +58,11 @@ pub async fn process_alma_query(package_name: &str) -> Result<String> {
     }
 
     // Validate package name (RPM naming conventions)
-    if
-        package_name.len() > 100 ||
-        package_name.contains(' ') ||
-        !package_name.chars().all(|c| c.is_ascii_alphanumeric() || "+-._".contains(c))
+    if package_name.len() > 100
+        || package_name.contains(' ')
+        || !package_name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || "+-._".contains(c))
     {
         return Err(anyhow::anyhow!("Invalid AlmaLinux package name format"));
     }
@@ -75,15 +76,17 @@ pub async fn process_alma_query(package_name: &str) -> Result<String> {
             }
         }
         Err(e) => {
-            error!("AlmaLinux packages query failed for {}: {}", package_name, e);
+            error!(
+                "AlmaLinux packages query failed for {}: {}",
+                package_name, e
+            );
             Ok(format_alma_not_found(package_name))
         }
     }
 }
 
 async fn query_alma_packages(package_name: &str) -> Result<Vec<AlmaPackageResult>> {
-    let client = reqwest::Client
-        ::builder()
+    let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(20))
         .user_agent("whois-server/1.0 (AlmaLinux package lookup)")
         .build()
@@ -97,7 +100,10 @@ async fn query_alma_packages(package_name: &str) -> Result<Vec<AlmaPackageResult
     ];
 
     for (repo_name, repo_base) in &repositories {
-        debug!("Checking AlmaLinux {} repository for: {}", repo_name, package_name);
+        debug!(
+            "Checking AlmaLinux {} repository for: {}",
+            repo_name, package_name
+        );
 
         // Try to access the repodata/primary.xml.gz file which contains package metadata
         let repodata_url = format!("{}/repodata/repomd.xml", repo_base);

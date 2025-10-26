@@ -3,17 +3,13 @@
 use anyhow::Result;
 use tracing::debug;
 
-use super::types::{
-    RipeStatResponse,
-    RirGeoResponse,
-    PrefixesResponse,
-    IpinfoResponse,
-    IpApiResponse,
-    BilibiliIpResponse,
-};
-use super::meituan::MeituanCombinedResponse;
-use super::utils::{ truncate_string, extract_ip_from_prefix };
 use super::ipinfo_api::query_ipinfo_api;
+use super::meituan::MeituanCombinedResponse;
+use super::types::{
+    BilibiliIpResponse, IpApiResponse, IpinfoResponse, PrefixesResponse, RipeStatResponse,
+    RirGeoResponse,
+};
+use super::utils::{extract_ip_from_prefix, truncate_string};
 
 /// Format RIR geo location response
 pub fn format_rir_geo_response(resource: &str, response: &RirGeoResponse) -> Result<String> {
@@ -42,9 +38,11 @@ pub fn format_rir_geo_response(resource: &str, response: &RirGeoResponse) -> Res
             formatted.push_str("----------------------------|-------------\n");
 
             for item in located {
-                formatted.push_str(
-                    &format!("{:<27} | {}\n", truncate_string(&item.resource, 27), item.location)
-                );
+                formatted.push_str(&format!(
+                    "{:<27} | {}\n",
+                    truncate_string(&item.resource, 27),
+                    item.location
+                ));
             }
             formatted.push('\n');
 
@@ -57,14 +55,15 @@ pub fn format_rir_geo_response(resource: &str, response: &RirGeoResponse) -> Res
 
     // Show messages if any
     if let Some(messages) = &response.messages
-        && !messages.is_empty() {
-            formatted.push_str("\n% API Messages:\n");
-            for message in messages {
-                for msg_part in message {
-                    formatted.push_str(&format!("% {}\n", msg_part));
-                }
+        && !messages.is_empty()
+    {
+        formatted.push_str("\n% API Messages:\n");
+        for message in messages {
+            for msg_part in message {
+                formatted.push_str(&format!("% {}\n", msg_part));
             }
         }
+    }
 
     Ok(formatted)
 }
@@ -76,7 +75,7 @@ pub fn format_ultimate_geo_response(
     ipinfo_result: Result<IpinfoResponse>,
     ipapi_result: Result<IpApiResponse>,
     bilibili_result: Result<BilibiliIpResponse>,
-    meituan_result: Result<MeituanCombinedResponse>
+    meituan_result: Result<MeituanCombinedResponse>,
 ) -> Result<String> {
     let mut formatted = String::new();
 
@@ -104,15 +103,13 @@ pub fn format_ultimate_geo_response(
                                     formatted.push_str(&format!("Country:   {}\n", country));
                                     formatted.push_str(&format!("City:      {}\n", city));
 
-                                    if
-                                        let (Some(lat), Some(lon)) = (
-                                            location.latitude,
-                                            location.longitude,
-                                        )
+                                    if let (Some(lat), Some(lon)) =
+                                        (location.latitude, location.longitude)
                                     {
-                                        formatted.push_str(
-                                            &format!("Location:  {:.4}, {:.4}\n", lat, lon)
-                                        );
+                                        formatted.push_str(&format!(
+                                            "Location:  {:.4}, {:.4}\n",
+                                            lat, lon
+                                        ));
                                     } else {
                                         formatted.push_str("Location:  N/A\n");
                                     }
@@ -177,23 +174,20 @@ pub fn format_ultimate_geo_response(
     match &ipapi_result {
         Ok(ipapi_response) => {
             formatted.push_str(&format!("Resource:  {}\n", ipapi_response.ip));
-            formatted.push_str(
-                &format!(
-                    "Country:   {} ({})\n",
-                    ipapi_response.country.as_deref().unwrap_or("N/A"),
-                    ipapi_response.country_code.as_deref().unwrap_or("N/A")
-                )
-            );
-            formatted.push_str(
-                &format!(
-                    "Region:    {} ({})\n",
-                    ipapi_response.region_name.as_deref().unwrap_or("N/A"),
-                    ipapi_response.region.as_deref().unwrap_or("N/A")
-                )
-            );
-            formatted.push_str(
-                &format!("City:      {}\n", ipapi_response.city.as_deref().unwrap_or("N/A"))
-            );
+            formatted.push_str(&format!(
+                "Country:   {} ({})\n",
+                ipapi_response.country.as_deref().unwrap_or("N/A"),
+                ipapi_response.country_code.as_deref().unwrap_or("N/A")
+            ));
+            formatted.push_str(&format!(
+                "Region:    {} ({})\n",
+                ipapi_response.region_name.as_deref().unwrap_or("N/A"),
+                ipapi_response.region.as_deref().unwrap_or("N/A")
+            ));
+            formatted.push_str(&format!(
+                "City:      {}\n",
+                ipapi_response.city.as_deref().unwrap_or("N/A")
+            ));
 
             if let (Some(lat), Some(lon)) = (ipapi_response.lat, ipapi_response.lon) {
                 formatted.push_str(&format!("Location:  {:.4}, {:.4}\n", lat, lon));
@@ -243,7 +237,10 @@ pub fn format_ultimate_geo_response(
                 formatted.push_str(&format!("Province:  {}\n", data.province));
                 formatted.push_str(&format!("City:      {}\n", data.city));
                 formatted.push_str(&format!("ISP:       {}\n", data.isp));
-                formatted.push_str(&format!("Location:  {}, {}\n", data.latitude, data.longitude));
+                formatted.push_str(&format!(
+                    "Location:  {}, {}\n",
+                    data.latitude, data.longitude
+                ));
             } else {
                 formatted.push_str("% No data available\n");
             }
@@ -265,9 +262,10 @@ pub fn format_ultimate_geo_response(
             formatted.push_str(&format!("City:      {}\n", meituan_response.city));
             formatted.push_str(&format!("District:  {}\n", meituan_response.district));
             formatted.push_str(&format!("AD Code:   {}\n", meituan_response.adcode));
-            formatted.push_str(
-                &format!("Location:  {:.2}, {:.2}\n", meituan_response.lat, meituan_response.lng)
-            );
+            formatted.push_str(&format!(
+                "Location:  {:.2}, {:.2}\n",
+                meituan_response.lat, meituan_response.lng
+            ));
             formatted.push_str(&format!("Source:    {}\n", meituan_response.fromwhere));
 
             // Add city details if available
@@ -302,7 +300,7 @@ pub fn format_enhanced_geo_response(
     ripe_result: Result<RipeStatResponse>,
     ipinfo_result: Result<IpinfoResponse>,
     ipapi_result: Result<IpApiResponse>,
-    bilibili_result: Result<BilibiliIpResponse>
+    bilibili_result: Result<BilibiliIpResponse>,
 ) -> Result<String> {
     let mut formatted = String::new();
 
@@ -330,17 +328,17 @@ pub fn format_enhanced_geo_response(
                                 for location in locations {
                                     let country = location.country.as_deref().unwrap_or("N/A");
                                     let city = location.city.as_deref().unwrap_or("N/A");
-                                    let lat = location.latitude
+                                    let lat = location
+                                        .latitude
                                         .map(|f| format!("{:.4}", f))
                                         .unwrap_or_else(|| "N/A".to_string());
-                                    let lon = location.longitude
+                                    let lon = location
+                                        .longitude
                                         .map(|f| format!("{:.4}", f))
                                         .unwrap_or_else(|| "N/A".to_string());
 
-                                    max_resource_len = std::cmp::max(
-                                        max_resource_len,
-                                        item.resource.len()
-                                    );
+                                    max_resource_len =
+                                        std::cmp::max(max_resource_len, item.resource.len());
                                     max_country_len = std::cmp::max(max_country_len, country.len());
                                     max_city_len = std::cmp::max(max_city_len, city.len());
 
@@ -353,10 +351,8 @@ pub fn format_enhanced_geo_response(
                                     ));
                                 }
                             } else {
-                                max_resource_len = std::cmp::max(
-                                    max_resource_len,
-                                    item.resource.len()
-                                );
+                                max_resource_len =
+                                    std::cmp::max(max_resource_len, item.resource.len());
                                 rows.push((
                                     item.resource.clone(),
                                     "N/A".to_string(),
@@ -367,44 +363,38 @@ pub fn format_enhanced_geo_response(
                             }
                         }
 
-                        formatted.push_str(
-                            &format!(
-                                "{:<width1$} | {:<width2$} | {:<width3$} | Latitude  | Longitude\n",
-                                "Resource",
-                                "Country",
-                                "City",
-                                width1 = max_resource_len,
-                                width2 = max_country_len,
-                                width3 = max_city_len
-                            )
-                        );
+                        formatted.push_str(&format!(
+                            "{:<width1$} | {:<width2$} | {:<width3$} | Latitude  | Longitude\n",
+                            "Resource",
+                            "Country",
+                            "City",
+                            width1 = max_resource_len,
+                            width2 = max_country_len,
+                            width3 = max_city_len
+                        ));
 
-                        formatted.push_str(
-                            &format!(
-                                "{:-<width1$}-|-{:-<width2$}-|-{:-<width3$}-|-----------|----------\n",
-                                "",
-                                "",
-                                "",
-                                width1 = max_resource_len,
-                                width2 = max_country_len,
-                                width3 = max_city_len
-                            )
-                        );
+                        formatted.push_str(&format!(
+                            "{:-<width1$}-|-{:-<width2$}-|-{:-<width3$}-|-----------|----------\n",
+                            "",
+                            "",
+                            "",
+                            width1 = max_resource_len,
+                            width2 = max_country_len,
+                            width3 = max_city_len
+                        ));
 
                         for (resource, country, city, lat, lon) in rows {
-                            formatted.push_str(
-                                &format!(
-                                    "{:<width1$} | {:<width2$} | {:<width3$} | {:<9} | {}\n",
-                                    resource,
-                                    country,
-                                    city,
-                                    lat,
-                                    lon,
-                                    width1 = max_resource_len,
-                                    width2 = max_country_len,
-                                    width3 = max_city_len
-                                )
-                            );
+                            formatted.push_str(&format!(
+                                "{:<width1$} | {:<width2$} | {:<width3$} | {:<9} | {}\n",
+                                resource,
+                                country,
+                                city,
+                                lat,
+                                lon,
+                                width1 = max_resource_len,
+                                width2 = max_country_len,
+                                width3 = max_city_len
+                            ));
                         }
                     } else {
                         formatted.push_str("% No location data available\n");
@@ -460,23 +450,20 @@ pub fn format_enhanced_geo_response(
     match &ipapi_result {
         Ok(ipapi_response) => {
             formatted.push_str(&format!("Resource:  {}\n", ipapi_response.ip));
-            formatted.push_str(
-                &format!(
-                    "Country:   {} ({})\n",
-                    ipapi_response.country.as_deref().unwrap_or("N/A"),
-                    ipapi_response.country_code.as_deref().unwrap_or("N/A")
-                )
-            );
-            formatted.push_str(
-                &format!(
-                    "Region:    {} ({})\n",
-                    ipapi_response.region_name.as_deref().unwrap_or("N/A"),
-                    ipapi_response.region.as_deref().unwrap_or("N/A")
-                )
-            );
-            formatted.push_str(
-                &format!("City:      {}\n", ipapi_response.city.as_deref().unwrap_or("N/A"))
-            );
+            formatted.push_str(&format!(
+                "Country:   {} ({})\n",
+                ipapi_response.country.as_deref().unwrap_or("N/A"),
+                ipapi_response.country_code.as_deref().unwrap_or("N/A")
+            ));
+            formatted.push_str(&format!(
+                "Region:    {} ({})\n",
+                ipapi_response.region_name.as_deref().unwrap_or("N/A"),
+                ipapi_response.region.as_deref().unwrap_or("N/A")
+            ));
+            formatted.push_str(&format!(
+                "City:      {}\n",
+                ipapi_response.city.as_deref().unwrap_or("N/A")
+            ));
 
             if let (Some(lat), Some(lon)) = (ipapi_response.lat, ipapi_response.lon) {
                 formatted.push_str(&format!("Location:  {:.4}, {:.4}\n", lat, lon));
@@ -526,7 +513,10 @@ pub fn format_enhanced_geo_response(
                 formatted.push_str(&format!("Province:  {}\n", data.province));
                 formatted.push_str(&format!("City:      {}\n", data.city));
                 formatted.push_str(&format!("ISP:       {}\n", data.isp));
-                formatted.push_str(&format!("Location:  {}, {}\n", data.latitude, data.longitude));
+                formatted.push_str(&format!(
+                    "Location:  {}, {}\n",
+                    data.latitude, data.longitude
+                ));
             } else {
                 formatted.push_str("% No data available\n");
             }
@@ -546,7 +536,7 @@ pub fn format_enhanced_geo_response(
 pub fn format_combined_geo_response(
     resource: &str,
     ripe_result: Result<RipeStatResponse>,
-    ipinfo_result: Result<IpinfoResponse>
+    ipinfo_result: Result<IpinfoResponse>,
 ) -> Result<String> {
     let mut formatted = String::new();
 
@@ -574,17 +564,17 @@ pub fn format_combined_geo_response(
                                 for location in locations {
                                     let country = location.country.as_deref().unwrap_or("N/A");
                                     let city = location.city.as_deref().unwrap_or("N/A");
-                                    let lat = location.latitude
+                                    let lat = location
+                                        .latitude
                                         .map(|f| format!("{:.4}", f))
                                         .unwrap_or_else(|| "N/A".to_string());
-                                    let lon = location.longitude
+                                    let lon = location
+                                        .longitude
                                         .map(|f| format!("{:.4}", f))
                                         .unwrap_or_else(|| "N/A".to_string());
 
-                                    max_resource_len = std::cmp::max(
-                                        max_resource_len,
-                                        item.resource.len()
-                                    );
+                                    max_resource_len =
+                                        std::cmp::max(max_resource_len, item.resource.len());
                                     max_country_len = std::cmp::max(max_country_len, country.len());
                                     max_city_len = std::cmp::max(max_city_len, city.len());
 
@@ -597,10 +587,8 @@ pub fn format_combined_geo_response(
                                     ));
                                 }
                             } else {
-                                max_resource_len = std::cmp::max(
-                                    max_resource_len,
-                                    item.resource.len()
-                                );
+                                max_resource_len =
+                                    std::cmp::max(max_resource_len, item.resource.len());
                                 rows.push((
                                     item.resource.clone(),
                                     "N/A".to_string(),
@@ -612,46 +600,40 @@ pub fn format_combined_geo_response(
                         }
 
                         // Dynamic header
-                        formatted.push_str(
-                            &format!(
-                                "{:<width1$} | {:<width2$} | {:<width3$} | Latitude  | Longitude\n",
-                                "Resource",
-                                "Country",
-                                "City",
-                                width1 = max_resource_len,
-                                width2 = max_country_len,
-                                width3 = max_city_len
-                            )
-                        );
+                        formatted.push_str(&format!(
+                            "{:<width1$} | {:<width2$} | {:<width3$} | Latitude  | Longitude\n",
+                            "Resource",
+                            "Country",
+                            "City",
+                            width1 = max_resource_len,
+                            width2 = max_country_len,
+                            width3 = max_city_len
+                        ));
 
                         // Dynamic separator
-                        formatted.push_str(
-                            &format!(
-                                "{:-<width1$}-|-{:-<width2$}-|-{:-<width3$}-|-----------|----------\n",
-                                "",
-                                "",
-                                "",
-                                width1 = max_resource_len,
-                                width2 = max_country_len,
-                                width3 = max_city_len
-                            )
-                        );
+                        formatted.push_str(&format!(
+                            "{:-<width1$}-|-{:-<width2$}-|-{:-<width3$}-|-----------|----------\n",
+                            "",
+                            "",
+                            "",
+                            width1 = max_resource_len,
+                            width2 = max_country_len,
+                            width3 = max_city_len
+                        ));
 
                         // Data rows
                         for (resource, country, city, lat, lon) in rows {
-                            formatted.push_str(
-                                &format!(
-                                    "{:<width1$} | {:<width2$} | {:<width3$} | {:<9} | {}\n",
-                                    resource,
-                                    country,
-                                    city,
-                                    lat,
-                                    lon,
-                                    width1 = max_resource_len,
-                                    width2 = max_country_len,
-                                    width3 = max_city_len
-                                )
-                            );
+                            formatted.push_str(&format!(
+                                "{:<width1$} | {:<width2$} | {:<width3$} | {:<9} | {}\n",
+                                resource,
+                                country,
+                                city,
+                                lat,
+                                lon,
+                                width1 = max_resource_len,
+                                width2 = max_country_len,
+                                width3 = max_city_len
+                            ));
                         }
                     } else {
                         formatted.push_str("% No location data available\n");
@@ -686,50 +668,44 @@ pub fn format_combined_geo_response(
             let asn_width = std::cmp::max(3, asn.len());
 
             // Dynamic header
-            formatted.push_str(
-                &format!(
-                    "{:<width1$} | {:<width2$} | {:<width3$} | {:<width4$} | AS Name\n",
-                    "Resource",
-                    "Country",
-                    "City",
-                    "ASN",
-                    width1 = resource_width,
-                    width2 = country_width,
-                    width3 = city_width,
-                    width4 = asn_width
-                )
-            );
+            formatted.push_str(&format!(
+                "{:<width1$} | {:<width2$} | {:<width3$} | {:<width4$} | AS Name\n",
+                "Resource",
+                "Country",
+                "City",
+                "ASN",
+                width1 = resource_width,
+                width2 = country_width,
+                width3 = city_width,
+                width4 = asn_width
+            ));
 
             // Dynamic separator
-            formatted.push_str(
-                &format!(
-                    "{:-<width1$}-|-{:-<width2$}-|-{:-<width3$}-|-{:-<width4$}-|----------\n",
-                    "",
-                    "",
-                    "",
-                    "",
-                    width1 = resource_width,
-                    width2 = country_width,
-                    width3 = city_width,
-                    width4 = asn_width
-                )
-            );
+            formatted.push_str(&format!(
+                "{:-<width1$}-|-{:-<width2$}-|-{:-<width3$}-|-{:-<width4$}-|----------\n",
+                "",
+                "",
+                "",
+                "",
+                width1 = resource_width,
+                width2 = country_width,
+                width3 = city_width,
+                width4 = asn_width
+            ));
 
             // Data row with dynamic widths
-            formatted.push_str(
-                &format!(
-                    "{:<width1$} | {:<width2$} | {:<width3$} | {:<width4$} | {}\n",
-                    ipinfo_response.ip,
-                    country,
-                    city,
-                    asn,
-                    as_name,
-                    width1 = resource_width,
-                    width2 = country_width,
-                    width3 = city_width,
-                    width4 = asn_width
-                )
-            );
+            formatted.push_str(&format!(
+                "{:<width1$} | {:<width2$} | {:<width3$} | {:<width4$} | {}\n",
+                ipinfo_response.ip,
+                country,
+                city,
+                asn,
+                as_name,
+                width1 = resource_width,
+                width2 = country_width,
+                width3 = city_width,
+                width4 = asn_width
+            ));
 
             // Additional info if available
             if let Some(continent) = &ipinfo_response.continent {
@@ -756,7 +732,7 @@ pub fn format_combined_geo_response(
 pub async fn format_prefixes_response(
     asn: &str,
     response: &PrefixesResponse,
-    client: &reqwest::Client
+    client: &reqwest::Client,
 ) -> Result<String> {
     let mut formatted = String::new();
 
@@ -776,7 +752,10 @@ pub async fn format_prefixes_response(
 
     if let Some(prefixes) = &data.prefixes {
         if !prefixes.is_empty() {
-            debug!("Processing {} prefixes with concurrent IPinfo queries", prefixes.len());
+            debug!(
+                "Processing {} prefixes with concurrent IPinfo queries",
+                prefixes.len()
+            );
 
             // Create semaphore to limit concurrent requests to 32
             let semaphore = std::sync::Arc::new(tokio::sync::Semaphore::new(32));
@@ -794,21 +773,24 @@ pub async fn format_prefixes_response(
                     // Acquire semaphore permit to limit concurrency
                     let _permit = permit.acquire().await.unwrap();
 
-                    debug!("Querying IPinfo for IP: {} (from prefix: {})", ip_addr, prefix);
+                    debug!(
+                        "Querying IPinfo for IP: {} (from prefix: {})",
+                        ip_addr, prefix
+                    );
 
                     let (country, as_name) = match query_ipinfo_api(&client, &ip_addr).await {
                         Ok(ipinfo_response) => {
                             debug!(
                                 "IPinfo response for {}: as_name={:?}, country={:?}",
-                                ip_addr,
-                                ipinfo_response.as_name,
-                                ipinfo_response.country
+                                ip_addr, ipinfo_response.as_name, ipinfo_response.country
                             );
-                            let country = ipinfo_response.country
+                            let country = ipinfo_response
+                                .country
                                 .as_deref()
                                 .unwrap_or("N/A")
                                 .to_string();
-                            let as_name = ipinfo_response.as_name
+                            let as_name = ipinfo_response
+                                .as_name
                                 .as_deref()
                                 .unwrap_or("N/A")
                                 .to_string();
@@ -838,7 +820,10 @@ pub async fn format_prefixes_response(
                 }
             }
 
-            debug!("Completed IPinfo queries for {} prefixes", prefix_data.len());
+            debug!(
+                "Completed IPinfo queries for {} prefixes",
+                prefix_data.len()
+            );
 
             // Calculate adaptive column widths
             let prefix_width = std::cmp::max(
@@ -847,7 +832,7 @@ pub async fn format_prefixes_response(
                     .iter()
                     .map(|(p, _, _)| p.len())
                     .max()
-                    .unwrap_or(6)
+                    .unwrap_or(6),
             );
 
             let country_width = std::cmp::max(
@@ -856,7 +841,7 @@ pub async fn format_prefixes_response(
                     .iter()
                     .map(|(_, c, _)| c.len())
                     .max()
-                    .unwrap_or(7)
+                    .unwrap_or(7),
             );
 
             let as_name_width = std::cmp::max(
@@ -865,54 +850,51 @@ pub async fn format_prefixes_response(
                     .iter()
                     .map(|(_, _, a)| a.len())
                     .max()
-                    .unwrap_or(7)
+                    .unwrap_or(7),
             );
 
             formatted.push_str("Currently Announced Prefixes\n");
             formatted.push_str("============================\n\n");
 
             // Dynamic header
-            formatted.push_str(
-                &format!(
-                    "{:<width1$} | {:<width2$} | {:<width3$}\n",
-                    "Prefix",
-                    "Country",
-                    "AS Name",
-                    width1 = prefix_width,
-                    width2 = country_width,
-                    width3 = as_name_width
-                )
-            );
+            formatted.push_str(&format!(
+                "{:<width1$} | {:<width2$} | {:<width3$}\n",
+                "Prefix",
+                "Country",
+                "AS Name",
+                width1 = prefix_width,
+                width2 = country_width,
+                width3 = as_name_width
+            ));
 
             // Dynamic separator
-            formatted.push_str(
-                &format!(
-                    "{:-<width1$}-|-{:-<width2$}-|-{:-<width3$}\n",
-                    "",
-                    "",
-                    "",
-                    width1 = prefix_width,
-                    width2 = country_width,
-                    width3 = as_name_width
-                )
-            );
+            formatted.push_str(&format!(
+                "{:-<width1$}-|-{:-<width2$}-|-{:-<width3$}\n",
+                "",
+                "",
+                "",
+                width1 = prefix_width,
+                width2 = country_width,
+                width3 = as_name_width
+            ));
 
             // Data rows
             for (prefix, country, as_name) in prefix_data {
-                formatted.push_str(
-                    &format!(
-                        "{:<width1$} | {:<width2$} | {:<width3$}\n",
-                        truncate_string(&prefix, prefix_width),
-                        truncate_string(&country, country_width),
-                        truncate_string(&as_name, as_name_width),
-                        width1 = prefix_width,
-                        width2 = country_width,
-                        width3 = as_name_width
-                    )
-                );
+                formatted.push_str(&format!(
+                    "{:<width1$} | {:<width2$} | {:<width3$}\n",
+                    truncate_string(&prefix, prefix_width),
+                    truncate_string(&country, country_width),
+                    truncate_string(&as_name, as_name_width),
+                    width1 = prefix_width,
+                    width2 = country_width,
+                    width3 = as_name_width
+                ));
             }
 
-            formatted.push_str(&format!("\n% Total announced prefixes: {}\n", prefixes.len()));
+            formatted.push_str(&format!(
+                "\n% Total announced prefixes: {}\n",
+                prefixes.len()
+            ));
         } else {
             formatted.push_str("% No announced prefixes found\n");
         }
@@ -922,14 +904,15 @@ pub async fn format_prefixes_response(
 
     // Show messages if any
     if let Some(messages) = &response.messages
-        && !messages.is_empty() {
-            formatted.push_str("\n% API Messages:\n");
-            for message in messages {
-                for msg_part in message {
-                    formatted.push_str(&format!("% {}\n", msg_part));
-                }
+        && !messages.is_empty()
+    {
+        formatted.push_str("\n% API Messages:\n");
+        for message in messages {
+            for msg_part in message {
+                formatted.push_str(&format!("% {}\n", msg_part));
             }
         }
+    }
 
     Ok(formatted)
 }

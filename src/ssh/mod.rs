@@ -10,15 +10,15 @@
 //! - Connection history tracking with LMDB (100 records, 30 days retention)
 //! - Direct WHOIS query processing without command prefixes
 
-pub mod server;
+pub mod certificates;
 pub mod handler;
 pub mod history;
-pub mod certificates;
+pub mod server;
 
-pub use server::SshServer;
+#[allow(unused_imports)]
+pub use certificates::SshCertificateManager;
 #[allow(unused_imports)]
 pub use handler::WhoisSshHandler;
 #[allow(unused_imports)]
 pub use history::SshConnectionHistory;
-#[allow(unused_imports)]
-pub use certificates::SshCertificateManager;
+pub use server::SshServer;

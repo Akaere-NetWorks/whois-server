@@ -1,10 +1,10 @@
-use std::path::Path;
-use std::fs;
 use anyhow::Result;
-use lmdb::{ Database, Environment, Transaction, WriteFlags, Cursor };
-use tracing::{ debug, info, warn };
+use lmdb::{Cursor, Database, Environment, Transaction, WriteFlags};
+use serde::{Deserialize, Serialize};
+use std::fs;
+use std::path::Path;
 use std::time::SystemTime;
-use serde::{ Serialize, Deserialize };
+use tracing::{debug, info, warn};
 
 /// File metadata for tracking changes
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -17,7 +17,10 @@ impl FileMetadata {
     /// Create metadata from file path
     fn from_file(path: &Path) -> Result<Self> {
         let metadata = fs::metadata(path)?;
-        let modified = metadata.modified()?.duration_since(SystemTime::UNIX_EPOCH)?.as_secs();
+        let modified = metadata
+            .modified()?
+            .duration_since(SystemTime::UNIX_EPOCH)?
+            .as_secs();
         Ok(FileMetadata {
             size: metadata.len(),
             modified,
@@ -38,11 +41,9 @@ impl LmdbStorage {
         // Create the LMDB directory itself (LMDB expects a directory, not a file)
         let db_dir = Path::new(db_path);
         if !db_dir.exists() {
-            fs
-                ::create_dir_all(db_dir)
-                .map_err(|e|
-                    anyhow::anyhow!("Failed to create LMDB directory {}: {}", db_path, e)
-                )?;
+            fs::create_dir_all(db_dir).map_err(|e| {
+                anyhow::anyhow!("Failed to create LMDB directory {}: {}", db_path, e)
+            })?;
             info!("Created LMDB directory: {}", db_path);
         }
 
@@ -51,7 +52,9 @@ impl LmdbStorage {
             .set_map_size(1024 * 1024 * 1024) // 1GB max size
             .set_max_dbs(1)
             .open(db_dir)
-            .map_err(|e| anyhow::anyhow!("Failed to open LMDB environment at {}: {}", db_path, e))?;
+            .map_err(|e| {
+                anyhow::anyhow!("Failed to open LMDB environment at {}: {}", db_path, e)
+            })?;
 
         // Open database
         let db = env.open_db(None)?;
@@ -174,11 +177,17 @@ impl LmdbStorage {
 
     /// Populate database with DN42 registry data from a directory (with incremental update)
     pub fn populate_from_registry(&self, registry_path: &str) -> Result<()> {
-        info!("Starting incremental LMDB update from registry: {}", registry_path);
+        info!(
+            "Starting incremental LMDB update from registry: {}",
+            registry_path
+        );
 
         let data_path = Path::new(registry_path).join("data");
         if !data_path.exists() {
-            return Err(anyhow::anyhow!("Registry data directory not found: {:?}", data_path));
+            return Err(anyhow::anyhow!(
+                "Registry data directory not found: {:?}",
+                data_path
+            ));
         }
 
         let mut total_files = 0;
@@ -250,8 +259,7 @@ impl LmdbStorage {
                             Err(e) => {
                                 warn!(
                                     "Failed to get stored metadata for {}: {}, treating as new file",
-                                    key,
-                                    e
+                                    key, e
                                 );
                                 true
                             }
@@ -264,8 +272,8 @@ impl LmdbStorage {
                                     // Store content and metadata
                                     if let Err(e) = self.put(&key, &content) {
                                         warn!("Failed to store content for {}: {}", key, e);
-                                    } else if
-                                        let Err(e) = self.put_metadata(&key, &current_metadata)
+                                    } else if let Err(e) =
+                                        self.put_metadata(&key, &current_metadata)
                                     {
                                         warn!("Failed to store metadata for {}: {}", key, e);
                                     } else {
@@ -292,11 +300,7 @@ impl LmdbStorage {
 
         info!(
             "LMDB incremental update completed: {}/{} files processed, {} updated, {} skipped, {} deleted",
-            total_files,
-            total_files,
-            updated_files,
-            skipped_files,
-            deleted_count
+            total_files, total_files, updated_files, skipped_files, deleted_count
         );
         Ok(())
     }
@@ -304,7 +308,7 @@ impl LmdbStorage {
     /// Remove files from LMDB that no longer exist in the filesystem
     fn cleanup_deleted_files(
         &self,
-        current_keys: &std::collections::HashSet<String>
+        current_keys: &std::collections::HashSet<String>,
     ) -> Result<usize> {
         let txn = self.env.begin_ro_txn()?;
         let mut cursor = txn.open_ro_cursor(self.db)?;
@@ -346,8 +350,8 @@ impl LmdbStorage {
 
     /// Iterate over keys that start with a specific prefix
     pub fn iterate_keys<F>(&self, prefix: &str, mut callback: F) -> Result<()>
-        where
-            F: FnMut(&str) -> bool // Return false to stop iteration
+    where
+        F: FnMut(&str) -> bool, // Return false to stop iteration
     {
         let txn = self.env.begin_ro_txn()?;
         let mut cursor = txn.open_ro_cursor(self.db)?;
@@ -361,10 +365,9 @@ impl LmdbStorage {
             }
 
             // Check if key starts with prefix
-            if key_str.starts_with(prefix)
-                && !callback(key_str) {
-                    break;
-                }
+            if key_str.starts_with(prefix) && !callback(key_str) {
+                break;
+            }
         }
 
         Ok(())
@@ -373,7 +376,8 @@ impl LmdbStorage {
     /// Batch update - more efficient for bulk operations
     #[allow(dead_code)]
     pub fn batch_update<F>(&self, mut operation: F) -> Result<()>
-        where F: FnMut(&mut lmdb::RwTransaction) -> Result<()>
+    where
+        F: FnMut(&mut lmdb::RwTransaction) -> Result<()>,
     {
         let mut txn = self.env.begin_rw_txn()?;
         operation(&mut txn)?;

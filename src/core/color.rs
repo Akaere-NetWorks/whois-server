@@ -16,8 +16,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-use regex::Regex;
 use crate::core::QueryType;
+use regex::Regex;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ColorScheme {
@@ -71,21 +71,22 @@ impl ColorProtocol {
 
             // Check for color scheme request
             if line.to_uppercase().starts_with("X-WHOIS-COLOR:")
-                && let Some(value_part) = line.split(':').nth(1) {
-                    let value_part = value_part.trim();
+                && let Some(value_part) = line.split(':').nth(1)
+            {
+                let value_part = value_part.trim();
 
-                    // Support both formats: "ripe" and "scheme=ripe"
-                    let scheme_str = if value_part.starts_with("scheme=") {
-                        &value_part[7..] // Remove "scheme=" prefix
-                    } else {
-                        value_part
-                    };
+                // Support both formats: "ripe" and "scheme=ripe"
+                let scheme_str = if value_part.starts_with("scheme=") {
+                    &value_part[7..] // Remove "scheme=" prefix
+                } else {
+                    value_part
+                };
 
-                    if let Some(scheme) = ColorScheme::from_string(scheme_str) {
-                        self.scheme = Some(scheme);
-                        self.client_supports_color = true;
-                    }
+                if let Some(scheme) = ColorScheme::from_string(scheme_str) {
+                    self.scheme = Some(scheme);
+                    self.client_supports_color = true;
                 }
+            }
         }
 
         false // Not a capability probe
@@ -173,9 +174,8 @@ impl Colorizer {
                         }
                         // Status/state - conditional colors
                         "status" | "state" | "rpki-status" | "validation" => {
-                            if
-                                value.trim().to_lowercase().contains("valid") &&
-                                !value.trim().to_lowercase().contains("invalid")
+                            if value.trim().to_lowercase().contains("valid")
+                                && !value.trim().to_lowercase().contains("invalid")
                             {
                                 format!("\x1b[1;92m{}:\x1b[0m \x1b[92m{}\x1b[0m", attr, value) // Bright green for valid
                             } else if value.trim().to_lowercase().contains("invalid") {
@@ -185,14 +185,8 @@ impl Colorizer {
                             }
                         }
                         // Dates - bright magenta (matches reference)
-                        | "created"
-                        | "changed"
-                        | "last-modified"
-                        | "expires"
-                        | "updated"
-                        | "created-at"
-                        | "updated-at"
-                        | "pushed-at" => {
+                        "created" | "changed" | "last-modified" | "expires" | "updated"
+                        | "created-at" | "updated-at" | "pushed-at" => {
                             format!("\x1b[1;95m{}:\x1b[0m \x1b[95m{}\x1b[0m", attr, value)
                         }
                         // Price information - conditional colors for Steam
@@ -218,7 +212,7 @@ impl Colorizer {
                             }
                         }
                         // Package specific - bright magenta
-                        | "version"
+                        "version"
                         | "package"
                         | "package-base"
                         | "package-name"
@@ -302,34 +296,15 @@ impl Colorizer {
                             format!("\x1b[1;92m{}:\x1b[0m \x1b[92m{}\x1b[0m", attr, value)
                         }
                         // Size information - yellow
-                        | "size"
-                        | "filename"
-                        | "modified-time"
-                        | "unpacked-size"
-                        | "file-count"
-                        | "total-size"
-                        | "wheel-files"
-                        | "source-files" => {
+                        "size" | "filename" | "modified-time" | "unpacked-size" | "file-count"
+                        | "total-size" | "wheel-files" | "source-files" => {
                             format!("\x1b[93m{}:\x1b[0m \x1b[93m{}\x1b[0m", attr, value)
                         }
                         // URLs - underlined blue
-                        | "aur-url"
-                        | "upstream-url"
-                        | "url"
-                        | "homepage"
-                        | "ubuntu-url"
-                        | "nixos-url"
-                        | "opensuse-url"
-                        | "npm-url"
-                        | "registry-url"
-                        | "pypi-url"
-                        | "crates-io-url"
-                        | "docs-rs-url"
-                        | "api-url"
-                        | "github-url"
-                        | "clone-url"
-                        | "ssh-url"
-                        | "avatar-url" => {
+                        "aur-url" | "upstream-url" | "url" | "homepage" | "ubuntu-url"
+                        | "nixos-url" | "opensuse-url" | "npm-url" | "registry-url"
+                        | "pypi-url" | "crates-io-url" | "docs-rs-url" | "api-url"
+                        | "github-url" | "clone-url" | "ssh-url" | "avatar-url" => {
                             let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
                             let colored_value = url_regex
                                 .replace_all(value, "\x1b[4;94m$1\x1b[0m")
@@ -338,17 +313,11 @@ impl Colorizer {
                         }
                         // Default - rainbow gradient effect for unknown attributes
                         _ => {
-                            let hash = attr
-                                .chars()
-                                .map(|c| c as u32)
-                                .sum::<u32>();
+                            let hash = attr.chars().map(|c| c as u32).sum::<u32>();
                             let color_code = 31 + (hash % 6); // Rotate through 31-36 (red to cyan)
                             format!(
                                 "\x1b[1;{}m{}:\x1b[0m \x1b[{}m{}\x1b[0m",
-                                color_code,
-                                attr,
-                                color_code,
-                                value
+                                color_code, attr, color_code, value
                             )
                         }
                     }
@@ -360,16 +329,14 @@ impl Colorizer {
                 match query_type {
                     QueryType::Geo(_) | QueryType::RirGeo(_) => {
                         // Geo queries - highlight coordinates and locations
-                        if
-                            line.contains("latitude") ||
-                            line.contains("longitude") ||
-                            line.contains("coordinates")
+                        if line.contains("latitude")
+                            || line.contains("longitude")
+                            || line.contains("coordinates")
                         {
                             format!("\x1b[95m{}\x1b[0m", line) // Bright magenta for coordinates
-                        } else if
-                            line.contains("location") ||
-                            line.contains("city") ||
-                            line.contains("region")
+                        } else if line.contains("location")
+                            || line.contains("city")
+                            || line.contains("region")
                         {
                             format!("\x1b[94m{}\x1b[0m", line) // Bright blue for locations
                         } else {
@@ -380,12 +347,14 @@ impl Colorizer {
                         // BGP/prefix queries - highlight network paths and ASNs
                         let asn_regex = Regex::new(r"(AS\d+)").unwrap();
                         let ip_regex = Regex::new(
-                            r"(\d+\.\d+\.\d+\.\d+(?:/\d+)?|[0-9a-fA-F:]+::[0-9a-fA-F:]*(?:/\d+)?)"
-                        ).unwrap();
-                        let mut result = asn_regex
-                            .replace_all(line, "\x1b[93m$1\x1b[0m")
+                            r"(\d+\.\d+\.\d+\.\d+(?:/\d+)?|[0-9a-fA-F:]+::[0-9a-fA-F:]*(?:/\d+)?)",
+                        )
+                        .unwrap();
+                        let mut result =
+                            asn_regex.replace_all(line, "\x1b[93m$1\x1b[0m").to_string();
+                        result = ip_regex
+                            .replace_all(&result, "\x1b[92m$1\x1b[0m")
                             .to_string();
-                        result = ip_regex.replace_all(&result, "\x1b[92m$1\x1b[0m").to_string();
                         result
                     }
                     QueryType::Dns(_) => {
@@ -397,7 +366,9 @@ impl Colorizer {
                             ip_regex.replace_all(line, "\x1b[92m$1\x1b[0m").to_string()
                         } else if line.contains(" AAAA ") {
                             let ipv6_regex = Regex::new(r"([0-9a-fA-F:]+::[0-9a-fA-F:]*)").unwrap();
-                            ipv6_regex.replace_all(line, "\x1b[92m$1\x1b[0m").to_string()
+                            ipv6_regex
+                                .replace_all(line, "\x1b[92m$1\x1b[0m")
+                                .to_string()
                         } else if line.contains(" CNAME ") || line.contains(" DNAME ") {
                             format!("\x1b[94m{}\x1b[0m", line) // Blue for aliases
                         } else if line.contains(" MX ") {
@@ -414,9 +385,8 @@ impl Colorizer {
                     }
                     QueryType::Ssl(_) => {
                         // SSL queries - comprehensive certificate information coloring
-                        if
-                            line.contains("Certificate Information") ||
-                            line.contains("SSL Certificate")
+                        if line.contains("Certificate Information")
+                            || line.contains("SSL Certificate")
                         {
                             format!("\x1b[1;96m{}\x1b[0m", line) // Bold cyan for headers
                         } else if line.contains("Subject:") || line.contains("Issuer:") {
@@ -430,15 +400,15 @@ impl Colorizer {
                             } else {
                                 format!("\x1b[90m{}\x1b[0m", line) // Gray for timestamps
                             }
-                        } else if line.contains("Validity Period:") || line.contains("Algorithms:") {
+                        } else if line.contains("Validity Period:") || line.contains("Algorithms:")
+                        {
                             format!("\x1b[1;37m{}\x1b[0m", line) // Bold white for section headers
                         } else if line.contains("SHA") || line.contains("Fingerprint") {
                             format!("\x1b[96m{}\x1b[0m", line) // Cyan for fingerprints
                         } else if line.contains("Subject Alternative Names:") {
                             format!("\x1b[92m{}\x1b[0m", line) // Green for SAN section
-                        } else if
-                            line.contains("Key Usage:") ||
-                            line.contains("Extended Key Usage:")
+                        } else if line.contains("Key Usage:")
+                            || line.contains("Extended Key Usage:")
                         {
                             format!("\x1b[93m{}\x1b[0m", line) // Yellow for usage info
                         } else if line.contains("Certificate Status:") {
@@ -476,7 +446,8 @@ impl Colorizer {
                     }
                     QueryType::LookingGlass(_) => {
                         // Looking Glass - BGP routing data coloring
-                        if line.contains("BGP Routing Table") || line.contains("Route Information") {
+                        if line.contains("BGP Routing Table") || line.contains("Route Information")
+                        {
                             format!("\x1b[1;96m{}\x1b[0m", line) // Bold cyan for headers
                         } else if line.contains("*>") || line.contains("best") {
                             format!("\x1b[92m{}\x1b[0m", line) // Green for best path
@@ -510,24 +481,22 @@ impl Colorizer {
                     }
                     QueryType::Steam(_) => {
                         // Steam - game and user information coloring
-                        if
-                            line.contains("Steam Application Information") ||
-                            line.contains("Steam User Profile Information")
+                        if line.contains("Steam Application Information")
+                            || line.contains("Steam User Profile Information")
                         {
                             format!("\x1b[1;96m{}\x1b[0m", line) // Bold cyan for headers
-                        } else if
-                            line.contains("Status: Online") ||
-                            line.contains("status: Online")
+                        } else if line.contains("Status: Online") || line.contains("status: Online")
                         {
                             format!("\x1b[1;92m{}\x1b[0m", line) // Bright green for online
-                        } else if
-                            line.contains("Status: Offline") ||
-                            line.contains("status: Offline")
+                        } else if line.contains("Status: Offline")
+                            || line.contains("status: Offline")
                         {
                             format!("\x1b[1;91m{}\x1b[0m", line) // Bright red for offline
                         } else if line.contains("app-id:") || line.contains("steamid:") {
                             let id_regex = Regex::new(r"(\d+)").unwrap();
-                            id_regex.replace_all(line, "\x1b[1;93m$1\x1b[0m").to_string()
+                            id_regex
+                                .replace_all(line, "\x1b[1;93m$1\x1b[0m")
+                                .to_string()
                         } else if line.contains("name:") || line.contains("personaname:") {
                             format!("\x1b[1;96m{}\x1b[0m", line) // Bright cyan for names
                         } else if line.contains("price:") || line.contains("original-price:") {
@@ -544,11 +513,15 @@ impl Colorizer {
                             } else {
                                 // Red for full-price games
                                 let price_regex = Regex::new(r"(\$[\d,]+\.?\d*)").unwrap();
-                                price_regex.replace_all(line, "\x1b[1;91m$1\x1b[0m").to_string()
+                                price_regex
+                                    .replace_all(line, "\x1b[1;91m$1\x1b[0m")
+                                    .to_string()
                             }
                         } else if line.contains("metacritic-score:") {
                             let score_regex = Regex::new(r"(\d+)").unwrap();
-                            score_regex.replace_all(line, "\x1b[1;93m$1\x1b[0m").to_string()
+                            score_regex
+                                .replace_all(line, "\x1b[1;93m$1\x1b[0m")
+                                .to_string()
                         } else if line.contains("developers:") || line.contains("publishers:") {
                             format!("\x1b[94m{}\x1b[0m", line) // Blue for developers/publishers
                         } else if line.contains("genres:") || line.contains("categories:") {
@@ -557,14 +530,15 @@ impl Colorizer {
                             format!("\x1b[95m{}\x1b[0m", line) // Magenta for platforms
                         } else if line.contains("release-date:") || line.contains("created:") {
                             format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for dates
-                        } else if
-                            line.contains("steam-url:") ||
-                            line.contains("profileurl:") ||
-                            line.contains("website:") ||
-                            line.contains("metacritic-url:")
+                        } else if line.contains("steam-url:")
+                            || line.contains("profileurl:")
+                            || line.contains("website:")
+                            || line.contains("metacritic-url:")
                         {
                             let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
-                            url_regex.replace_all(line, "\x1b[4;94m$1\x1b[0m").to_string()
+                            url_regex
+                                .replace_all(line, "\x1b[4;94m$1\x1b[0m")
+                                .to_string()
                         } else if line.contains("visibility:") || line.contains("profile-state:") {
                             if line.contains("Public") || line.contains("Configured") {
                                 format!("\x1b[92m{}\x1b[0m", line) // Green for positive states
@@ -589,7 +563,9 @@ impl Colorizer {
                             format!("\x1b[1;93m{}\x1b[0m", line) // Bright yellow for entry headers
                         } else if line.contains("app-id:") {
                             let id_regex = Regex::new(r"(\d+)").unwrap();
-                            id_regex.replace_all(line, "\x1b[1;93m$1\x1b[0m").to_string()
+                            id_regex
+                                .replace_all(line, "\x1b[1;93m$1\x1b[0m")
+                                .to_string()
                         } else if line.contains("name:") {
                             format!("\x1b[1;96m{}\x1b[0m", line) // Bright cyan for names
                         } else if line.contains("type:") {
@@ -608,13 +584,17 @@ impl Colorizer {
                             } else {
                                 // Red for full-price games
                                 let price_regex = Regex::new(r"(\$[\d,]+\.?\d*)").unwrap();
-                                price_regex.replace_all(line, "\x1b[1;91m$1\x1b[0m").to_string()
+                                price_regex
+                                    .replace_all(line, "\x1b[1;91m$1\x1b[0m")
+                                    .to_string()
                             }
                         } else if line.contains("platforms:") {
                             format!("\x1b[95m{}\x1b[0m", line) // Magenta for platforms
                         } else if line.contains("steam-url:") {
                             let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
-                            url_regex.replace_all(line, "\x1b[4;94m$1\x1b[0m").to_string()
+                            url_regex
+                                .replace_all(line, "\x1b[4;94m$1\x1b[0m")
+                                .to_string()
                         } else if line.starts_with("%") {
                             format!("\x1b[90m{}\x1b[0m", line) // Gray for comments
                         } else {
@@ -627,12 +607,16 @@ impl Colorizer {
                             format!("\x1b[1;96m{}\x1b[0m", line) // Bold cyan for headers
                         } else if line.contains("imdb-id:") {
                             let id_regex = Regex::new(r"(tt\d+)").unwrap();
-                            id_regex.replace_all(line, "\x1b[1;93m$1\x1b[0m").to_string()
+                            id_regex
+                                .replace_all(line, "\x1b[1;93m$1\x1b[0m")
+                                .to_string()
                         } else if line.contains("title:") {
                             format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for titles
                         } else if line.contains("year:") || line.contains("released:") {
                             let year_regex = Regex::new(r"(\d{4})").unwrap();
-                            year_regex.replace_all(line, "\x1b[1;93m$1\x1b[0m").to_string()
+                            year_regex
+                                .replace_all(line, "\x1b[1;93m$1\x1b[0m")
+                                .to_string()
                         } else if line.contains("type:") {
                             if line.contains("movie") {
                                 format!("\x1b[94m{}\x1b[0m", line) // Blue for movies
@@ -644,18 +628,28 @@ impl Colorizer {
                         } else if line.contains("imdb-rating:") {
                             let rating_regex = Regex::new(r"(\d+\.\d+/10)").unwrap();
                             if line.contains("8.") || line.contains("9.") {
-                                rating_regex.replace_all(line, "\x1b[1;92m$1\x1b[0m").to_string() // Green for high ratings
+                                rating_regex
+                                    .replace_all(line, "\x1b[1;92m$1\x1b[0m")
+                                    .to_string() // Green for high ratings
                             } else if line.contains("7.") {
-                                rating_regex.replace_all(line, "\x1b[1;93m$1\x1b[0m").to_string() // Yellow for good ratings
+                                rating_regex
+                                    .replace_all(line, "\x1b[1;93m$1\x1b[0m")
+                                    .to_string() // Yellow for good ratings
                             } else {
-                                rating_regex.replace_all(line, "\x1b[1;91m$1\x1b[0m").to_string() // Red for low ratings
+                                rating_regex
+                                    .replace_all(line, "\x1b[1;91m$1\x1b[0m")
+                                    .to_string() // Red for low ratings
                             }
                         } else if line.contains("metascore:") {
                             let score_regex = Regex::new(r"(\d+/100)").unwrap();
-                            score_regex.replace_all(line, "\x1b[1;95m$1\x1b[0m").to_string()
+                            score_regex
+                                .replace_all(line, "\x1b[1;95m$1\x1b[0m")
+                                .to_string()
                         } else if line.contains("box-office:") {
                             let money_regex = Regex::new(r"(\$[\d,]+)").unwrap();
-                            money_regex.replace_all(line, "\x1b[1;92m$1\x1b[0m").to_string()
+                            money_regex
+                                .replace_all(line, "\x1b[1;92m$1\x1b[0m")
+                                .to_string()
                         } else if line.contains("director:") || line.contains("writer:") {
                             format!("\x1b[94m{}\x1b[0m", line) // Blue for creative roles
                         } else if line.contains("actors:") {
@@ -674,12 +668,16 @@ impl Colorizer {
                             }
                         } else if line.contains("imdb-url:") || line.contains("website:") {
                             let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
-                            url_regex.replace_all(line, "\x1b[4;94m$1\x1b[0m").to_string()
+                            url_regex
+                                .replace_all(line, "\x1b[4;94m$1\x1b[0m")
+                                .to_string()
                         } else if line.contains("country:") || line.contains("language:") {
                             format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for location/language
                         } else if line.contains("runtime:") {
                             let time_regex = Regex::new(r"(\d+\s*min)").unwrap();
-                            time_regex.replace_all(line, "\x1b[1;96m$1\x1b[0m").to_string()
+                            time_regex
+                                .replace_all(line, "\x1b[1;96m$1\x1b[0m")
+                                .to_string()
                         } else {
                             line.to_string()
                         }
@@ -694,12 +692,16 @@ impl Colorizer {
                             format!("\x1b[1;93m{}\x1b[0m", line) // Bright yellow for entry headers
                         } else if line.contains("imdb-id:") {
                             let id_regex = Regex::new(r"(tt\d+)").unwrap();
-                            id_regex.replace_all(line, "\x1b[1;93m$1\x1b[0m").to_string()
+                            id_regex
+                                .replace_all(line, "\x1b[1;93m$1\x1b[0m")
+                                .to_string()
                         } else if line.contains("title:") {
                             format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for titles
                         } else if line.contains("year:") {
                             let year_regex = Regex::new(r"(\d{4})").unwrap();
-                            year_regex.replace_all(line, "\x1b[1;93m$1\x1b[0m").to_string()
+                            year_regex
+                                .replace_all(line, "\x1b[1;93m$1\x1b[0m")
+                                .to_string()
                         } else if line.contains("type:") {
                             if line.contains("movie") {
                                 format!("\x1b[94m{}\x1b[0m", line) // Blue for movies
@@ -710,7 +712,9 @@ impl Colorizer {
                             }
                         } else if line.contains("imdb-url:") {
                             let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
-                            url_regex.replace_all(line, "\x1b[4;94m$1\x1b[0m").to_string()
+                            url_regex
+                                .replace_all(line, "\x1b[4;94m$1\x1b[0m")
+                                .to_string()
                         } else if line.starts_with("%") {
                             format!("\x1b[90m{}\x1b[0m", line) // Gray for comments
                         } else {
@@ -723,14 +727,18 @@ impl Colorizer {
                             format!("\x1b[1;96m{}\x1b[0m", line) // Bold cyan for headers
                         } else if line.contains("page-id:") {
                             let id_regex = Regex::new(r"(\d+)").unwrap();
-                            id_regex.replace_all(line, "\x1b[1;93m$1\x1b[0m").to_string()
+                            id_regex
+                                .replace_all(line, "\x1b[1;93m$1\x1b[0m")
+                                .to_string()
                         } else if line.contains("title:") {
                             format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for article titles
                         } else if line.contains("source:") {
                             format!("\x1b[96m{}\x1b[0m", line) // Cyan for source (Wikipedia)
                         } else if line.contains("article-length:") {
                             let size_regex = Regex::new(r"(\d+)\s*bytes").unwrap();
-                            size_regex.replace_all(line, "\x1b[1;93m$1 bytes\x1b[0m").to_string()
+                            size_regex
+                                .replace_all(line, "\x1b[1;93m$1 bytes\x1b[0m")
+                                .to_string()
                         } else if line.contains("last-modified:") {
                             format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for dates
                         } else if line.contains("categories:") {
@@ -741,7 +749,9 @@ impl Colorizer {
                             format!("\x1b[1;37m{}\x1b[0m", line) // Bold white for article summary
                         } else if line.contains("wikipedia-url:") || line.contains("edit-url:") {
                             let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
-                            url_regex.replace_all(line, "\x1b[4;94m$1\x1b[0m").to_string()
+                            url_regex
+                                .replace_all(line, "\x1b[4;94m$1\x1b[0m")
+                                .to_string()
                         } else if line.starts_with("%") {
                             format!("\x1b[90m{}\x1b[0m", line) // Gray for comments
                         } else {
@@ -768,11 +778,10 @@ impl Colorizer {
                             format!("\x1b[90m{}\x1b[0m", line) // Gray for comments
                         } else {
                             // Lyric content lines - make them colorful
-                            if
-                                !line.trim().is_empty() &&
-                                !line.contains(":") &&
-                                !line.starts_with("=") &&
-                                !line.starts_with("%")
+                            if !line.trim().is_empty()
+                                && !line.contains(":")
+                                && !line.starts_with("=")
+                                && !line.starts_with("%")
                             {
                                 format!("\x1b[1;92m{}\x1b[0m", line) // Bright green for actual lyrics
                             } else {
@@ -784,9 +793,16 @@ impl Colorizer {
                         // Description query - highlight descriptions and headers
                         if line.contains("Description Query Results for:") {
                             format!("\x1b[1;96m{}\x1b[0m", line) // Bold cyan for header
-                        } else if line.contains("descriptions found") || line.contains("description found") || line.contains("remarks found") {
+                        } else if line.contains("descriptions found")
+                            || line.contains("description found")
+                            || line.contains("remarks found")
+                        {
                             format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for count info
-                        } else if line.contains("descr:") || line.contains("descr[") || line.contains("remarks:") || line.contains("description:") {
+                        } else if line.contains("descr:")
+                            || line.contains("descr[")
+                            || line.contains("remarks:")
+                            || line.contains("description:")
+                        {
                             // Extract and highlight the description value
                             if let Some(colon_pos) = line.find(':') {
                                 let attr = &line[..=colon_pos];
@@ -795,9 +811,13 @@ impl Colorizer {
                             } else {
                                 format!("\x1b[92m{}\x1b[0m", line) // Green for description content
                             }
-                        } else if line.contains("Total descriptions:") || line.contains("Total fields:") {
+                        } else if line.contains("Total descriptions:")
+                            || line.contains("Total fields:")
+                        {
                             format!("\x1b[93m{}\x1b[0m", line) // Yellow for summary
-                        } else if line.contains("No description fields found") || line.contains("No description or remarks fields found") {
+                        } else if line.contains("No description fields found")
+                            || line.contains("No description or remarks fields found")
+                        {
                             format!("\x1b[91m{}\x1b[0m", line) // Red for no results
                         } else if line.starts_with("%") {
                             format!("\x1b[90m{}\x1b[0m", line) // Gray for comments
@@ -835,60 +855,55 @@ impl Colorizer {
                             format!("\x1b[1;96m{}\x1b[0m", line) // Bold cyan for headers
                         } else if line.contains("page-id:") {
                             let id_regex = Regex::new(r"(\d+)").unwrap();
-                            id_regex.replace_all(line, "\x1b[1;93m$1\x1b[0m").to_string()
+                            id_regex
+                                .replace_all(line, "\x1b[1;93m$1\x1b[0m")
+                                .to_string()
                         } else if line.contains("character-name:") {
                             format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for character names
                         } else if line.contains("source:") {
                             format!("\x1b[96m{}\x1b[0m", line) // Cyan for source (Moegirl Wiki)
                         } else if line.contains("description:") {
                             format!("\x1b[1;37m{}\x1b[0m", line) // Bold white for character description
-                        } else if
-                            line.contains("voice-actor:") ||
-                            line.contains("cv:") ||
-                            line.contains("voice-actor-jp:") ||
-                            line.contains("voice-actor-cn:")
+                        } else if line.contains("voice-actor:")
+                            || line.contains("cv:")
+                            || line.contains("voice-actor-jp:")
+                            || line.contains("voice-actor-cn:")
                         {
                             format!("\x1b[94m{}\x1b[0m", line) // Blue for voice actors
-                        } else if
-                            line.contains("source-work:") ||
-                            line.contains("series:") ||
-                            line.contains("character-template:")
+                        } else if line.contains("source-work:")
+                            || line.contains("series:")
+                            || line.contains("character-template:")
                         {
                             format!("\x1b[95m{}\x1b[0m", line) // Magenta for series/work origin
-                        } else if
-                            line.contains("personality:") ||
-                            line.contains("moe-points:") ||
-                            line.contains("attributes:") ||
-                            line.contains("traits:")
+                        } else if line.contains("personality:")
+                            || line.contains("moe-points:")
+                            || line.contains("attributes:")
+                            || line.contains("traits:")
                         {
                             format!("\x1b[96m{}\x1b[0m", line) // Cyan for personality traits
-                        } else if
-                            line.contains("species:") ||
-                            line.contains("identity:") ||
-                            line.contains("class:") ||
-                            line.contains("level:")
+                        } else if line.contains("species:")
+                            || line.contains("identity:")
+                            || line.contains("class:")
+                            || line.contains("level:")
                         {
                             format!("\x1b[1;92m{}\x1b[0m", line) // Bright green for species/identity
-                        } else if
-                            line.contains("ability:") ||
-                            line.contains("skill:") ||
-                            line.contains("special-skill:") ||
-                            line.contains("weapon:") ||
-                            line.contains("equipment:")
+                        } else if line.contains("ability:")
+                            || line.contains("skill:")
+                            || line.contains("special-skill:")
+                            || line.contains("weapon:")
+                            || line.contains("equipment:")
                         {
                             format!("\x1b[1;91m{}\x1b[0m", line) // Bright red for abilities/weapons
-                        } else if
-                            line.contains("title:") ||
-                            line.contains("alias:") ||
-                            line.contains("nickname:")
+                        } else if line.contains("title:")
+                            || line.contains("alias:")
+                            || line.contains("nickname:")
                         {
                             format!("\x1b[1;93m{}\x1b[0m", line) // Bright yellow for titles/aliases
-                        } else if
-                            line.contains("family:") ||
-                            line.contains("friends:") ||
-                            line.contains("lover:") ||
-                            line.contains("master:") ||
-                            line.contains("subordinate:")
+                        } else if line.contains("family:")
+                            || line.contains("friends:")
+                            || line.contains("lover:")
+                            || line.contains("master:")
+                            || line.contains("subordinate:")
                         {
                             format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for relationships
                         } else if line.contains("categories:") {
@@ -897,12 +912,15 @@ impl Colorizer {
                             format!("\x1b[93m{}\x1b[0m", line) // Yellow for appearance/clothing
                         } else if line.contains("age:") || line.contains("birthday:") {
                             let number_regex = Regex::new(r"(\d+)").unwrap();
-                            number_regex.replace_all(line, "\x1b[1;93m$1\x1b[0m").to_string()
+                            number_regex
+                                .replace_all(line, "\x1b[1;93m$1\x1b[0m")
+                                .to_string()
                         } else if line.contains("height:") || line.contains("weight:") {
-                            let measurement_regex = Regex::new(
-                                r"(\d+[\.\d]*\s*[cm|kg|m])"
-                            ).unwrap();
-                            measurement_regex.replace_all(line, "\x1b[1;92m$1\x1b[0m").to_string()
+                            let measurement_regex =
+                                Regex::new(r"(\d+[\.\d]*\s*[cm|kg|m])").unwrap();
+                            measurement_regex
+                                .replace_all(line, "\x1b[1;92m$1\x1b[0m")
+                                .to_string()
                         } else if line.contains("hair-color:") || line.contains("eye-color:") {
                             format!("\x1b[93m{}\x1b[0m", line) // Yellow for physical appearance
                         } else if line.contains("gender:") {
@@ -913,21 +931,21 @@ impl Colorizer {
                             } else {
                                 format!("\x1b[1;96m{}\x1b[0m", line) // Bright cyan for other
                             }
-                        } else if
-                            line.contains("occupation:") ||
-                            line.contains("职业:") ||
-                            line.contains("position:")
+                        } else if line.contains("occupation:")
+                            || line.contains("职业:")
+                            || line.contains("position:")
                         {
                             format!("\x1b[92m{}\x1b[0m", line) // Green for occupation
-                        } else if
-                            line.contains("origin:") ||
-                            line.contains("出身:") ||
-                            line.contains("hobby:")
+                        } else if line.contains("origin:")
+                            || line.contains("出身:")
+                            || line.contains("hobby:")
                         {
                             format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for origin/hobby
                         } else if line.contains("moegirl-url:") {
                             let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
-                            url_regex.replace_all(line, "\x1b[4;94m$1\x1b[0m").to_string()
+                            url_regex
+                                .replace_all(line, "\x1b[4;94m$1\x1b[0m")
+                                .to_string()
                         } else {
                             line.to_string()
                         }
@@ -965,11 +983,13 @@ impl Colorizer {
                     // Apply regex patterns to value for network elements
                     let asn_regex = Regex::new(r"(AS\d+)").unwrap();
                     let ip_regex = Regex::new(
-                        r"(\d+\.\d+\.\d+\.\d+(?:/\d+)?|[0-9a-fA-F:]+::[0-9a-fA-F:]*(?:/\d+)?)"
-                    ).unwrap();
+                        r"(\d+\.\d+\.\d+\.\d+(?:/\d+)?|[0-9a-fA-F:]+::[0-9a-fA-F:]*(?:/\d+)?)",
+                    )
+                    .unwrap();
                     let domain_regex = Regex::new(
-                        r"([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}"
-                    ).unwrap();
+                        r"([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}",
+                    )
+                    .unwrap();
 
                     let mut styled_value = value.to_string();
                     styled_value = asn_regex
@@ -993,9 +1013,8 @@ impl Colorizer {
                         }
                         // Status/validation - conditional colors
                         "status" | "rpki-status" | "validation" => {
-                            if
-                                value.trim().to_lowercase().contains("valid") &&
-                                !value.trim().to_lowercase().contains("invalid")
+                            if value.trim().to_lowercase().contains("valid")
+                                && !value.trim().to_lowercase().contains("invalid")
                             {
                                 format!("\x1b[1;92m{}:\x1b[0m \x1b[92m{}\x1b[0m", attr, value) // Bright green for valid
                             } else if value.trim().to_lowercase().contains("invalid") {
@@ -1018,7 +1037,10 @@ impl Colorizer {
                         }
                         // AS Names and org names - bright white bold (AS Name column in reference)
                         "netname" | "orgname" | "org-name" => {
-                            format!("\x1b[1;97m{}:\x1b[0m \x1b[1;97m{}\x1b[0m", attr, styled_value)
+                            format!(
+                                "\x1b[1;97m{}:\x1b[0m \x1b[1;97m{}\x1b[0m",
+                                attr, styled_value
+                            )
                         }
                         // Geographic/location info - default magenta
                         "city" | "region" | "geoloc" | "address" => {
@@ -1029,33 +1051,12 @@ impl Colorizer {
                             format!("\x1b[34m{}:\x1b[0m \x1b[34m{}\x1b[0m", attr, styled_value)
                         }
                         // Package info - bright cyan
-                        | "package"
-                        | "version"
-                        | "depends"
-                        | "makedepends"
-                        | "package-name"
-                        | "attribute-name"
-                        | "attribute-set"
-                        | "component"
-                        | "source-package"
-                        | "source-version"
-                        | "section"
-                        | "priority"
-                        | "project"
-                        | "repository"
-                        | "release"
-                        | "architecture"
-                        | "platforms"
-                        | "outputs"
-                        | "maintainers"
-                        | "author"
-                        | "replaces"
-                        | "breaks"
-                        | "provides"
-                        | "suggests"
-                        | "upstream"
-                        | "upstream-version"
-                        | "architectures" => {
+                        "package" | "version" | "depends" | "makedepends" | "package-name"
+                        | "attribute-name" | "attribute-set" | "component" | "source-package"
+                        | "source-version" | "section" | "priority" | "project" | "repository"
+                        | "release" | "architecture" | "platforms" | "outputs" | "maintainers"
+                        | "author" | "replaces" | "breaks" | "provides" | "suggests"
+                        | "upstream" | "upstream-version" | "architectures" => {
                             format!("\x1b[1;96m{}:\x1b[0m \x1b[96m{}\x1b[0m", attr, styled_value)
                         }
                         // Package descriptions - bright magenta
@@ -1071,15 +1072,12 @@ impl Colorizer {
                             format!("\x1b[1;93m{}:\x1b[0m \x1b[93m{}\x1b[0m", attr, styled_value)
                         }
                         // URLs - underlined blue
-                        | "aur-url"
-                        | "upstream-url"
-                        | "url"
-                        | "homepage"
-                        | "ubuntu-url"
-                        | "nixos-url"
-                        | "opensuse-url"
-                        | "aosc-url" => {
-                            format!("\x1b[1;94m{}:\x1b[0m \x1b[4;94m{}\x1b[0m", attr, styled_value)
+                        "aur-url" | "upstream-url" | "url" | "homepage" | "ubuntu-url"
+                        | "nixos-url" | "opensuse-url" | "aosc-url" => {
+                            format!(
+                                "\x1b[1;94m{}:\x1b[0m \x1b[4;94m{}\x1b[0m",
+                                attr, styled_value
+                            )
                         }
                         // Dates - gray (non-allocation dates)
                         "last-modified" | "expires" | "updated" | "first-submitted" => {
@@ -1117,17 +1115,11 @@ impl Colorizer {
                         }
                         // Default - gradient rainbow
                         _ => {
-                            let hash = attr
-                                .chars()
-                                .map(|c| c as u32)
-                                .sum::<u32>();
+                            let hash = attr.chars().map(|c| c as u32).sum::<u32>();
                             let color_code = 91 + (hash % 6); // Bright colors 91-96
                             format!(
                                 "\x1b[1;{}m{}:\x1b[0m \x1b[{}m{}\x1b[0m",
-                                color_code,
-                                attr,
-                                color_code,
-                                styled_value
+                                color_code, attr, color_code, styled_value
                             )
                         }
                     }
@@ -1139,10 +1131,12 @@ impl Colorizer {
                 match query_type {
                     QueryType::EmailSearch(_) => {
                         // Email search - highlight email addresses
-                        let email_regex = Regex::new(
-                            r"([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})"
-                        ).unwrap();
-                        email_regex.replace_all(line, "\x1b[96m$1\x1b[0m").to_string()
+                        let email_regex =
+                            Regex::new(r"([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})")
+                                .unwrap();
+                        email_regex
+                            .replace_all(line, "\x1b[96m$1\x1b[0m")
+                            .to_string()
                     }
                     QueryType::Trace(_) => {
                         // Traceroute - highlight hops and latency
@@ -1159,10 +1153,9 @@ impl Colorizer {
                             format!("\x1b[94m{}\x1b[0m", line) // Blue for cert identifiers
                         } else if line.contains("Subject:") || line.contains("Issuer:") {
                             format!("\x1b[95m{}\x1b[0m", line) // Magenta for cert subjects/issuers
-                        } else if
-                            line.contains("Not Before:") ||
-                            line.contains("Not After:") ||
-                            line.contains("Logged at:")
+                        } else if line.contains("Not Before:")
+                            || line.contains("Not After:")
+                            || line.contains("Logged at:")
                         {
                             format!("\x1b[90m{}\x1b[0m", line) // Gray for timestamps
                         } else if line.contains("Fingerprint") || line.contains("SHA") {
@@ -1179,11 +1172,10 @@ impl Colorizer {
                         // Minecraft server - clean color coding
                         if line.contains("Status: Online") || line.contains("server is online") {
                             format!("\x1b[1;92m{}\x1b[0m", line) // Bright green for online
-                        } else if
-                            line.contains("Status: Offline") ||
-                            line.contains("offline") ||
-                            line.contains("unreachable") ||
-                            line.contains("timeout")
+                        } else if line.contains("Status: Offline")
+                            || line.contains("offline")
+                            || line.contains("unreachable")
+                            || line.contains("timeout")
                         {
                             format!("\x1b[1;91m{}\x1b[0m", line) // Bright red for offline
                         } else if line.contains("Players:") || line.contains("players online") {
@@ -1236,10 +1228,9 @@ impl Colorizer {
                             } else {
                                 format!("\x1b[1;91m{}\x1b[0m", line) // Bright red for no
                             }
-                        } else if
-                            line.contains("namemc-url:") ||
-                            line.contains("skin-url:") ||
-                            line.contains("avatar-url:")
+                        } else if line.contains("namemc-url:")
+                            || line.contains("skin-url:")
+                            || line.contains("avatar-url:")
                         {
                             let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
                             let colored = url_regex
@@ -1260,19 +1251,15 @@ impl Colorizer {
                     }
                     QueryType::Steam(_) => {
                         // Steam - comprehensive game and user information coloring
-                        if
-                            line.contains("Steam Application Information") ||
-                            line.contains("Steam User Profile Information")
+                        if line.contains("Steam Application Information")
+                            || line.contains("Steam User Profile Information")
                         {
                             format!("\x1b[1;96m{}\x1b[0m", line) // Bold cyan for headers
-                        } else if
-                            line.contains("Status: Online") ||
-                            line.contains("status: Online")
+                        } else if line.contains("Status: Online") || line.contains("status: Online")
                         {
                             format!("\x1b[1;92m{}\x1b[0m", line) // Bright green for online status
-                        } else if
-                            line.contains("Status: Offline") ||
-                            line.contains("status: Offline")
+                        } else if line.contains("Status: Offline")
+                            || line.contains("status: Offline")
                         {
                             format!("\x1b[1;91m{}\x1b[0m", line) // Bright red for offline status
                         } else if line.contains("app-id:") || line.contains("steamid:") {
@@ -1315,9 +1302,8 @@ impl Colorizer {
                                 .replace_all(line, "\x1b[1;93m$1\x1b[0m")
                                 .to_string();
                             format!("\x1b[95m{}\x1b[0m", colored)
-                        } else if
-                            line.contains("recommendations:") ||
-                            line.contains("achievements:")
+                        } else if line.contains("recommendations:")
+                            || line.contains("achievements:")
                         {
                             let num_regex = Regex::new(r"(\d+)").unwrap();
                             let colored = num_regex
@@ -1332,11 +1318,10 @@ impl Colorizer {
                             format!("\x1b[93m{}\x1b[0m", line) // Yellow for platforms
                         } else if line.contains("release-date:") || line.contains("created:") {
                             format!("\x1b[90m{}\x1b[0m", line) // Gray for dates
-                        } else if
-                            line.contains("steam-url:") ||
-                            line.contains("profileurl:") ||
-                            line.contains("website:") ||
-                            line.contains("metacritic-url:")
+                        } else if line.contains("steam-url:")
+                            || line.contains("profileurl:")
+                            || line.contains("website:")
+                            || line.contains("metacritic-url:")
                         {
                             let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
                             let colored = url_regex
@@ -1353,10 +1338,9 @@ impl Colorizer {
                             }
                         } else if line.contains("country:") || line.contains("state:") {
                             format!("\x1b[95m{}\x1b[0m", line) // Magenta for location
-                        } else if
-                            line.contains("avatar:") ||
-                            line.contains("avatar-medium:") ||
-                            line.contains("avatar-full:")
+                        } else if line.contains("avatar:")
+                            || line.contains("avatar-medium:")
+                            || line.contains("avatar-full:")
                         {
                             let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
                             let colored = url_regex
@@ -1461,9 +1445,8 @@ impl Colorizer {
                     }
                     QueryType::Debian(_) => {
                         // Debian packages - comprehensive coloring
-                        if
-                            line.contains("Priority: required") ||
-                            line.contains("Priority: important")
+                        if line.contains("Priority: required")
+                            || line.contains("Priority: important")
                         {
                             format!("\x1b[91m{}\x1b[0m", line) // Red for critical priority
                         } else if line.contains("Status:") {
@@ -1472,11 +1455,10 @@ impl Colorizer {
                             } else {
                                 format!("\x1b[93m{}\x1b[0m", line) // Yellow for other status
                             }
-                        } else if
-                            line.contains("Depends:") ||
-                            line.contains("Pre-Depends:") ||
-                            line.contains("Recommends:") ||
-                            line.contains("Suggests:")
+                        } else if line.contains("Depends:")
+                            || line.contains("Pre-Depends:")
+                            || line.contains("Recommends:")
+                            || line.contains("Suggests:")
                         {
                             format!("\x1b[94m{}\x1b[0m", line) // Blue for dependencies
                         } else if line.contains("Conflicts:") || line.contains("Breaks:") {
@@ -1761,11 +1743,10 @@ impl Colorizer {
                             format!("\x1b[90m{}\x1b[0m", line) // Gray for comments
                         } else {
                             // Lyric content lines - make them bright and colorful in BGPTools style
-                            if
-                                !line.trim().is_empty() &&
-                                !line.contains(":") &&
-                                !line.starts_with("=") &&
-                                !line.starts_with("%")
+                            if !line.trim().is_empty()
+                                && !line.contains(":")
+                                && !line.starts_with("=")
+                                && !line.starts_with("%")
                             {
                                 format!("\x1b[1;97m{}\x1b[0m", line) // Bright white for actual lyrics
                             } else {
@@ -1777,20 +1758,34 @@ impl Colorizer {
                         // Description query - BGPTools style with highlighted backgrounds
                         if line.contains("Description Query Results for:") {
                             format!("\x1b[1;46m\x1b[30m{}\x1b[0m", line) // Black text on cyan background for header
-                        } else if line.contains("descriptions found") || line.contains("description found") || line.contains("remarks found") {
+                        } else if line.contains("descriptions found")
+                            || line.contains("description found")
+                            || line.contains("remarks found")
+                        {
                             format!("\x1b[1;45m\x1b[37m{}\x1b[0m", line) // White text on magenta background for count info
-                        } else if line.contains("descr:") || line.contains("descr[") || line.contains("remarks:") || line.contains("description:") {
+                        } else if line.contains("descr:")
+                            || line.contains("descr[")
+                            || line.contains("remarks:")
+                            || line.contains("description:")
+                        {
                             // Extract and highlight the description value with background
                             if let Some(colon_pos) = line.find(':') {
                                 let attr = &line[..=colon_pos];
                                 let value = &line[colon_pos + 1..];
-                                format!("\x1b[1;44m\x1b[37m{}\x1b[0m\x1b[1;42m\x1b[30m{}\x1b[0m", attr, value) // White on blue for attr, black on green for description
+                                format!(
+                                    "\x1b[1;44m\x1b[37m{}\x1b[0m\x1b[1;42m\x1b[30m{}\x1b[0m",
+                                    attr, value
+                                ) // White on blue for attr, black on green for description
                             } else {
                                 format!("\x1b[1;42m\x1b[30m{}\x1b[0m", line) // Black text on green background for description content
                             }
-                        } else if line.contains("Total descriptions:") || line.contains("Total fields:") {
+                        } else if line.contains("Total descriptions:")
+                            || line.contains("Total fields:")
+                        {
                             format!("\x1b[1;43m\x1b[30m{}\x1b[0m", line) // Black text on yellow background for summary
-                        } else if line.contains("No description fields found") || line.contains("No description or remarks fields found") {
+                        } else if line.contains("No description fields found")
+                            || line.contains("No description or remarks fields found")
+                        {
                             format!("\x1b[1;41m\x1b[37m{}\x1b[0m", line) // White text on red background for no results
                         } else if line.starts_with("%") {
                             format!("\x1b[90m{}\x1b[0m", line) // Gray for comments
@@ -1838,53 +1833,46 @@ impl Colorizer {
                             format!("\x1b[96m{}\x1b[0m", line) // Cyan for source (Moegirl Wiki)
                         } else if line.contains("description:") {
                             format!("\x1b[1;37m{}\x1b[0m", line) // Bold white for character description
-                        } else if
-                            line.contains("voice-actor:") ||
-                            line.contains("cv:") ||
-                            line.contains("voice-actor-jp:") ||
-                            line.contains("voice-actor-cn:")
+                        } else if line.contains("voice-actor:")
+                            || line.contains("cv:")
+                            || line.contains("voice-actor-jp:")
+                            || line.contains("voice-actor-cn:")
                         {
                             format!("\x1b[94m{}\x1b[0m", line) // Blue for voice actors
-                        } else if
-                            line.contains("source-work:") ||
-                            line.contains("series:") ||
-                            line.contains("character-template:")
+                        } else if line.contains("source-work:")
+                            || line.contains("series:")
+                            || line.contains("character-template:")
                         {
                             format!("\x1b[95m{}\x1b[0m", line) // Magenta for series/work origin
-                        } else if
-                            line.contains("personality:") ||
-                            line.contains("moe-points:") ||
-                            line.contains("attributes:") ||
-                            line.contains("traits:")
+                        } else if line.contains("personality:")
+                            || line.contains("moe-points:")
+                            || line.contains("attributes:")
+                            || line.contains("traits:")
                         {
                             format!("\x1b[96m{}\x1b[0m", line) // Cyan for personality traits
-                        } else if
-                            line.contains("species:") ||
-                            line.contains("identity:") ||
-                            line.contains("class:") ||
-                            line.contains("level:")
+                        } else if line.contains("species:")
+                            || line.contains("identity:")
+                            || line.contains("class:")
+                            || line.contains("level:")
                         {
                             format!("\x1b[1;92m{}\x1b[0m", line) // Bright green for species/identity
-                        } else if
-                            line.contains("ability:") ||
-                            line.contains("skill:") ||
-                            line.contains("special-skill:") ||
-                            line.contains("weapon:") ||
-                            line.contains("equipment:")
+                        } else if line.contains("ability:")
+                            || line.contains("skill:")
+                            || line.contains("special-skill:")
+                            || line.contains("weapon:")
+                            || line.contains("equipment:")
                         {
                             format!("\x1b[1;91m{}\x1b[0m", line) // Bright red for abilities/weapons
-                        } else if
-                            line.contains("title:") ||
-                            line.contains("alias:") ||
-                            line.contains("nickname:")
+                        } else if line.contains("title:")
+                            || line.contains("alias:")
+                            || line.contains("nickname:")
                         {
                             format!("\x1b[1;93m{}\x1b[0m", line) // Bright yellow for titles/aliases
-                        } else if
-                            line.contains("family:") ||
-                            line.contains("friends:") ||
-                            line.contains("lover:") ||
-                            line.contains("master:") ||
-                            line.contains("subordinate:")
+                        } else if line.contains("family:")
+                            || line.contains("friends:")
+                            || line.contains("lover:")
+                            || line.contains("master:")
+                            || line.contains("subordinate:")
                         {
                             format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for relationships
                         } else if line.contains("categories:") {
@@ -1898,9 +1886,8 @@ impl Colorizer {
                                 .to_string();
                             format!("\x1b[95m{}\x1b[0m", colored)
                         } else if line.contains("height:") || line.contains("weight:") {
-                            let measurement_regex = Regex::new(
-                                r"(\d+[\.\d]*\s*[cm|kg|m])"
-                            ).unwrap();
+                            let measurement_regex =
+                                Regex::new(r"(\d+[\.\d]*\s*[cm|kg|m])").unwrap();
                             let colored = measurement_regex
                                 .replace_all(line, "\x1b[1;92m$1\x1b[0m")
                                 .to_string();
@@ -1915,16 +1902,14 @@ impl Colorizer {
                             } else {
                                 format!("\x1b[1;96m{}\x1b[0m", line) // Bright cyan for other
                             }
-                        } else if
-                            line.contains("occupation:") ||
-                            line.contains("职业:") ||
-                            line.contains("position:")
+                        } else if line.contains("occupation:")
+                            || line.contains("职业:")
+                            || line.contains("position:")
                         {
                             format!("\x1b[92m{}\x1b[0m", line) // Green for occupation
-                        } else if
-                            line.contains("origin:") ||
-                            line.contains("出身:") ||
-                            line.contains("hobby:")
+                        } else if line.contains("origin:")
+                            || line.contains("出身:")
+                            || line.contains("hobby:")
                         {
                             format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for origin/hobby
                         } else if line.contains("moegirl-url:") {
@@ -1941,17 +1926,22 @@ impl Colorizer {
                         // Apply general network pattern highlighting
                         let asn_regex = Regex::new(r"(AS\d+)").unwrap();
                         let ip_regex = Regex::new(
-                            r"(\d+\.\d+\.\d+\.\d+(?:/\d+)?|[0-9a-fA-F:]+::[0-9a-fA-F:]*(?:/\d+)?)"
-                        ).unwrap();
+                            r"(\d+\.\d+\.\d+\.\d+(?:/\d+)?|[0-9a-fA-F:]+::[0-9a-fA-F:]*(?:/\d+)?)",
+                        )
+                        .unwrap();
                         let domain_regex = Regex::new(
-                            r"([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}"
-                        ).unwrap();
+                            r"([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}",
+                        )
+                        .unwrap();
 
-                        let mut result = asn_regex
-                            .replace_all(line, "\x1b[93m$1\x1b[0m")
+                        let mut result =
+                            asn_regex.replace_all(line, "\x1b[93m$1\x1b[0m").to_string();
+                        result = ip_regex
+                            .replace_all(&result, "\x1b[92m$1\x1b[0m")
                             .to_string();
-                        result = ip_regex.replace_all(&result, "\x1b[92m$1\x1b[0m").to_string();
-                        result = domain_regex.replace_all(&result, "\x1b[94m$1\x1b[0m").to_string();
+                        result = domain_regex
+                            .replace_all(&result, "\x1b[94m$1\x1b[0m")
+                            .to_string();
                         result
                     }
                 }
@@ -1978,7 +1968,10 @@ mod tests {
     fn test_color_scheme_parsing() {
         assert_eq!(ColorScheme::from_string("ripe"), Some(ColorScheme::Ripe));
         assert_eq!(ColorScheme::from_string("RIPE"), Some(ColorScheme::Ripe));
-        assert_eq!(ColorScheme::from_string("bgptools"), Some(ColorScheme::BgpTools));
+        assert_eq!(
+            ColorScheme::from_string("bgptools"),
+            Some(ColorScheme::BgpTools)
+        );
         assert_eq!(ColorScheme::from_string("invalid"), None);
     }
 

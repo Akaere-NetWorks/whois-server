@@ -16,11 +16,11 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-use anyhow::{ Context, Result };
+use anyhow::{Context, Result};
 use reqwest;
-use serde::{ Deserialize, Serialize };
-use tracing::{ debug, error };
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use tracing::{debug, error};
 
 const PYPI_API_URL: &str = "https://pypi.org/pypi/";
 
@@ -93,9 +93,10 @@ pub async fn process_pypi_query(package_name: &str) -> Result<String> {
     }
 
     // Validate PyPI package name format
-    if
-        package_name.len() > 214 ||
-        !package_name.chars().all(|c| c.is_ascii_alphanumeric() || "-_.".contains(c))
+    if package_name.len() > 214
+        || !package_name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || "-_.".contains(c))
     {
         return Err(anyhow::anyhow!("Invalid PyPI package name format"));
     }
@@ -110,8 +111,7 @@ pub async fn process_pypi_query(package_name: &str) -> Result<String> {
 }
 
 async fn query_pypi_package(package_name: &str) -> Result<PyPIResponse> {
-    let client = reqwest::Client
-        ::builder()
+    let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(15))
         .user_agent("Mozilla/5.0 (compatible; WHOIS-Server/1.0)")
         .build()
@@ -123,7 +123,8 @@ async fn query_pypi_package(package_name: &str) -> Result<PyPIResponse> {
 
     let response = client
         .get(&package_url)
-        .send().await
+        .send()
+        .await
         .context("Failed to send request to PyPI API")?;
 
     if response.status() == 404 {
@@ -131,11 +132,15 @@ async fn query_pypi_package(package_name: &str) -> Result<PyPIResponse> {
     }
 
     if !response.status().is_success() {
-        return Err(anyhow::anyhow!("PyPI API returned status: {}", response.status()));
+        return Err(anyhow::anyhow!(
+            "PyPI API returned status: {}",
+            response.status()
+        ));
     }
 
     let package_data: PyPIResponse = response
-        .json().await
+        .json()
+        .await
         .context("Failed to parse PyPI package data")?;
 
     Ok(package_data)
@@ -181,20 +186,26 @@ fn format_pypi_response(package: &PyPIResponse, query: &str) -> String {
 
     // License
     if let Some(license) = &info.license
-        && !license.is_empty() {
-            output.push_str(&format!("license: {}\n", license));
-        }
+        && !license.is_empty()
+    {
+        output.push_str(&format!("license: {}\n", license));
+    }
 
     // Homepage
     if let Some(homepage) = &info.home_page
-        && !homepage.is_empty() {
-            output.push_str(&format!("homepage: {}\n", homepage));
-        }
+        && !homepage.is_empty()
+    {
+        output.push_str(&format!("homepage: {}\n", homepage));
+    }
 
     // Project URLs
     if let Some(project_urls) = &info.project_urls {
         for (key, url) in project_urls.iter().take(5) {
-            output.push_str(&format!("{}: {}\n", key.to_lowercase().replace(' ', "-"), url));
+            output.push_str(&format!(
+                "{}: {}\n",
+                key.to_lowercase().replace(' ', "-"),
+                url
+            ));
         }
     }
 
@@ -205,28 +216,31 @@ fn format_pypi_response(package: &PyPIResponse, query: &str) -> String {
 
     // Keywords
     if let Some(keywords) = &info.keywords
-        && !keywords.is_empty() {
-            output.push_str(&format!("keywords: {}\n", keywords));
-        }
+        && !keywords.is_empty()
+    {
+        output.push_str(&format!("keywords: {}\n", keywords));
+    }
 
     // Dependencies
     if let Some(requires_dist) = &info.requires_dist
-        && !requires_dist.is_empty() {
-            let deps: Vec<String> = requires_dist
-                .iter()
-                .take(10)
-                .map(|dep| {
-                    // Extract just the package name from dependency specification
-                    dep.split_whitespace().next().unwrap_or(dep).to_string()
-                })
-                .collect();
-            output.push_str(&format!("dependencies: {}\n", deps.join(", ")));
-            if requires_dist.len() > 10 {
-                output.push_str(
-                    &format!("... and {} more dependencies\n", requires_dist.len() - 10)
-                );
-            }
+        && !requires_dist.is_empty()
+    {
+        let deps: Vec<String> = requires_dist
+            .iter()
+            .take(10)
+            .map(|dep| {
+                // Extract just the package name from dependency specification
+                dep.split_whitespace().next().unwrap_or(dep).to_string()
+            })
+            .collect();
+        output.push_str(&format!("dependencies: {}\n", deps.join(", ")));
+        if requires_dist.len() > 10 {
+            output.push_str(&format!(
+                "... and {} more dependencies\n",
+                requires_dist.len() - 10
+            ));
         }
+    }
 
     // Classifiers (programming language, license, etc.)
     if let Some(classifiers) = &info.classifiers {
@@ -250,17 +264,17 @@ fn format_pypi_response(package: &PyPIResponse, query: &str) -> String {
             .take(1)
             .collect();
         if !status_classifiers.is_empty()
-            && let Some(status) = status_classifiers.first().and_then(|c| c.split("::").last()) {
-                output.push_str(&format!("development-status: {}\n", status.trim()));
-            }
+            && let Some(status) = status_classifiers
+                .first()
+                .and_then(|c| c.split("::").last())
+        {
+            output.push_str(&format!("development-status: {}\n", status.trim()));
+        }
     }
 
     // File information from current release
     if let Some(urls) = &package.urls {
-        let total_size: u64 = urls
-            .iter()
-            .filter_map(|u| u.size)
-            .sum();
+        let total_size: u64 = urls.iter().filter_map(|u| u.size).sum();
         if total_size > 0 {
             let size_mb = (total_size as f64) / 1024.0 / 1024.0;
             output.push_str(&format!("total-size: {:.2} MB\n", size_mb));
@@ -270,10 +284,7 @@ fn format_pypi_response(package: &PyPIResponse, query: &str) -> String {
             .iter()
             .filter(|u| u.packagetype == "bdist_wheel")
             .count();
-        let source_count = urls
-            .iter()
-            .filter(|u| u.packagetype == "sdist")
-            .count();
+        let source_count = urls.iter().filter(|u| u.packagetype == "sdist").count();
 
         if wheel_count > 0 {
             output.push_str(&format!("wheel-files: {}\n", wheel_count));
@@ -285,16 +296,21 @@ fn format_pypi_response(package: &PyPIResponse, query: &str) -> String {
 
     // Platform
     if let Some(platform) = &info.platform
-        && !platform.is_empty() && platform != "UNKNOWN" {
-            output.push_str(&format!("platform: {}\n", platform));
-        }
+        && !platform.is_empty()
+        && platform != "UNKNOWN"
+    {
+        output.push_str(&format!("platform: {}\n", platform));
+    }
 
-    output.push_str(
-        &format!("pypi-url: https://pypi.org/project/{}/\n", urlencoding::encode(&info.name))
-    );
-    output.push_str(
-        &format!("api-url: {}{}/json\n", PYPI_API_URL, urlencoding::encode(&info.name))
-    );
+    output.push_str(&format!(
+        "pypi-url: https://pypi.org/project/{}/\n",
+        urlencoding::encode(&info.name)
+    ));
+    output.push_str(&format!(
+        "api-url: {}{}/json\n",
+        PYPI_API_URL,
+        urlencoding::encode(&info.name)
+    ));
     output.push_str("repository: Python Package Index (PyPI)\n");
     output.push_str("source: PyPI API\n");
     output.push('\n');

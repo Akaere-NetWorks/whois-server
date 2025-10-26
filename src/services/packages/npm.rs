@@ -16,11 +16,11 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-use anyhow::{ Context, Result };
+use anyhow::{Context, Result};
 use reqwest;
-use serde::{ Deserialize, Serialize };
-use tracing::{ debug, error };
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use tracing::{debug, error};
 
 const NPM_REGISTRY_URL: &str = "https://registry.npmjs.org/";
 
@@ -119,10 +119,9 @@ pub async fn process_npm_query(package_name: &str) -> Result<String> {
     }
 
     // Validate NPM package name format (including scoped packages like @types/node)
-    if
-        package_name.len() > 214 ||
-        package_name.contains(' ') ||
-        package_name.to_lowercase() != package_name
+    if package_name.len() > 214
+        || package_name.contains(' ')
+        || package_name.to_lowercase() != package_name
     {
         return Err(anyhow::anyhow!("Invalid NPM package name format"));
     }
@@ -131,7 +130,9 @@ pub async fn process_npm_query(package_name: &str) -> Result<String> {
     if package_name.starts_with('@') {
         // Scoped package format: @scope/name
         if !package_name.contains('/') {
-            return Err(anyhow::anyhow!("Invalid scoped NPM package format. Use @scope/name"));
+            return Err(anyhow::anyhow!(
+                "Invalid scoped NPM package format. Use @scope/name"
+            ));
         }
         let parts: Vec<&str> = package_name.splitn(2, '/').collect();
         if parts.len() != 2 || parts[0].len() <= 1 || parts[1].is_empty() {
@@ -140,13 +141,12 @@ pub async fn process_npm_query(package_name: &str) -> Result<String> {
         // Validate scope and package name parts
         let scope = &parts[0][1..]; // Remove @ prefix
         let name = parts[1];
-        if
-            scope.is_empty() ||
-            name.is_empty() ||
-            scope.starts_with('.') ||
-            scope.starts_with('_') ||
-            name.starts_with('.') ||
-            name.starts_with('_')
+        if scope.is_empty()
+            || name.is_empty()
+            || scope.starts_with('.')
+            || scope.starts_with('_')
+            || name.starts_with('.')
+            || name.starts_with('_')
         {
             return Err(anyhow::anyhow!("Invalid scoped NPM package format"));
         }
@@ -167,8 +167,7 @@ pub async fn process_npm_query(package_name: &str) -> Result<String> {
 }
 
 async fn query_npm_package(package_name: &str) -> Result<NPMPackage> {
-    let client = reqwest::Client
-        ::builder()
+    let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(15))
         .user_agent("Mozilla/5.0 (compatible; WHOIS-Server/1.0)")
         .build()
@@ -187,7 +186,8 @@ async fn query_npm_package(package_name: &str) -> Result<NPMPackage> {
 
     let response = client
         .get(&package_url)
-        .send().await
+        .send()
+        .await
         .context("Failed to send request to NPM registry")?;
 
     if response.status() == 404 {
@@ -195,15 +195,20 @@ async fn query_npm_package(package_name: &str) -> Result<NPMPackage> {
     }
 
     if !response.status().is_success() {
-        return Err(anyhow::anyhow!("NPM registry returned status: {}", response.status()));
+        return Err(anyhow::anyhow!(
+            "NPM registry returned status: {}",
+            response.status()
+        ));
     }
 
     let package_response: NPMPackageResponse = response
-        .json().await
+        .json()
+        .await
         .context("Failed to parse NPM package data")?;
 
     // Get the latest version from dist-tags
-    let latest_version = package_response.dist_tags
+    let latest_version = package_response
+        .dist_tags
         .as_ref()
         .and_then(|tags| tags.get("latest"))
         .cloned()
@@ -215,24 +220,26 @@ async fn query_npm_package(package_name: &str) -> Result<NPMPackage> {
     // Construct the final package object
     let package = NPMPackage {
         name: package_response.name.clone(),
-        description: package_response.description.or_else(|| {
-            version_data.and_then(|v| v.description.clone())
-        }),
+        description: package_response
+            .description
+            .or_else(|| version_data.and_then(|v| v.description.clone())),
         version: latest_version.clone(),
-        homepage: package_response.homepage.or_else(|| {
-            version_data.and_then(|v| v.homepage.clone())
-        }),
-        repository: package_response.repository.or_else(|| {
-            version_data.and_then(|v| v.repository.clone())
-        }),
-        author: package_response.author.or_else(|| { version_data.and_then(|v| v.author.clone()) }),
+        homepage: package_response
+            .homepage
+            .or_else(|| version_data.and_then(|v| v.homepage.clone())),
+        repository: package_response
+            .repository
+            .or_else(|| version_data.and_then(|v| v.repository.clone())),
+        author: package_response
+            .author
+            .or_else(|| version_data.and_then(|v| v.author.clone())),
         maintainers: package_response.maintainers,
-        license: package_response.license.or_else(|| {
-            version_data.and_then(|v| v.license.clone())
-        }),
-        keywords: package_response.keywords.or_else(|| {
-            version_data.and_then(|v| v.keywords.clone())
-        }),
+        license: package_response
+            .license
+            .or_else(|| version_data.and_then(|v| v.license.clone())),
+        keywords: package_response
+            .keywords
+            .or_else(|| version_data.and_then(|v| v.keywords.clone())),
         dependencies: version_data.and_then(|v| v.dependencies.clone()),
         dev_dependencies: version_data.and_then(|v| v.dev_dependencies.clone()),
         dist: version_data.and_then(|v| v.dist.clone()),
@@ -302,39 +309,45 @@ fn format_npm_response(package: &NPMPackage, query: &str) -> String {
 
     // Keywords
     if let Some(keywords) = &package.keywords
-        && !keywords.is_empty() {
-            output.push_str(&format!("keywords: {}\n", keywords.join(", ")));
-        }
+        && !keywords.is_empty()
+    {
+        output.push_str(&format!("keywords: {}\n", keywords.join(", ")));
+    }
 
     // Dependencies
     if let Some(dependencies) = &package.dependencies
-        && !dependencies.is_empty() {
-            let deps: Vec<String> = dependencies.keys().take(10).cloned().collect();
-            output.push_str(&format!("dependencies: {}\n", deps.join(", ")));
-            if dependencies.len() > 10 {
-                output.push_str(
-                    &format!("... and {} more dependencies\n", dependencies.len() - 10)
-                );
-            }
+        && !dependencies.is_empty()
+    {
+        let deps: Vec<String> = dependencies.keys().take(10).cloned().collect();
+        output.push_str(&format!("dependencies: {}\n", deps.join(", ")));
+        if dependencies.len() > 10 {
+            output.push_str(&format!(
+                "... and {} more dependencies\n",
+                dependencies.len() - 10
+            ));
         }
+    }
 
     // Maintainers
     if let Some(maintainers) = &package.maintainers
-        && !maintainers.is_empty() {
-            let maintainer_names: Vec<String> = maintainers
-                .iter()
-                .take(5)
-                .map(|m| {
-                    match m {
-                        NPMAuthor::String(s) => s.clone(),
-                        NPMAuthor::Object { name: Some(name), .. } => name.clone(),
-                        NPMAuthor::Object { email: Some(email), .. } => email.clone(),
-                        _ => "Unknown".to_string(),
-                    }
-                })
-                .collect();
-            output.push_str(&format!("maintainers: {}\n", maintainer_names.join(", ")));
-        }
+        && !maintainers.is_empty()
+    {
+        let maintainer_names: Vec<String> = maintainers
+            .iter()
+            .take(5)
+            .map(|m| match m {
+                NPMAuthor::String(s) => s.clone(),
+                NPMAuthor::Object {
+                    name: Some(name), ..
+                } => name.clone(),
+                NPMAuthor::Object {
+                    email: Some(email), ..
+                } => email.clone(),
+                _ => "Unknown".to_string(),
+            })
+            .collect();
+        output.push_str(&format!("maintainers: {}\n", maintainer_names.join(", ")));
+    }
 
     // Distribution info
     if let Some(dist) = &package.dist {
@@ -369,8 +382,14 @@ fn format_npm_response(package: &NPMPackage, query: &str) -> String {
         urlencoding::encode(&package.name).to_string()
     };
 
-    output.push_str(&format!("npm-url: https://www.npmjs.com/package/{}\n", encoded_for_web));
-    output.push_str(&format!("registry-url: {}{}\n", NPM_REGISTRY_URL, encoded_for_api));
+    output.push_str(&format!(
+        "npm-url: https://www.npmjs.com/package/{}\n",
+        encoded_for_web
+    ));
+    output.push_str(&format!(
+        "registry-url: {}{}\n",
+        NPM_REGISTRY_URL, encoded_for_api
+    ));
     output.push_str("repository: NPM Registry\n");
     output.push_str("source: NPM Registry API\n");
     output.push('\n');
@@ -392,8 +411,7 @@ fn format_npm_not_found(package_name: &str) -> String {
         \n\
         % Package not found in NPM registry\n\
         % Query processed by WHOIS server\n",
-        package_name,
-        encoded_search
+        package_name, encoded_search
     )
 }
 

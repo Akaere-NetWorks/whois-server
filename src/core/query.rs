@@ -1,7 +1,7 @@
-use std::net::{ IpAddr, Ipv4Addr, Ipv6Addr };
-use cidr::{ Ipv4Cidr, Ipv6Cidr };
+use crate::config::{PRIVATE_IPV4_RANGES, PRIVATE_IPV6_RANGES};
+use cidr::{Ipv4Cidr, Ipv6Cidr};
 use regex::Regex;
-use crate::config::{ PRIVATE_IPV4_RANGES, PRIVATE_IPV6_RANGES };
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 // WHOIS query types
 #[derive(Debug, Clone)]
@@ -11,62 +11,62 @@ pub enum QueryType {
     IPv6(Ipv6Addr),
     ASN(String),
     EmailSearch(String), // For queries ending with -EMAIL
-    BGPTool(String), // For queries ending with -BGPTOOL
-    Geo(String), // For queries ending with -GEO
-    RirGeo(String), // For queries ending with -RIRGEO
-    Prefixes(String), // For queries ending with -PREFIXES
+    BGPTool(String),     // For queries ending with -BGPTOOL
+    Geo(String),         // For queries ending with -GEO
+    RirGeo(String),      // For queries ending with -RIRGEO
+    Prefixes(String),    // For queries ending with -PREFIXES
     // Internet Routing Registry (IRR) databases
-    Radb(String), // For queries ending with -RADB
-    Altdb(String), // For queries ending with -ALTDB
-    Afrinic(String), // For queries ending with -AFRINIC
-    Apnic(String), // For queries ending with -APNIC
-    ArinIrr(String), // For queries ending with -ARIN (IRR, not regular ARIN WHOIS)
-    Bell(String), // For queries ending with -BELL
-    Jpirr(String), // For queries ending with -JPIRR
-    Lacnic(String), // For queries ending with -LACNIC
-    Level3(String), // For queries ending with -LEVEL3
-    Nttcom(String), // For queries ending with -NTTCOM
-    RipeIrr(String), // For queries ending with -RIPE (IRR)
-    Tc(String), // For queries ending with -TC
-    Irr(String), // For queries ending with -IRR (general IRR Explorer)
-    LookingGlass(String), // For queries ending with -LG
-    Rpki(String, String), // For queries in format prefix-asn-RPKI (prefix, asn)
-    Manrs(String), // For queries ending with -MANRS
-    Dns(String), // For queries ending with -DNS
-    Trace(String), // For queries ending with -TRACE
-    Ssl(String), // For queries ending with -SSL
-    Crt(String), // For queries ending with -CRT (Certificate Transparency)
-    Minecraft(String), // For queries ending with -MINECRAFT or -MC
+    Radb(String),          // For queries ending with -RADB
+    Altdb(String),         // For queries ending with -ALTDB
+    Afrinic(String),       // For queries ending with -AFRINIC
+    Apnic(String),         // For queries ending with -APNIC
+    ArinIrr(String),       // For queries ending with -ARIN (IRR, not regular ARIN WHOIS)
+    Bell(String),          // For queries ending with -BELL
+    Jpirr(String),         // For queries ending with -JPIRR
+    Lacnic(String),        // For queries ending with -LACNIC
+    Level3(String),        // For queries ending with -LEVEL3
+    Nttcom(String),        // For queries ending with -NTTCOM
+    RipeIrr(String),       // For queries ending with -RIPE (IRR)
+    Tc(String),            // For queries ending with -TC
+    Irr(String),           // For queries ending with -IRR (general IRR Explorer)
+    LookingGlass(String),  // For queries ending with -LG
+    Rpki(String, String),  // For queries in format prefix-asn-RPKI (prefix, asn)
+    Manrs(String),         // For queries ending with -MANRS
+    Dns(String),           // For queries ending with -DNS
+    Trace(String),         // For queries ending with -TRACE
+    Ssl(String),           // For queries ending with -SSL
+    Crt(String),           // For queries ending with -CRT (Certificate Transparency)
+    Minecraft(String),     // For queries ending with -MINECRAFT or -MC
     MinecraftUser(String), // For queries ending with -MCU (Minecraft user info)
-    Steam(String), // For queries ending with -STEAM (Steam games/users)
-    SteamSearch(String), // For queries ending with -STEAMSEARCH (Steam game search)
-    Imdb(String), // For queries ending with -IMDB (IMDb movies/TV shows)
-    ImdbSearch(String), // For queries ending with -IMDBSEARCH (IMDb title search)
-    Acgc(String), // For queries ending with -ACGC (Anime/Comic/Game Characters)
-    Alma(String), // For queries ending with -ALMA (AlmaLinux packages)
-    Aosc(String), // For queries ending with -AOSC (AOSC packages)
-    Aur(String), // For queries ending with -AUR (Arch User Repository)
-    Debian(String), // For queries ending with -DEBIAN (Debian packages)
-    Epel(String), // For queries ending with -EPEL (EPEL packages)
-    Ubuntu(String), // For queries ending with -UBUNTU (Ubuntu packages)
-    NixOs(String), // For queries ending with -NIXOS (NixOS packages)
-    OpenSuse(String), // For queries ending with -OPENSUSE (OpenSUSE packages)
-    OpenWrt(String), // For queries ending with -OPENWRT (OpenWrt packages)
-    Npm(String), // For queries ending with -NPM (NPM packages)
-    Pypi(String), // For queries ending with -PYPI (PyPI packages)
-    Cargo(String), // For queries ending with -CARGO (Rust crates)
-    Modrinth(String), // For queries ending with -MODRINTH (Modrinth mods/resource packs)
-    CurseForge(String), // For queries ending with -CURSEFORGE (CurseForge mods)
-    GitHub(String), // For queries ending with -GITHUB (GitHub users/repos)
-    Wikipedia(String), // For queries ending with -WIKIPEDIA (Wikipedia articles)
-    Lyric(String), // For queries ending with -LYRIC (Luotianyi random lyrics)
-    Desc(String), // For queries ending with -DESC (show only descr fields)
-    PeeringDB(String), // For queries ending with -PEERINGDB (PeeringDB ASN/IX information)
-    Meal, // For meal suggestions (今天吃什么 or -MEAL)
-    MealCN, // For Chinese meal suggestions (今天吃什么中国 or -MEAL-CN)
-    Ntp(String), // For NTP time synchronization test (-NTP)
-    Help, // For HELP queries (show available query types)
-    UpdatePatch, // For UPDATE-PATCH queries (update patches from remote repository)
+    Steam(String),         // For queries ending with -STEAM (Steam games/users)
+    SteamSearch(String),   // For queries ending with -STEAMSEARCH (Steam game search)
+    Imdb(String),          // For queries ending with -IMDB (IMDb movies/TV shows)
+    ImdbSearch(String),    // For queries ending with -IMDBSEARCH (IMDb title search)
+    Acgc(String),          // For queries ending with -ACGC (Anime/Comic/Game Characters)
+    Alma(String),          // For queries ending with -ALMA (AlmaLinux packages)
+    Aosc(String),          // For queries ending with -AOSC (AOSC packages)
+    Aur(String),           // For queries ending with -AUR (Arch User Repository)
+    Debian(String),        // For queries ending with -DEBIAN (Debian packages)
+    Epel(String),          // For queries ending with -EPEL (EPEL packages)
+    Ubuntu(String),        // For queries ending with -UBUNTU (Ubuntu packages)
+    NixOs(String),         // For queries ending with -NIXOS (NixOS packages)
+    OpenSuse(String),      // For queries ending with -OPENSUSE (OpenSUSE packages)
+    OpenWrt(String),       // For queries ending with -OPENWRT (OpenWrt packages)
+    Npm(String),           // For queries ending with -NPM (NPM packages)
+    Pypi(String),          // For queries ending with -PYPI (PyPI packages)
+    Cargo(String),         // For queries ending with -CARGO (Rust crates)
+    Modrinth(String),      // For queries ending with -MODRINTH (Modrinth mods/resource packs)
+    CurseForge(String),    // For queries ending with -CURSEFORGE (CurseForge mods)
+    GitHub(String),        // For queries ending with -GITHUB (GitHub users/repos)
+    Wikipedia(String),     // For queries ending with -WIKIPEDIA (Wikipedia articles)
+    Lyric(String),         // For queries ending with -LYRIC (Luotianyi random lyrics)
+    Desc(String),          // For queries ending with -DESC (show only descr fields)
+    PeeringDB(String),     // For queries ending with -PEERINGDB (PeeringDB ASN/IX information)
+    Meal,                  // For meal suggestions (今天吃什么 or -MEAL)
+    MealCN,                // For Chinese meal suggestions (今天吃什么中国 or -MEAL-CN)
+    Ntp(String),           // For NTP time synchronization test (-NTP)
+    Help,                  // For HELP queries (show available query types)
+    UpdatePatch,           // For UPDATE-PATCH queries (update patches from remote repository)
     Unknown(String),
 }
 
@@ -115,13 +115,13 @@ pub fn analyze_query(query: &str) -> QueryType {
                         IpAddr::V4(_) => {
                             return QueryType::Rpki(
                                 format!("{}/32", prefix_part),
-                                asn_part.to_string()
+                                asn_part.to_string(),
                             );
                         }
                         IpAddr::V6(_) => {
                             return QueryType::Rpki(
                                 format!("{}/128", prefix_part),
-                                asn_part.to_string()
+                                asn_part.to_string(),
                             );
                         }
                     }
@@ -488,9 +488,8 @@ pub fn analyze_query(query: &str) -> QueryType {
     }
 
     // Check if it's a domain format
-    let domain_regex = Regex::new(
-        r"^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$"
-    ).unwrap();
+    let domain_regex =
+        Regex::new(r"^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$").unwrap();
     if domain_regex.is_match(query) {
         return QueryType::Domain(query.to_string());
     }
@@ -502,9 +501,10 @@ pub fn analyze_query(query: &str) -> QueryType {
 pub fn is_private_ipv4(ip: Ipv4Addr) -> bool {
     for range_str in PRIVATE_IPV4_RANGES {
         if let Ok(range) = range_str.parse::<Ipv4Cidr>()
-            && range.contains(&ip) {
-                return true;
-            }
+            && range.contains(&ip)
+        {
+            return true;
+        }
     }
     false
 }
@@ -512,9 +512,10 @@ pub fn is_private_ipv4(ip: Ipv4Addr) -> bool {
 pub fn is_private_ipv6(ip: Ipv6Addr) -> bool {
     for range_str in PRIVATE_IPV6_RANGES {
         if let Ok(range) = range_str.parse::<Ipv6Cidr>()
-            && range.contains(&ip) {
-                return true;
-            }
+            && range.contains(&ip)
+        {
+            return true;
+        }
     }
     false
 }
