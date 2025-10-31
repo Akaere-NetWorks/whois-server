@@ -6,6 +6,8 @@ This directory contains data files used by the whois-server.
 
 Chinese recipes data from [HowToCook](https://github.com/Anduin2017/HowToCook) - 程序员做饭指南.
 
+JSON generated from [HowToCook-gen-json](https://github.com/z0z0r4/HowToCook-gen-json).
+
 Used by the `-MEAL-CN` query type to provide random Chinese recipe suggestions.
 
 ### Usage
@@ -21,5 +23,5 @@ To update the recipes:
 
 ```bash
 # Download the latest recipes.json from HowToCook repository
-wget https://raw.githubusercontent.com/Anduin2017/HowToCook/master/recipes.json -O data/recipes.json
+wget https://raw.githubusercontent.com/z0z0r4/HowToCook-gen-json/refs/heads/main/filtered_recipes.json -O data/recipes.json
 ```
