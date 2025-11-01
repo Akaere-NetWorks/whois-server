@@ -22,6 +22,7 @@
   - [✨ Features](#-features)
   - [🌍 Public Instance](#-public-instance)
   - [🖥️ Web Dashboard](#️-web-dashboard)
+    - [API Endpoints](#api-endpoints)
   - [🚀 Installation](#-installation)
     - [As a Standalone Server](#as-a-standalone-server)
     - [As a Rust Library](#as-a-rust-library)
@@ -176,6 +177,30 @@ The server includes a modern web dashboard accessible at `http://your-server:999
 - **🔄 Live Updates** - Statistics refresh every 30 seconds automatically
 - **📋 Query Type Distribution** - Visual breakdown of query types and usage patterns
 - **⚡ Performance Metrics** - Connection counts, data transfer, and response times
+
+### API Endpoints
+
+The web server provides several API endpoints for integration:
+
+- **`/api/whois?q=<query>`** - JSON-formatted WHOIS response with structured data
+- **`/raw/<query>`** - Raw WHOIS output (text/plain) without JSON formatting
+- **`/api/stats`** - Server statistics in JSON format
+- **`/api/openapi.json`** - OpenAPI 3.0 specification
+
+Example usage:
+
+```bash
+# Get JSON-formatted response
+curl "http://localhost:9999/api/whois?q=google.com"
+
+# Get raw WHOIS output (plain text)
+curl "http://localhost:9999/raw/google.com"
+curl "http://localhost:9999/raw/AS13335"
+curl "http://localhost:9999/raw/8.8.8.8"
+
+# Get server statistics
+curl "http://localhost:9999/api/stats"
+```
 
 ## 🚀 Installation
 

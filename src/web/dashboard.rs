@@ -21,7 +21,7 @@ use crate::core::{StatsState, analyze_query, get_stats_response};
 use crate::web::json_formatter::{JsonFormatter, WhoisApiResponse};
 use axum::{
     Router,
-    extract::{Query, State},
+    extract::{Path, Query, State},
     response::{Html, IntoResponse, Json},
     routing::{get, post},
 };
@@ -45,6 +45,7 @@ pub async fn run_web_server(
         .route("/api/stats", get(get_stats_api))
         .route("/api/whois", get(whois_api_get))
         .route("/api/whois", post(whois_api_post))
+        .route("/raw/:query", get(raw_whois_query))
         .layer(CorsLayer::permissive())
         .with_state(stats);
 
@@ -220,4 +221,55 @@ async fn openapi_spec() -> impl IntoResponse {
         [(axum::http::header::CONTENT_TYPE, "application/json")],
         spec,
     )
+}
+
+// GET /raw/:query - 返回原始WHOIS结果，不做任何JSON处理
+async fn raw_whois_query(
+    Path(query_param): Path<String>,
+    State(stats): State<StatsState>,
+) -> impl IntoResponse {
+    let query = urlencoding::decode(&query_param)
+        .unwrap_or_else(|_| std::borrow::Cow::Borrowed(&query_param))
+        .to_string();
+
+    let query = query.trim();
+
+    if query.is_empty() {
+        return (
+            [(
+                axum::http::header::CONTENT_TYPE,
+                "text/plain; charset=utf-8",
+            )],
+            "Error: Query parameter is required and cannot be empty".to_string(),
+        );
+    }
+
+    // 检测查询类型
+    let query_type = analyze_query(query);
+
+    // 处理查询
+    match process_query(query, &query_type, None).await {
+        Ok(result) => {
+            // 更新统计信息
+            {
+                let mut stats_guard = stats.write().await;
+                stats_guard.total_requests += 1;
+            }
+
+            (
+                [(
+                    axum::http::header::CONTENT_TYPE,
+                    "text/plain; charset=utf-8",
+                )],
+                result,
+            )
+        }
+        Err(e) => (
+            [(
+                axum::http::header::CONTENT_TYPE,
+                "text/plain; charset=utf-8",
+            )],
+            format!("Error: Query processing failed: {}", e),
+        ),
+    }
 }
