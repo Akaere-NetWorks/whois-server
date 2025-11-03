@@ -4,7 +4,8 @@ cache
 
 .env
 
-stats.json
+# Legacy stats backup after migration
+stats.json.migrated
 
 # Patch backups
 patches/*.backup

@@ -12,6 +12,9 @@ pub const DN42_LMDB_PATH: &str = "./cache/dn42-lmdb";
 pub const PEERINGDB_LMDB_PATH: &str = "./cache/peeringdb-lmdb";
 pub const PEERINGDB_CACHE_TTL: u64 = 86400; // 1 day in seconds
 
+// Statistics LMDB configuration
+pub const STATS_LMDB_PATH: &str = "./cache/stats-lmdb";
+
 // Internet Routing Registry (IRR) servers
 pub const RADB_WHOIS_SERVER: &str = "whois.radb.net";
 pub const RADB_WHOIS_PORT: u16 = 43;

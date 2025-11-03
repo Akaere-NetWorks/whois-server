@@ -23,7 +23,13 @@ use std::path::Path;
 use std::sync::Arc;
 use tokio::fs;
 use tokio::sync::RwLock;
-use tracing::{error, info};
+use tracing::{error, info, warn};
+
+use crate::storage::lmdb::LmdbStorage;
+use crate::config::STATS_LMDB_PATH;
+
+// Legacy stats file path for migration
+const LEGACY_STATS_FILE: &str = "stats.json";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DailyStats {
@@ -39,34 +45,151 @@ pub struct TotalStats {
     pub hourly_stats: HashMap<String, DailyStats>, // DateTime in YYYY-MM-DD HH format
 }
 
-pub type StatsState = Arc<RwLock<TotalStats>>;
+pub struct StatsManager {
+    pub stats: Arc<RwLock<TotalStats>>,
+    storage: Arc<LmdbStorage>,
+}
 
-const STATS_FILE: &str = "stats.json";
+pub type StatsState = Arc<StatsManager>;
+
+// LMDB keys for different stats
+const STATS_KEY_TOTAL: &str = "stats:total";
+const STATS_KEY_DAILY_PREFIX: &str = "stats:daily:";
+const STATS_KEY_HOURLY_PREFIX: &str = "stats:hourly:";
 
 pub async fn create_stats_state() -> StatsState {
-    let stats = load_stats_from_file().await.unwrap_or_default();
-    Arc::new(RwLock::new(stats))
-}
+    let storage = match LmdbStorage::new(STATS_LMDB_PATH) {
+        Ok(s) => Arc::new(s),
+        Err(e) => {
+            error!("Failed to create LMDB storage for stats: {}", e);
+            error!("Starting with empty statistics");
+            Arc::new(LmdbStorage::new(STATS_LMDB_PATH).unwrap())
+        }
+    };
 
-async fn load_stats_from_file() -> Result<TotalStats, Box<dyn std::error::Error>> {
-    if Path::new(STATS_FILE).exists() {
-        let data = fs::read_to_string(STATS_FILE).await?;
-        let stats: TotalStats = serde_json::from_str(&data)?;
-        info!("Loaded statistics from {}", STATS_FILE);
-        Ok(stats)
-    } else {
-        info!("No existing stats file found, starting with empty statistics");
-        Ok(TotalStats::default())
+    // Try to migrate from legacy stats.json if it exists and LMDB is empty
+    if let Err(e) = migrate_from_legacy_json(&storage).await {
+        warn!("Failed to migrate legacy stats.json: {}", e);
     }
+
+    let stats = load_stats_from_lmdb(&storage).await.unwrap_or_default();
+    
+    Arc::new(StatsManager {
+        stats: Arc::new(RwLock::new(stats)),
+        storage,
+    })
 }
 
-async fn save_stats_to_file(stats: &TotalStats) -> Result<(), Box<dyn std::error::Error>> {
-    let data = serde_json::to_string_pretty(stats)?;
-    fs::write(STATS_FILE, data).await?;
+/// Migrate data from legacy stats.json file to LMDB
+async fn migrate_from_legacy_json(storage: &Arc<LmdbStorage>) -> Result<(), Box<dyn std::error::Error>> {
+    let legacy_path = Path::new(LEGACY_STATS_FILE);
+    
+    // Check if legacy file exists
+    if !legacy_path.exists() {
+        return Ok(()); // No migration needed
+    }
+
+    // Check if LMDB already has data (avoid re-migration)
+    if storage.exists(STATS_KEY_TOTAL)? {
+        info!("LMDB already contains statistics data, skipping migration");
+        return Ok(());
+    }
+
+    info!("Found legacy stats.json, migrating to LMDB...");
+
+    // Read and parse legacy JSON file
+    let json_data = fs::read_to_string(legacy_path).await?;
+    let legacy_stats: TotalStats = serde_json::from_str(&json_data)?;
+
+    info!(
+        "Migrating {} total requests, {} daily entries, {} hourly entries",
+        legacy_stats.total_requests,
+        legacy_stats.daily_stats.len(),
+        legacy_stats.hourly_stats.len()
+    );
+
+    // Save to LMDB
+    save_stats_to_lmdb(storage, &legacy_stats).await?;
+
+    info!("Successfully migrated statistics from stats.json to LMDB");
+
+    // Rename the old file to .migrated for backup
+    let backup_path = format!("{}.migrated", LEGACY_STATS_FILE);
+    if let Err(e) = fs::rename(legacy_path, &backup_path).await {
+        warn!("Failed to rename legacy stats.json to {}: {}", backup_path, e);
+        warn!("You may want to manually delete or rename stats.json");
+    } else {
+        info!("Renamed legacy stats.json to {}", backup_path);
+    }
+
     Ok(())
 }
 
-async fn cleanup_old_stats(stats: &mut TotalStats) {
+async fn load_stats_from_lmdb(storage: &Arc<LmdbStorage>) -> Result<TotalStats, Box<dyn std::error::Error>> {
+    // Load total stats
+    let (total_requests, total_bytes_served) = match storage.get_json::<(u64, u64)>(STATS_KEY_TOTAL)? {
+        Some((req, bytes)) => {
+            info!("Loaded total statistics from LMDB: {} requests, {} bytes", req, bytes);
+            (req, bytes)
+        }
+        None => {
+            info!("No existing stats in LMDB, starting with empty statistics");
+            (0, 0)
+        }
+    };
+
+    // Load daily stats
+    let mut daily_stats = HashMap::new();
+    let daily_keys = storage.get_keys_with_prefix(STATS_KEY_DAILY_PREFIX)?;
+    for key in daily_keys {
+        if let Some(date) = key.strip_prefix(STATS_KEY_DAILY_PREFIX) {
+            if let Some(stats) = storage.get_json::<DailyStats>(&key)? {
+                daily_stats.insert(date.to_string(), stats);
+            }
+        }
+    }
+    info!("Loaded {} daily stats entries from LMDB", daily_stats.len());
+
+    // Load hourly stats
+    let mut hourly_stats = HashMap::new();
+    let hourly_keys = storage.get_keys_with_prefix(STATS_KEY_HOURLY_PREFIX)?;
+    for key in hourly_keys {
+        if let Some(datetime) = key.strip_prefix(STATS_KEY_HOURLY_PREFIX) {
+            if let Some(stats) = storage.get_json::<DailyStats>(&key)? {
+                hourly_stats.insert(datetime.to_string(), stats);
+            }
+        }
+    }
+    info!("Loaded {} hourly stats entries from LMDB", hourly_stats.len());
+
+    Ok(TotalStats {
+        total_requests,
+        total_bytes_served,
+        daily_stats,
+        hourly_stats,
+    })
+}
+
+async fn save_stats_to_lmdb(storage: &Arc<LmdbStorage>, stats: &TotalStats) -> Result<(), Box<dyn std::error::Error>> {
+    // Save total stats
+    storage.put_json(STATS_KEY_TOTAL, &(stats.total_requests, stats.total_bytes_served))?;
+
+    // Save daily stats (only updated entries)
+    for (date, daily_stat) in &stats.daily_stats {
+        let key = format!("{}{}", STATS_KEY_DAILY_PREFIX, date);
+        storage.put_json(&key, daily_stat)?;
+    }
+
+    // Save hourly stats (only updated entries)
+    for (datetime, hourly_stat) in &stats.hourly_stats {
+        let key = format!("{}{}", STATS_KEY_HOURLY_PREFIX, datetime);
+        storage.put_json(&key, hourly_stat)?;
+    }
+
+    Ok(())
+}
+
+async fn cleanup_old_stats(storage: &Arc<LmdbStorage>, stats: &mut TotalStats) {
     let now = Utc::now();
     let one_month_ago = (now - ChronoDuration::days(31))
         .format("%Y-%m-%d")
@@ -90,6 +213,11 @@ async fn cleanup_old_stats(stats: &mut TotalStats) {
         );
         for date in daily_to_remove {
             stats.daily_stats.remove(&date);
+            // Remove from LMDB as well
+            let key = format!("{}{}", STATS_KEY_DAILY_PREFIX, date);
+            if let Err(e) = storage.delete(&key) {
+                error!("Failed to delete old daily stat {}: {}", key, e);
+            }
         }
     }
 
@@ -108,12 +236,17 @@ async fn cleanup_old_stats(stats: &mut TotalStats) {
         );
         for datetime in hourly_to_remove {
             stats.hourly_stats.remove(&datetime);
+            // Remove from LMDB as well
+            let key = format!("{}{}", STATS_KEY_HOURLY_PREFIX, datetime);
+            if let Err(e) = storage.delete(&key) {
+                error!("Failed to delete old hourly stat {}: {}", key, e);
+            }
         }
     }
 }
 
-pub async fn record_request(stats: &StatsState, response_size: usize) {
-    let mut stats_guard = stats.write().await;
+pub async fn record_request(stats_manager: &StatsState, response_size: usize) {
+    let mut stats_guard = stats_manager.stats.write().await;
     let now = Utc::now();
     let today = now.format("%Y-%m-%d").to_string();
     let current_hour = now.format("%Y-%m-%d %H").to_string();
@@ -123,7 +256,7 @@ pub async fn record_request(stats: &StatsState, response_size: usize) {
     stats_guard.total_bytes_served += response_size as u64;
 
     // Update daily stats
-    let daily_stats = stats_guard.daily_stats.entry(today).or_insert(DailyStats {
+    let daily_stats = stats_guard.daily_stats.entry(today.clone()).or_insert(DailyStats {
         requests: 0,
         bytes_served: 0,
     });
@@ -134,7 +267,7 @@ pub async fn record_request(stats: &StatsState, response_size: usize) {
     // Update hourly stats
     let hourly_stats = stats_guard
         .hourly_stats
-        .entry(current_hour)
+        .entry(current_hour.clone())
         .or_insert(DailyStats {
             requests: 0,
             bytes_served: 0,
@@ -145,22 +278,25 @@ pub async fn record_request(stats: &StatsState, response_size: usize) {
 
     // Cleanup old stats periodically (every 100 requests)
     if stats_guard.total_requests % 100 == 0 {
-        cleanup_old_stats(&mut stats_guard).await;
+        cleanup_old_stats(&stats_manager.storage, &mut stats_guard).await;
     }
 
-    // Save to file periodically (every 10 requests)
+    // Save to LMDB periodically (every 10 requests)
     if stats_guard.total_requests % 10 == 0 {
         let stats_copy = stats_guard.clone();
+        let storage = stats_manager.storage.clone();
         drop(stats_guard); // Release lock before async operation
 
-        if let Err(e) = save_stats_to_file(&stats_copy).await {
-            error!("Failed to save statistics: {}", e);
-        }
+        tokio::spawn(async move {
+            if let Err(e) = save_stats_to_lmdb(&storage, &stats_copy).await {
+                error!("Failed to save statistics to LMDB: {}", e);
+            }
+        });
     }
 }
 
-pub async fn get_stats(stats: &StatsState) -> TotalStats {
-    stats.read().await.clone()
+pub async fn get_stats(stats_manager: &StatsState) -> TotalStats {
+    stats_manager.stats.read().await.clone()
 }
 
 #[derive(Serialize)]
@@ -180,8 +316,8 @@ pub struct DailyStatsEntry {
     pub kb_served: f64,
 }
 
-pub async fn get_stats_response(stats: &StatsState) -> StatsResponse {
-    let stats_data = get_stats(stats).await;
+pub async fn get_stats_response(stats_manager: &StatsState) -> StatsResponse {
+    let stats_data = get_stats(stats_manager).await;
     let now = Utc::now();
 
     // Generate last 24 hours (using hourly data)
@@ -237,11 +373,11 @@ pub async fn get_stats_response(stats: &StatsState) -> StatsResponse {
     }
 }
 
-pub async fn save_stats_on_shutdown(stats: &StatsState) {
-    let stats_data = get_stats(stats).await;
-    if let Err(e) = save_stats_to_file(&stats_data).await {
-        error!("Failed to save statistics on shutdown: {}", e);
+pub async fn save_stats_on_shutdown(stats_manager: &StatsState) {
+    let stats_data = get_stats(stats_manager).await;
+    if let Err(e) = save_stats_to_lmdb(&stats_manager.storage, &stats_data).await {
+        error!("Failed to save statistics to LMDB on shutdown: {}", e);
     } else {
-        info!("Statistics saved successfully on shutdown");
+        info!("Statistics saved successfully to LMDB on shutdown");
     }
 }

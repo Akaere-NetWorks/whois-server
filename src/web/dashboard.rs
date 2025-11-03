@@ -124,7 +124,7 @@ async fn process_whois_query(
         Ok(result) => {
             // 更新统计信息
             {
-                let mut stats_guard = stats.write().await;
+                let mut stats_guard = stats.stats.write().await;
                 stats_guard.total_requests += 1;
             }
 
@@ -252,7 +252,7 @@ async fn raw_whois_query(
         Ok(result) => {
             // 更新统计信息
             {
-                let mut stats_guard = stats.write().await;
+                let mut stats_guard = stats.stats.write().await;
                 stats_guard.total_requests += 1;
             }
 
