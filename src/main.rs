@@ -37,8 +37,9 @@ use dn42::{
     start_periodic_sync,
 };
 use server::{create_dump_dir_if_needed, run_async_server};
-use ssh::{SshServer, server::SshServerConfig};
-use tokio::time::{Duration, interval};
+use services::pen::start_pen_periodic_update;
+use ssh::{server::SshServerConfig, SshServer};
+use tokio::time::{interval, Duration};
 use web::run_web_server;
 
 #[tokio::main]
@@ -117,6 +118,12 @@ async fn main() -> Result<()> {
             tracing::error!("Failed to determine DN42 mode, falling back to git sync");
             start_periodic_sync().await;
         }
+    });
+
+    // Start PEN (Private Enterprise Numbers) periodic update task
+    tokio::spawn(async move {
+        info!("Starting PEN periodic update task");
+        start_pen_periodic_update().await;
     });
 
     // Start web server

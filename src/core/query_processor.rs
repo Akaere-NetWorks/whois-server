@@ -27,11 +27,11 @@ use crate::services::{
     process_imdb_search_query, process_irr_query, process_looking_glass_query, process_lyric_query,
     process_manrs_query, process_minecraft_query, process_minecraft_user_query,
     process_nixos_query, process_npm_query, process_opensuse_query, process_openwrt_query,
-    process_peeringdb_query, process_prefixes_query, process_pypi_query, process_rir_geo_query,
-    process_rpki_query, process_ssl_query, process_steam_query, process_steam_search_query,
-    process_traceroute_query, process_ubuntu_query, process_wikipedia_query, query_curseforge,
-    query_modrinth, query_random_chinese_meal, query_random_meal, query_whois,
-    query_with_iana_referral,
+    process_peeringdb_query, process_pen_query, process_prefixes_query, process_pypi_query,
+    process_rir_geo_query, process_rpki_query, process_ssl_query, process_steam_query,
+    process_steam_search_query, process_traceroute_query, process_ubuntu_query,
+    process_wikipedia_query, query_curseforge, query_modrinth, query_random_chinese_meal,
+    query_random_meal, query_whois, query_with_iana_referral,
 };
 
 /// Process a WHOIS query and return the response (for use by SSH server and other modules)
@@ -294,6 +294,13 @@ pub async fn process_query(
         QueryType::PeeringDB(base_query) => {
             debug!("Processing PeeringDB query: {}", base_query);
             process_peeringdb_query(base_query).await
+        }
+        QueryType::Pen(base_query) => {
+            debug!(
+                "Processing IANA Private Enterprise Numbers query: {}",
+                base_query
+            );
+            process_pen_query(base_query).await
         }
         QueryType::Meal => {
             debug!("Processing meal suggestion query");

@@ -63,6 +63,7 @@ pub enum QueryType {
     Lyric(String),         // For queries ending with -LYRIC (Luotianyi random lyrics)
     Desc(String),          // For queries ending with -DESC (show only descr fields)
     PeeringDB(String),     // For queries ending with -PEERINGDB (PeeringDB ASN/IX information)
+    Pen(String),           // For queries ending with -PEN (IANA Private Enterprise Numbers)
     Meal,                  // For meal suggestions (今天吃什么 or -MEAL)
     MealCN,                // For Chinese meal suggestions (今天吃什么中国 or -MEAL-CN)
     Ntp(String),           // For NTP time synchronization test (-NTP)
@@ -426,6 +427,12 @@ pub fn analyze_query(query: &str) -> QueryType {
     if query.to_uppercase().ends_with("-PEERINGDB") {
         let base_query = &query[..query.len() - 10]; // Remove "-PEERINGDB" suffix
         return QueryType::PeeringDB(base_query.to_string());
+    }
+
+    // Check if it's a IANA Private Enterprise Numbers query
+    if query.to_uppercase().ends_with("-PEN") {
+        let base_query = &query[..query.len() - 4]; // Remove "-PEN" suffix
+        return QueryType::Pen(base_query.to_string());
     }
 
     // Check if it's a BGP Tools query

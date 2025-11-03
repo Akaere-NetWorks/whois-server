@@ -25,8 +25,8 @@ use tokio::fs;
 use tokio::sync::RwLock;
 use tracing::{error, info, warn};
 
-use crate::storage::lmdb::LmdbStorage;
 use crate::config::STATS_LMDB_PATH;
+use crate::storage::lmdb::LmdbStorage;
 
 // Legacy stats file path for migration
 const LEGACY_STATS_FILE: &str = "stats.json";
@@ -73,7 +73,7 @@ pub async fn create_stats_state() -> StatsState {
     }
 
     let stats = load_stats_from_lmdb(&storage).await.unwrap_or_default();
-    
+
     Arc::new(StatsManager {
         stats: Arc::new(RwLock::new(stats)),
         storage,
@@ -81,9 +81,11 @@ pub async fn create_stats_state() -> StatsState {
 }
 
 /// Migrate data from legacy stats.json file to LMDB
-async fn migrate_from_legacy_json(storage: &Arc<LmdbStorage>) -> Result<(), Box<dyn std::error::Error>> {
+async fn migrate_from_legacy_json(
+    storage: &Arc<LmdbStorage>,
+) -> Result<(), Box<dyn std::error::Error>> {
     let legacy_path = Path::new(LEGACY_STATS_FILE);
-    
+
     // Check if legacy file exists
     if !legacy_path.exists() {
         return Ok(()); // No migration needed
@@ -116,7 +118,10 @@ async fn migrate_from_legacy_json(storage: &Arc<LmdbStorage>) -> Result<(), Box<
     // Rename the old file to .migrated for backup
     let backup_path = format!("{}.migrated", LEGACY_STATS_FILE);
     if let Err(e) = fs::rename(legacy_path, &backup_path).await {
-        warn!("Failed to rename legacy stats.json to {}: {}", backup_path, e);
+        warn!(
+            "Failed to rename legacy stats.json to {}: {}",
+            backup_path, e
+        );
         warn!("You may want to manually delete or rename stats.json");
     } else {
         info!("Renamed legacy stats.json to {}", backup_path);
@@ -125,18 +130,24 @@ async fn migrate_from_legacy_json(storage: &Arc<LmdbStorage>) -> Result<(), Box<
     Ok(())
 }
 
-async fn load_stats_from_lmdb(storage: &Arc<LmdbStorage>) -> Result<TotalStats, Box<dyn std::error::Error>> {
+async fn load_stats_from_lmdb(
+    storage: &Arc<LmdbStorage>,
+) -> Result<TotalStats, Box<dyn std::error::Error>> {
     // Load total stats
-    let (total_requests, total_bytes_served) = match storage.get_json::<(u64, u64)>(STATS_KEY_TOTAL)? {
-        Some((req, bytes)) => {
-            info!("Loaded total statistics from LMDB: {} requests, {} bytes", req, bytes);
-            (req, bytes)
-        }
-        None => {
-            info!("No existing stats in LMDB, starting with empty statistics");
-            (0, 0)
-        }
-    };
+    let (total_requests, total_bytes_served) =
+        match storage.get_json::<(u64, u64)>(STATS_KEY_TOTAL)? {
+            Some((req, bytes)) => {
+                info!(
+                    "Loaded total statistics from LMDB: {} requests, {} bytes",
+                    req, bytes
+                );
+                (req, bytes)
+            }
+            None => {
+                info!("No existing stats in LMDB, starting with empty statistics");
+                (0, 0)
+            }
+        };
 
     // Load daily stats
     let mut daily_stats = HashMap::new();
@@ -160,7 +171,10 @@ async fn load_stats_from_lmdb(storage: &Arc<LmdbStorage>) -> Result<TotalStats, 
             }
         }
     }
-    info!("Loaded {} hourly stats entries from LMDB", hourly_stats.len());
+    info!(
+        "Loaded {} hourly stats entries from LMDB",
+        hourly_stats.len()
+    );
 
     Ok(TotalStats {
         total_requests,
@@ -170,9 +184,15 @@ async fn load_stats_from_lmdb(storage: &Arc<LmdbStorage>) -> Result<TotalStats, 
     })
 }
 
-async fn save_stats_to_lmdb(storage: &Arc<LmdbStorage>, stats: &TotalStats) -> Result<(), Box<dyn std::error::Error>> {
+async fn save_stats_to_lmdb(
+    storage: &Arc<LmdbStorage>,
+    stats: &TotalStats,
+) -> Result<(), Box<dyn std::error::Error>> {
     // Save total stats
-    storage.put_json(STATS_KEY_TOTAL, &(stats.total_requests, stats.total_bytes_served))?;
+    storage.put_json(
+        STATS_KEY_TOTAL,
+        &(stats.total_requests, stats.total_bytes_served),
+    )?;
 
     // Save daily stats (only updated entries)
     for (date, daily_stat) in &stats.daily_stats {
@@ -256,10 +276,13 @@ pub async fn record_request(stats_manager: &StatsState, response_size: usize) {
     stats_guard.total_bytes_served += response_size as u64;
 
     // Update daily stats
-    let daily_stats = stats_guard.daily_stats.entry(today.clone()).or_insert(DailyStats {
-        requests: 0,
-        bytes_served: 0,
-    });
+    let daily_stats = stats_guard
+        .daily_stats
+        .entry(today.clone())
+        .or_insert(DailyStats {
+            requests: 0,
+            bytes_served: 0,
+        });
 
     daily_stats.requests += 1;
     daily_stats.bytes_served += response_size as u64;
