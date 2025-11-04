@@ -64,6 +64,7 @@ pub enum QueryType {
     Desc(String),          // For queries ending with -DESC (show only descr fields)
     PeeringDB(String),     // For queries ending with -PEERINGDB (PeeringDB ASN/IX information)
     Pen(String),           // For queries ending with -PEN (IANA Private Enterprise Numbers)
+    Rdap(String),          // For queries ending with -RDAP (RDAP protocol queries)
     Meal,                  // For meal suggestions (今天吃什么 or -MEAL)
     MealCN,                // For Chinese meal suggestions (今天吃什么中国 or -MEAL-CN)
     Ntp(String),           // For NTP time synchronization test (-NTP)
@@ -433,6 +434,12 @@ pub fn analyze_query(query: &str) -> QueryType {
     if query.to_uppercase().ends_with("-PEN") {
         let base_query = &query[..query.len() - 4]; // Remove "-PEN" suffix
         return QueryType::Pen(base_query.to_string());
+    }
+
+    // Check if it's a RDAP query
+    if query.to_uppercase().ends_with("-RDAP") {
+        let base_query = &query[..query.len() - 5]; // Remove "-RDAP" suffix
+        return QueryType::Rdap(base_query.to_string());
     }
 
     // Check if it's a BGP Tools query
