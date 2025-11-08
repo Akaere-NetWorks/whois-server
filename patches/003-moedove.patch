@@ -1,8 +1,8 @@
 # MoeDove LIR Patch - MDNIC
 # When someone queries ORG-ML942-RIPE, replace response with MDNIC
 
-# Match queries containing "egg" (case-insensitive)
-# QUERY_CONTAINS: ORG-ML942-RIPE
+# Match queries containing "ORG-ML942-RIPE" (case-insensitive)
+# RESPONSE_CONTAINS: ORG-ML942-RIPE
 
 --- original_response
 +++ patched_response
