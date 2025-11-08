@@ -1,0 +1,11 @@
+# MoeDove LIR Patch - MDNIC
+# When someone queries ORG-ML942-RIPE, replace response with MDNIC
+
+# Match queries containing "ORG-ML942-RIPE" (case-insensitive)
+# RESPONSE_CONTAINS: ORG-ML942-RIPE
+
+--- original_response
++++ patched_response
+@@ -1,1 +1,1 @@
+-% sponsoring-org: ORG-ML942-RIPE
++% sponsoring-org: MDNIC
