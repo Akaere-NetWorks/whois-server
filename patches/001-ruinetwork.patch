@@ -34,7 +34,7 @@
 +++ patched_response
 @@ -1,1 +1,1 @@
 -^source:
-+source:          MoeDove
++source:         MDNIC
 
 # Rule 2: When response contains "RuiNetwork" in any form
 # Replace all occurrences and update source field
@@ -61,7 +61,7 @@
 +++ patched_response
 @@ -1,1 +1,1 @@
 -^source:
-+source:          MoeDove
++source:         MDNIC
 
 # RESPONSE_CONTAINS: ruinetwork
 --- original_response
@@ -80,7 +80,7 @@
 +++ patched_response
 @@ -1,1 +1,1 @@
 -^source:
-+source:          MoeDove
++source:         MDNIC
 
 # RESPONSE_CONTAINS: RUINETWORK
 --- original_response
