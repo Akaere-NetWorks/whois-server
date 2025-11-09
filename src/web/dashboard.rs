@@ -19,6 +19,8 @@
 use crate::core::query_processor::process_query;
 use crate::core::{StatsState, analyze_query, get_stats_response};
 use crate::web::json_formatter::{JsonFormatter, WhoisApiResponse};
+use crate::web::pixiv_proxy::{proxy_pixiv_image, proxy_health};
+use crate::config;
 use axum::{
     Router,
     extract::{Path, Query, State},
@@ -38,14 +40,23 @@ pub async fn run_web_server(
     stats: StatsState,
     port: u16,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let app = Router::new()
+    let mut app = Router::new()
         .route("/", get(dashboard))
         .route("/docs", get(api_docs))
         .route("/api/openapi.json", get(openapi_spec))
         .route("/api/stats", get(get_stats_api))
         .route("/api/whois", get(whois_api_get))
         .route("/api/whois", post(whois_api_post))
-        .route("/raw/:query", get(raw_whois_query))
+        .route("/raw/:query", get(raw_whois_query));
+
+    // 如果启用了 Pixiv 代理,添加代理路由
+    if config::pixiv_proxy_enabled() {
+        app = app
+            .route("/pixiv-proxy/*path", get(proxy_pixiv_image))
+            .route("/pixiv-proxy-health", get(proxy_health));
+    }
+
+    let app = app
         .layer(CorsLayer::permissive())
         .with_state(stats);
 

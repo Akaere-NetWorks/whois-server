@@ -7,6 +7,33 @@ from typing import Dict, Any
 from pixivpy3 import AppPixivAPI
 
 
+def _replace_image_url(url: str) -> str:
+    """
+    Replace Pixiv image URL with proxy URL if proxy is enabled
+    
+    Args:
+        url: Original Pixiv image URL
+        
+    Returns:
+        Proxied URL if PIXIV_PROXY_ENABLED=true, otherwise original URL
+    """
+    if not url:
+        return url
+        
+    proxy_enabled = os.getenv('PIXIV_PROXY_ENABLED', 'false').lower() == 'true'
+    if not proxy_enabled:
+        return url
+    
+    proxy_base = os.getenv('PIXIV_PROXY_BASE_URL', 'http://localhost:8080/pixiv-proxy')
+    pixiv_host = 'https://i.pximg.net'
+    
+    if url.startswith(pixiv_host):
+        # 替换 https://i.pximg.net/... 为 {proxy_base}/...
+        return url.replace(pixiv_host, proxy_base)
+    
+    return url
+
+
 class PixivClient:
     """Pixiv API client wrapper"""
     
@@ -95,18 +122,18 @@ def get_artwork_info(artwork_id: int) -> Dict[str, Any]:
             "total_bookmarks": illust.total_bookmarks,
             "url": f"https://www.pixiv.net/artworks/{artwork_id}",
             "image_urls": {
-                "square_medium": getattr(illust.image_urls, 'square_medium', None),
-                "medium": getattr(illust.image_urls, 'medium', None),
-                "large": getattr(illust.image_urls, 'large', None),
-                "original": getattr(illust, 'meta_single_page', {}).get('original_image_url', None),
+                "square_medium": _replace_image_url(getattr(illust.image_urls, 'square_medium', None)),
+                "medium": _replace_image_url(getattr(illust.image_urls, 'medium', None)),
+                "large": _replace_image_url(getattr(illust.image_urls, 'large', None)),
+                "original": _replace_image_url(getattr(illust, 'meta_single_page', {}).get('original_image_url', None)),
             },
             # 多页作品的所有页面
             "meta_pages": [
                 {
-                    "square_medium": page.image_urls.square_medium if hasattr(page.image_urls, 'square_medium') else None,
-                    "medium": page.image_urls.medium if hasattr(page.image_urls, 'medium') else None,
-                    "large": page.image_urls.large if hasattr(page.image_urls, 'large') else None,
-                    "original": page.image_urls.original if hasattr(page.image_urls, 'original') else None,
+                    "square_medium": _replace_image_url(page.image_urls.square_medium if hasattr(page.image_urls, 'square_medium') else None),
+                    "medium": _replace_image_url(page.image_urls.medium if hasattr(page.image_urls, 'medium') else None),
+                    "large": _replace_image_url(page.image_urls.large if hasattr(page.image_urls, 'large') else None),
+                    "original": _replace_image_url(page.image_urls.original if hasattr(page.image_urls, 'original') else None),
                 }
                 for page in getattr(illust, 'meta_pages', [])
             ] if hasattr(illust, 'meta_pages') else [],

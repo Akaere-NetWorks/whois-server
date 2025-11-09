@@ -48,6 +48,14 @@ pub const RIS_WHOIS_PORT: u16 = 43;
 // Server identification banner
 pub const SERVER_BANNER: &str = "% Akaere NetWorks Whois Server";
 
+// Pixiv image proxy configuration
+pub fn pixiv_proxy_enabled() -> bool {
+    std::env::var("PIXIV_PROXY_ENABLED")
+        .unwrap_or_else(|_| "false".to_string())
+        .parse()
+        .unwrap_or(false)
+}
+
 // Private IP range definitions
 pub const PRIVATE_IPV4_RANGES: &[&str] = &[
     "10.0.0.0/8",      // RFC1918
