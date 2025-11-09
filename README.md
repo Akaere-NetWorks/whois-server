@@ -28,6 +28,8 @@
     - [As a Rust Library](#as-a-rust-library)
   - [🔧 Usage](#-usage)
     - [Running the server](#running-the-server)
+    - [Configuration](#configuration)
+      - [Environment Variables](#environment-variables)
     - [Command-line options](#command-line-options)
     - [Testing with WHOIS clients](#testing-with-whois-clients)
   - [🔍 Query Types and Features](#-query-types-and-features)
@@ -71,9 +73,10 @@
 - **🎬 IMDb Integration** - Movie and TV show information with ratings, cast, and search functionality
 - **📦 Package Repository Support** - Comprehensive package queries for 10 major repositories (Cargo, NPM, PyPI, GitHub, AUR, Debian, Ubuntu, NixOS, OpenSUSE, AOSC, Modrinth)
 - **🎮 Modrinth Integration** - Minecraft mods, resource packs, datapacks, and shaders information with downloads statistics
+- **Pixiv Integration** - Artwork and user information with image URLs, search, and ranking queries via pixivpy3
 - **🎭 Entertainment Services** - Wikipedia articles, anime/comic/game character database, and Luotianyi lyrics
 - **🛠️ Development Tools** - GitHub user/repository information and built-in help system
-- **� Response Patch System** - Remote-managed response customization with automatic updates from GitHub
+- **Response Patch System** - Remote-managed response customization with automatic updates from GitHub
   - Context-aware text replacement with line-based rules
   - SHA1 checksum verification for integrity
   - LMDB storage for persistence and fast loading
@@ -155,6 +158,12 @@ whois -h whois.akae.re requests-PYPI
 whois -h whois.akae.re sodium-MODRINTH
 whois -h whois.akae.re iris-MODRINTH
 
+# Pixiv artwork and user information
+whois -h whois.akae.re 123456789-PIXIV
+whois -h whois.akae.re user:12345678-PIXIV
+whois -h whois.akae.re search:风景-PIXIV
+whois -h whois.akae.re ranking-PIXIV
+
 # Entertainment services
 whois -h whois.akae.re "Linux-WIKIPEDIA"
 whois -h whois.akae.re "Miku-ACGC"
@@ -184,6 +193,7 @@ The web server provides several API endpoints for integration:
 
 - **`/api/whois?q=<query>`** - JSON-formatted WHOIS response with structured data
 - **`/raw/<query>`** - Raw WHOIS output (text/plain) without JSON formatting
+- **`/pixiv/<query>`** - Pixiv-specific JSON API for artwork, user, search, and ranking queries
 - **`/api/stats`** - Server statistics in JSON format
 - **`/api/openapi.json`** - OpenAPI 3.0 specification
 
@@ -197,6 +207,12 @@ curl "http://localhost:9999/api/whois?q=google.com"
 curl "http://localhost:9999/raw/google.com"
 curl "http://localhost:9999/raw/AS13335"
 curl "http://localhost:9999/raw/8.8.8.8"
+
+# Get Pixiv data in pure JSON format
+curl "http://localhost:9999/pixiv/123456789"
+curl "http://localhost:9999/pixiv/user:12345678"
+curl "http://localhost:9999/pixiv/search:风景"
+curl "http://localhost:9999/pixiv/ranking"
 
 # Get server statistics
 curl "http://localhost:9999/api/stats"
@@ -272,6 +288,27 @@ cargo run --release -- --host 127.0.0.1
 # Enable traffic dumping for debugging
 cargo run --release -- --dump-traffic --dump-dir ./logs
 ```
+
+### Configuration
+
+#### Environment Variables
+
+The server supports configuration via environment variables. Create a `.env` file in the project root:
+
+```bash
+# Pixiv Integration (Optional)
+PIXIV_REFRESH_TOKEN=your_refresh_token_here    # Required for Pixiv queries
+PIXIV_PROXY_ENABLED=false                       # Enable image proxy (true/false)
+PIXIV_PROXY_BASE_URL=http://localhost:8080/pixiv-proxy  # Proxy base URL
+
+# Other configurations...
+```
+
+**Pixiv Setup:**
+1. Obtain a refresh token from Pixiv (see [pixivpy documentation](https://github.com/upbit/pixivpy))
+2. Set `PIXIV_REFRESH_TOKEN` in your `.env` file
+3. Optionally enable the image proxy to bypass referrer restrictions
+4. The proxy allows images to be accessed without Pixiv's referrer checks
 
 ### Command-line options
 
@@ -366,6 +403,11 @@ telnet localhost 43
 | **-WIKIPEDIA** | `Linux-WIKIPEDIA` | Wikipedia article information |
 | **-ACGC** | `Miku-ACGC` | Anime/Comic/Game character info |
 | **-LYRIC** | `LYRIC` | Random Luotianyi lyrics |
+| **-PIXIV** | `123456789-PIXIV` | Pixiv artwork information |
+| **-PIXIV** | `user:12345678-PIXIV` | Pixiv user profile |
+| **-PIXIV** | `search:keyword-PIXIV` | Search Pixiv artworks |
+| **-PIXIV** | `ranking-PIXIV` | Pixiv daily ranking (top 10) |
+| **-PIXIV** | `illusts:12345678-PIXIV` | User's artwork list |
 | **HELP** | `HELP` | Show all available query types |
 
 ### Geo-location Services
