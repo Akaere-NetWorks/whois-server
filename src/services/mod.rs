@@ -19,6 +19,7 @@ pub mod ntp;
 pub mod packages;
 pub mod peeringdb;
 pub mod pen;
+pub mod pixiv;
 pub mod rdap;
 pub mod rpki;
 pub mod ssl;

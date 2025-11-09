@@ -306,6 +306,10 @@ pub async fn process_query(
             debug!("Processing RDAP query: {}", base_query);
             process_rdap_query(base_query).await
         }
+        QueryType::Pixiv(base_query) => {
+            debug!("Processing Pixiv query: {}", base_query);
+            crate::services::pixiv::process_pixiv_query(base_query).await
+        }
         QueryType::Meal => {
             debug!("Processing meal suggestion query");
             query_random_meal().await

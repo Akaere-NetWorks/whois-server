@@ -65,6 +65,7 @@ pub enum QueryType {
     PeeringDB(String),     // For queries ending with -PEERINGDB (PeeringDB ASN/IX information)
     Pen(String),           // For queries ending with -PEN (IANA Private Enterprise Numbers)
     Rdap(String),          // For queries ending with -RDAP (RDAP protocol queries)
+    Pixiv(String),         // For queries ending with -PIXIV (Pixiv artworks/users)
     Meal,                  // For meal suggestions (今天吃什么 or -MEAL)
     MealCN,                // For Chinese meal suggestions (今天吃什么中国 or -MEAL-CN)
     Ntp(String),           // For NTP time synchronization test (-NTP)
@@ -440,6 +441,12 @@ pub fn analyze_query(query: &str) -> QueryType {
     if query.to_uppercase().ends_with("-RDAP") {
         let base_query = &query[..query.len() - 5]; // Remove "-RDAP" suffix
         return QueryType::Rdap(base_query.to_string());
+    }
+
+    // Check if it's a Pixiv query
+    if query.to_uppercase().ends_with("-PIXIV") {
+        let base_query = &query[..query.len() - 6]; // Remove "-PIXIV" suffix
+        return QueryType::Pixiv(base_query.to_string());
     }
 
     // Check if it's a BGP Tools query

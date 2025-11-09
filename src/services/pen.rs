@@ -1,5 +1,5 @@
 use crate::storage::lmdb::LmdbStorage;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tracing::{debug, info, warn};
@@ -193,7 +193,7 @@ impl PenService {
                 let email_lower = entry.email.to_lowercase();
 
                 // Fuzzy matching: check if query is contained in org, contact, or email
-                if org_lower.contains(&query_lower) 
+                if org_lower.contains(&query_lower)
                     || contact_lower.contains(&query_lower)
                     || email_lower.contains(&query_lower)
                 {
@@ -310,7 +310,7 @@ impl PenService {
             .build()?;
 
         let response = client.get(&self.data_url).send().await?;
-        
+
         if !response.status().is_success() {
             return Err(anyhow!(
                 "Failed to download PEN data: HTTP {}",
@@ -494,10 +494,10 @@ pub async fn pen_update_cache() -> Result<()> {
 
 /// Start periodic PEN cache update task (call this from main.rs)
 pub async fn start_pen_periodic_update() {
-    use tokio::time::{interval, Duration};
+    use tokio::time::{Duration, interval};
 
     info!("Starting PEN periodic update task (checking every hour)");
-    
+
     // Immediately check and update on startup
     info!("PEN: Performing initial cache check on startup");
     match pen_needs_update().await {

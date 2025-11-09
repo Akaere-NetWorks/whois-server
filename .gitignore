@@ -13,3 +13,6 @@ patches.backup/
 patches/*.bak
 patches/*.old
 patches/*.tmp
+
+# Python Virtual Environments
+/venv

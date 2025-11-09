@@ -38,8 +38,8 @@ use dn42::{
 };
 use server::{create_dump_dir_if_needed, run_async_server};
 use services::pen::start_pen_periodic_update;
-use ssh::{server::SshServerConfig, SshServer};
-use tokio::time::{interval, Duration};
+use ssh::{SshServer, server::SshServerConfig};
+use tokio::time::{Duration, interval};
 use web::run_web_server;
 
 #[tokio::main]

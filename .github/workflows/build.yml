@@ -47,6 +47,20 @@ jobs:
         restore-keys: |
           ${{ matrix.os }}-cargo-
 
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.13'
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then
+          pip install -r requirements.txt
+        else
+          echo "No requirements.txt found at repo root, skipping Python dependency installation."
+        fi
+
     - name: Build
       run: cargo build --release
 

@@ -416,6 +416,10 @@ pub async fn handle_connection(
                 Err(e) => Ok(format!("% Error: {}\n", e)),
             }
         }
+        QueryType::Pixiv(base_query) => {
+            debug!("Processing Pixiv query: {}", base_query);
+            crate::services::pixiv::process_pixiv_query(base_query).await
+        }
         QueryType::Unknown(q) => {
             debug!("Unknown query type: {}", q);
             if q.to_uppercase().ends_with("-DN42") || q.to_uppercase().ends_with("-MNT") {

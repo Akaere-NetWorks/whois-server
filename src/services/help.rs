@@ -81,6 +81,34 @@ pub fn generate_help_response() -> String {
     output.push_str("AS15169-ALTDB       - ALTDB routing registry query\n");
     output.push_str("example: AS15169-ALTDB\n");
     output.push('\n');
+
+    output.push_str("ENTERTAINMENT & SOCIAL SERVICES:\n");
+    output.push_str("-".repeat(40).as_str());
+    output.push('\n');
+    output.push_str("730-STEAM           - Steam game or user information\n");
+    output.push_str("example: 730-STEAM (Counter-Strike 2)\n");
+    output.push('\n');
+    output.push_str("Inception-STEAMSEARCH - Search Steam games by title\n");
+    output.push_str("example: Inception-STEAMSEARCH\n");
+    output.push('\n');
+    output.push_str("Inception-IMDB      - IMDb movie/TV show information\n");
+    output.push_str("example: Inception-IMDB\n");
+    output.push('\n');
+    output.push_str("Inception-IMDBSEARCH - Search IMDb titles\n");
+    output.push_str("example: Inception-IMDBSEARCH\n");
+    output.push('\n');
+    output.push_str("123456-PIXIV        - Pixiv artwork information by ID\n");
+    output.push_str("user:123456-PIXIV   - Pixiv user profile by ID\n");
+    output.push_str("search:keyword-PIXIV - Search Pixiv artworks by keyword\n");
+    output.push_str("ranking-PIXIV       - Daily Pixiv ranking (default)\n");
+    output.push_str("ranking:week-PIXIV  - Weekly Pixiv ranking\n");
+    output.push_str("illusts:123456-PIXIV - User's artworks by user ID\n");
+    output.push_str("example: 114514-PIXIV, user:114514-PIXIV, search:hatsune miku-PIXIV\n");
+    output.push('\n');
+
+    output.push_str("ROUTING & IRR DATABASES (continued):\n");
+    output.push_str("-".repeat(40).as_str());
+    output.push('\n');
     output.push_str("AS15169-AFRINIC     - AFRINIC IRR query\n");
     output.push_str("example: AS15169-AFRINIC\n");
     output.push('\n');
@@ -269,6 +297,7 @@ pub fn generate_help_response() -> String {
     output.push_str("whois -h whois.akae.re 730-STEAM\n");
     output.push_str("whois -h whois.akae.re Inception-IMDB\n");
     output.push_str("whois -h whois.akae.re mc.hypixel.net-MINECRAFT\n");
+    output.push_str("whois -h whois.akae.re 114514-PIXIV\n");
     output.push('\n');
     output.push_str("# Color support test\n");
     output.push_str("echo -e \"X-WHOIS-COLOR-PROBE: 1\\r\\n\\r\\n\" | nc whois.akae.re 43\n");
