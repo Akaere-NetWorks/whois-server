@@ -7,17 +7,17 @@
 --- original_response
 +++ patched_response
 @@ -1,1 +1,1 @@
--sponsoring-org:  ORG-ML942-RIPE
-+sponsoring-org:  MDNIC
+-sponsoring-org: ORG-ML942-RIPE
++sponsoring-org: MDNIC
 
 --- original_response
 +++ patched_response
 @@ -1,1 +1,1 @@
--org:             ORG-ML942-RIPE
-+org:             MDNIC
+-org:            ORG-ML942-RIPE
++org:            MDNIC
 
 --- original_response
 +++ patched_response
 @@ -1,1 +1,1 @@
--organisation:    ORG-ML942-RIPE
-+organisation:    MDNIC
+-organisation:   ORG-ML942-RIPE
++organisation:   MDNIC

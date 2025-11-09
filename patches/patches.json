@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "WHOIS Server Patch Metadata - For online updates and integrity verification",
   "repository": "https://github.com/Akaere-NetWorks/whois-server",
-  "last_updated": "2025-11-09T08:16:26+08:00",
+  "last_updated": "2025-11-09T08:19:07+08:00",
   "patches": [
     {
       "name": "001-ruinetwork.patch",
@@ -29,11 +29,11 @@
       "name": "003-moedove.patch",
       "description": "When someone queries ORG-ML942-RIPE, replace response with MDNIC",
       "url": "https://raw.githubusercontent.com/Akaere-NetWorks/whois-server/refs/heads/main/patches/003-moedove.patch",
-      "sha1": "3feacd57c9e7c41f881a5049a4904771c09aacbd",
-      "size": 546,
+      "sha1": "220b743ca63745960c70cea021b307845d1c7183",
+      "size": 540,
       "enabled": true,
       "priority": 3,
-      "modified": "2025-11-09T08:14:15+08:00"
+      "modified": "2025-11-09T08:19:05+08:00"
     }
   ],
   "metadata": {
