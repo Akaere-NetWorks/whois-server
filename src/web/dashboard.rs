@@ -24,6 +24,7 @@ use crate::config;
 use axum::{
     Router,
     extract::{Path, Query, State},
+    http::StatusCode,
     response::{Html, IntoResponse, Json},
     routing::{get, post},
 };
@@ -47,7 +48,8 @@ pub async fn run_web_server(
         .route("/api/stats", get(get_stats_api))
         .route("/api/whois", get(whois_api_get))
         .route("/api/whois", post(whois_api_post))
-        .route("/raw/:query", get(raw_whois_query));
+        .route("/raw/:query", get(raw_whois_query))
+        .route("/pixiv/:query", get(pixiv_json_query));
 
     // 如果启用了 Pixiv 代理,添加代理路由
     if config::pixiv_proxy_enabled() {
@@ -281,6 +283,44 @@ async fn raw_whois_query(
                 "text/plain; charset=utf-8",
             )],
             format!("Error: Query processing failed: {}", e),
+        ),
+    }
+}
+
+// GET /pixiv/:query - Return pure JSON for Pixiv queries
+async fn pixiv_json_query(
+    State(stats): State<StatsState>,
+    Path(query): Path<String>,
+) -> impl IntoResponse {
+    let query = query.trim();
+
+    if query.is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            [(axum::http::header::CONTENT_TYPE, "application/json")],
+            r#"{"error": "Query parameter is required and cannot be empty"}"#.to_string(),
+        );
+    }
+
+    // Process Pixiv query and return JSON
+    match crate::services::pixiv::process_pixiv_query_json(query).await {
+        Ok(json_result) => {
+            // 更新统计信息
+            {
+                let mut stats_guard = stats.stats.write().await;
+                stats_guard.total_requests += 1;
+            }
+
+            (
+                StatusCode::OK,
+                [(axum::http::header::CONTENT_TYPE, "application/json")],
+                json_result,
+            )
+        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            [(axum::http::header::CONTENT_TYPE, "application/json")],
+            format!(r#"{{"error": "{}"}}"#, e.to_string().replace('"', "\\\"")),
         ),
     }
 }

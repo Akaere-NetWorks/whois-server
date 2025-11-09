@@ -48,8 +48,18 @@ fn init_python_env(py: Python) -> PyResult<()> {
     Ok(())
 }
 
-/// Query Pixiv artwork information by ID
+/// Query Pixiv artwork information by ID (returns formatted text)
 pub async fn query_pixiv_artwork(artwork_id: &str) -> Result<String> {
+    query_pixiv_artwork_internal(artwork_id, false).await
+}
+
+/// Query Pixiv artwork information by ID (returns JSON)
+pub async fn query_pixiv_artwork_json(artwork_id: &str) -> Result<String> {
+    query_pixiv_artwork_internal(artwork_id, true).await
+}
+
+/// Internal function to query Pixiv artwork
+async fn query_pixiv_artwork_internal(artwork_id: &str, json_output: bool) -> Result<String> {
     debug!("Querying Pixiv artwork: {}", artwork_id);
 
     // Parse artwork ID
@@ -89,7 +99,11 @@ pub async fn query_pixiv_artwork(artwork_id: &str) -> Result<String> {
                 ));
             }
 
-            format_artwork_info(&data)
+            if json_output {
+                Ok(json_str)
+            } else {
+                format_artwork_info(&data)
+            }
         }
         Err(e) => {
             error!("Python error: {}", e);
@@ -99,7 +113,18 @@ pub async fn query_pixiv_artwork(artwork_id: &str) -> Result<String> {
 }
 
 /// Query Pixiv user information by ID
+/// Query Pixiv user information by ID (returns formatted text)
 pub async fn query_pixiv_user(user_id: &str) -> Result<String> {
+    query_pixiv_user_internal(user_id, false).await
+}
+
+/// Query Pixiv user information by ID (returns JSON)
+pub async fn query_pixiv_user_json(user_id: &str) -> Result<String> {
+    query_pixiv_user_internal(user_id, true).await
+}
+
+/// Internal function to query Pixiv user
+async fn query_pixiv_user_internal(user_id: &str, json_output: bool) -> Result<String> {
     debug!("Querying Pixiv user: {}", user_id);
 
     // Parse user ID
@@ -136,7 +161,11 @@ pub async fn query_pixiv_user(user_id: &str) -> Result<String> {
                 ));
             }
 
-            format_user_info(&data)
+            if json_output {
+                Ok(json_str)
+            } else {
+                format_user_info(&data)
+            }
         }
         Err(e) => {
             error!("Python error: {}", e);
@@ -608,6 +637,14 @@ fn format_user_illusts_results(data: &Value) -> Result<String> {
 
 /// Main entry point for Pixiv queries
 pub async fn process_pixiv_query(query: &str) -> Result<String> {
+    process_pixiv_query_internal(query, false).await
+}
+
+pub async fn process_pixiv_query_json(query: &str) -> Result<String> {
+    process_pixiv_query_internal(query, true).await
+}
+
+async fn process_pixiv_query_internal(query: &str, json_output: bool) -> Result<String> {
     debug!("Processing Pixiv query: {}", query);
 
     // Remove -PIXIV suffix if present
@@ -626,7 +663,11 @@ pub async fn process_pixiv_query(query: &str) -> Result<String> {
 
     if base_query.starts_with("user:") {
         let user_id = &base_query[5..];
-        query_pixiv_user(user_id).await
+        if json_output {
+            query_pixiv_user_json(user_id).await
+        } else {
+            query_pixiv_user(user_id).await
+        }
     } else if base_query.starts_with("search:") {
         let keyword = &base_query[7..];
         search_pixiv_artworks(keyword, None).await
@@ -642,6 +683,10 @@ pub async fn process_pixiv_query(query: &str) -> Result<String> {
         query_pixiv_user_illusts(user_id, None).await
     } else {
         // Default: treat as artwork ID
-        query_pixiv_artwork(base_query).await
+        if json_output {
+            query_pixiv_artwork_json(base_query).await
+        } else {
+            query_pixiv_artwork(base_query).await
+        }
     }
 }
