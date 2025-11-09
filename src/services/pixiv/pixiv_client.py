@@ -3,8 +3,38 @@ Pixiv API client using pixivpy3 library
 """
 
 import os
+import re
 from typing import Dict, Any
 from pixivpy3 import AppPixivAPI
+
+
+def _strip_html_tags(html_text: str) -> str:
+    """
+    Remove all HTML tags from text, keeping only plain text content
+    Compresses to single line with spaces
+    
+    Args:
+        html_text: Text with HTML tags
+        
+    Returns:
+        Plain text without HTML tags, in single line
+    """
+    if not html_text:
+        return ""
+    
+    # 替换 <br /> 和 <br> 为空格
+    text = re.sub(r'<br\s*/?>', ' ', html_text)
+    
+    # 移除所有 HTML 标签
+    text = re.sub(r'<[^>]+>', '', text)
+    
+    # 将所有换行符替换为空格
+    text = re.sub(r'\s*\n\s*', ' ', text)
+    
+    # 压缩多个空格为一个
+    text = re.sub(r'\s+', ' ', text)
+    
+    return text.strip()
 
 
 def _replace_image_url(url: str) -> str:
@@ -107,7 +137,7 @@ def get_artwork_info(artwork_id: int) -> Dict[str, Any]:
             "id": illust.id,
             "title": illust.title,
             "type": illust.type,
-            "caption": getattr(illust, 'caption', ''),
+            "caption": _strip_html_tags(getattr(illust, 'caption', '')),
             "user": {
                 "id": illust.user.id,
                 "name": illust.user.name,

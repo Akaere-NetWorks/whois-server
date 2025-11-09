@@ -389,7 +389,7 @@ fn format_artwork_info(data: &Value) -> Result<String> {
 
     if let Some(caption) = data.get("caption").and_then(|v| v.as_str()) {
         if !caption.is_empty() {
-            output.push_str(&format!("\nCaption:\n{}\n", caption));
+            output.push_str(&format!("\nCaption: {}\n", caption));
         }
     }
 
