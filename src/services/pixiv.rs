@@ -174,8 +174,18 @@ async fn query_pixiv_user_internal(user_id: &str, json_output: bool) -> Result<S
     }
 }
 
-/// Search Pixiv artworks by keyword
+/// Search Pixiv artworks by keyword (returns formatted text)
 pub async fn search_pixiv_artworks(keyword: &str, limit: Option<i32>) -> Result<String> {
+    search_pixiv_artworks_internal(keyword, limit, false).await
+}
+
+/// Search Pixiv artworks by keyword (returns JSON)
+pub async fn search_pixiv_artworks_json(keyword: &str, limit: Option<i32>) -> Result<String> {
+    search_pixiv_artworks_internal(keyword, limit, true).await
+}
+
+/// Internal function to search Pixiv artworks
+async fn search_pixiv_artworks_internal(keyword: &str, limit: Option<i32>, json_output: bool) -> Result<String> {
     debug!("Searching Pixiv artworks: {}", keyword);
 
     let limit = limit.unwrap_or(10);
@@ -209,7 +219,11 @@ pub async fn search_pixiv_artworks(keyword: &str, limit: Option<i32>) -> Result<
                 ));
             }
 
-            format_search_results(&data)
+            if json_output {
+                Ok(json_str)
+            } else {
+                format_search_results(&data)
+            }
         }
         Err(e) => {
             error!("Python error: {}", e);
@@ -218,8 +232,18 @@ pub async fn search_pixiv_artworks(keyword: &str, limit: Option<i32>) -> Result<
     }
 }
 
-/// Get Pixiv ranking
+/// Get Pixiv ranking (returns formatted text)
 pub async fn query_pixiv_ranking(mode: Option<&str>, limit: Option<i32>) -> Result<String> {
+    query_pixiv_ranking_internal(mode, limit, false).await
+}
+
+/// Get Pixiv ranking (returns JSON)
+pub async fn query_pixiv_ranking_json(mode: Option<&str>, limit: Option<i32>) -> Result<String> {
+    query_pixiv_ranking_internal(mode, limit, true).await
+}
+
+/// Internal function to get Pixiv ranking
+async fn query_pixiv_ranking_internal(mode: Option<&str>, limit: Option<i32>, json_output: bool) -> Result<String> {
     let mode = mode.unwrap_or("day");
     let limit = limit.unwrap_or(10);
 
@@ -254,7 +278,11 @@ pub async fn query_pixiv_ranking(mode: Option<&str>, limit: Option<i32>) -> Resu
                 ));
             }
 
-            format_ranking_results(&data, mode)
+            if json_output {
+                Ok(json_str)
+            } else {
+                format_ranking_results(&data, mode)
+            }
         }
         Err(e) => {
             error!("Python error: {}", e);
@@ -263,8 +291,18 @@ pub async fn query_pixiv_ranking(mode: Option<&str>, limit: Option<i32>) -> Resu
     }
 }
 
-/// Get user's artworks
+/// Get user's artworks (returns formatted text)
 pub async fn query_pixiv_user_illusts(user_id: &str, limit: Option<i32>) -> Result<String> {
+    query_pixiv_user_illusts_internal(user_id, limit, false).await
+}
+
+/// Get user's artworks (returns JSON)
+pub async fn query_pixiv_user_illusts_json(user_id: &str, limit: Option<i32>) -> Result<String> {
+    query_pixiv_user_illusts_internal(user_id, limit, true).await
+}
+
+/// Internal function to get user's artworks
+async fn query_pixiv_user_illusts_internal(user_id: &str, limit: Option<i32>, json_output: bool) -> Result<String> {
     debug!("Querying Pixiv user illusts: {}", user_id);
 
     let id: i64 = user_id
@@ -302,7 +340,11 @@ pub async fn query_pixiv_user_illusts(user_id: &str, limit: Option<i32>) -> Resu
                 ));
             }
 
-            format_user_illusts_results(&data)
+            if json_output {
+                Ok(json_str)
+            } else {
+                format_user_illusts_results(&data)
+            }
         }
         Err(e) => {
             error!("Python error: {}", e);
@@ -670,17 +712,29 @@ async fn process_pixiv_query_internal(query: &str, json_output: bool) -> Result<
         }
     } else if base_query.starts_with("search:") {
         let keyword = &base_query[7..];
-        search_pixiv_artworks(keyword, None).await
+        if json_output {
+            search_pixiv_artworks_json(keyword, None).await
+        } else {
+            search_pixiv_artworks(keyword, None).await
+        }
     } else if base_query.starts_with("ranking") {
         let mode = if base_query.contains(':') {
             Some(&base_query[base_query.find(':').unwrap() + 1..])
         } else {
             None
         };
-        query_pixiv_ranking(mode, None).await
+        if json_output {
+            query_pixiv_ranking_json(mode, None).await
+        } else {
+            query_pixiv_ranking(mode, None).await
+        }
     } else if base_query.starts_with("illusts:") {
         let user_id = &base_query[8..];
-        query_pixiv_user_illusts(user_id, None).await
+        if json_output {
+            query_pixiv_user_illusts_json(user_id, None).await
+        } else {
+            query_pixiv_user_illusts(user_id, None).await
+        }
     } else {
         // Default: treat as artwork ID
         if json_output {
