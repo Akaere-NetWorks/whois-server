@@ -20,31 +20,28 @@ use anyhow::Result;
 use pyo3::prelude::*;
 use pyo3::types::PyModule;
 use serde_json::Value;
-use std::path::PathBuf;
+use std::ffi::CString;
 use tracing::{debug, error};
 
-/// Initialize Python interpreter and add pixiv module to path
+// Embed Python source code at compile time
+const PIXIV_CLIENT_PY: &str = include_str!("pixiv/pixiv_client.py");
+
+/// Initialize Python interpreter with embedded pixiv module
 fn init_python_env(py: Python) -> PyResult<()> {
-    // Get the path to the services directory (parent of pixiv)
-    let services_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("src")
-        .join("services");
-
-    // Add the services path to sys.path so Python can find the pixiv package
-    let sys = py.import("sys")?;
-    let path = sys.getattr("path")?;
-
-    // Convert path to string and add to sys.path if not already present
-    let path_str = services_path.to_string_lossy().to_string();
-
-    // Check if path is already in sys.path
-    let contains = path.call_method1("__contains__", (&path_str,))?;
-    let contains_bool: bool = contains.extract()?;
-
-    if !contains_bool {
-        path.call_method1("insert", (0, path_str))?;
-    }
-
+    // Convert strings to CString
+    let code = CString::new(PIXIV_CLIENT_PY).unwrap();
+    let filename = CString::new("pixiv_client.py").unwrap();
+    let module_name = CString::new("pixiv").unwrap();
+    
+    // Create pixiv module from embedded code
+    PyModule::from_code(
+        py,
+        &code,
+        &filename,
+        &module_name,
+    )?;
+    
+    debug!("Loaded embedded Pixiv Python module");
     Ok(())
 }
 
