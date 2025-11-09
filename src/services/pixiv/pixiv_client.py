@@ -1,11 +1,57 @@
 """
-Pixiv API client using pixivpy3 library
+Pixiv API client using pixivpy3 library with auto token rotation
 """
 
 import os
 import re
-from typing import Dict, Any
+import time
+import requests
+from typing import Dict, Any, Optional
 from pixivpy3 import AppPixivAPI
+
+
+# Pixiv OAuth constants (from pixiv_auth.py)
+USER_AGENT = "PixivAndroidApp/5.0.234 (Android 11; Pixel 5)"
+AUTH_TOKEN_URL = "https://oauth.secure.pixiv.net/auth/token"
+CLIENT_ID = "MOBrBDS8blbauoSck0ZfDbtuzpyT"
+CLIENT_SECRET = "lsACyCD94FhDUtGTXi3QzcFE2uU1hqtDaKeqrdwj"
+
+
+def _refresh_token_request(refresh_token: str) -> Optional[Dict[str, Any]]:
+    """
+    Request new access token using refresh token
+    
+    Args:
+        refresh_token: Current refresh token
+        
+    Returns:
+        Dictionary with access_token, refresh_token, expires_in, or None on error
+    """
+    try:
+        response = requests.post(
+            AUTH_TOKEN_URL,
+            data={
+                "client_id": CLIENT_ID,
+                "client_secret": CLIENT_SECRET,
+                "grant_type": "refresh_token",
+                "include_policy": "true",
+                "refresh_token": refresh_token,
+            },
+            headers={"User-Agent": USER_AGENT},
+            timeout=10,
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            return {
+                "access_token": data.get("access_token"),
+                "refresh_token": data.get("refresh_token"),
+                "expires_in": data.get("expires_in", 3600),
+            }
+    except Exception as e:
+        print(f"Token refresh failed: {e}")
+    
+    return None
 
 
 def _strip_html_tags(html_text: str) -> str:
@@ -65,35 +111,76 @@ def _replace_image_url(url: str) -> str:
 
 
 class PixivClient:
-    """Pixiv API client wrapper"""
+    """Pixiv API client wrapper with automatic token rotation"""
     
     def __init__(self):
         self.api = AppPixivAPI()
         self._authenticated = False
         self._access_token = None
         self._refresh_token = None
+        self._token_expires_at = 0  # Unix timestamp when token expires
+        
+    def _is_token_expired(self) -> bool:
+        """Check if access token is expired or will expire in 5 minutes"""
+        if self._token_expires_at == 0:
+            return True
+        # Refresh 5 minutes before actual expiration
+        return time.time() >= (self._token_expires_at - 300)
+    
+    def _rotate_token(self) -> bool:
+        """
+        Rotate access token using refresh token
+        Returns True if rotation successful
+        """
+        if not self._refresh_token:
+            return False
+        
+        token_data = _refresh_token_request(self._refresh_token)
+        if not token_data:
+            return False
+        
+        self._access_token = token_data["access_token"]
+        self._refresh_token = token_data["refresh_token"]
+        self._token_expires_at = time.time() + token_data["expires_in"]
+        
+        # Update API client
+        self.api.set_auth(self._access_token, self._refresh_token)
+        
+        print(f"Token rotated successfully, expires in {token_data['expires_in']}s")
+        return True
         
     def authenticate(self) -> bool:
         """
         Authenticate with Pixiv using refresh token from environment variable
         Returns True if authentication successful
         """
-        if self._authenticated:
+        # Check if we need to refresh token
+        if self._authenticated and not self._is_token_expired():
             return True
+        
+        # Try to rotate existing token first
+        if self._authenticated and self._is_token_expired():
+            print("Token expired, rotating...")
+            if self._rotate_token():
+                return True
+            # If rotation failed, fall through to re-authenticate
             
         refresh_token = os.getenv('PIXIV_REFRESH_TOKEN')
         if not refresh_token:
             return False
             
         try:
-            # 使用 auth() 方法获取 access_token
-            result = self.api.auth(refresh_token=refresh_token)
-            if result and hasattr(result, 'access_token'):
-                self._access_token = result.access_token
-                self._refresh_token = result.refresh_token
+            # Use direct token refresh instead of pixivpy3's auth()
+            token_data = _refresh_token_request(refresh_token)
+            if token_data:
+                self._access_token = token_data["access_token"]
+                self._refresh_token = token_data["refresh_token"]
+                self._token_expires_at = time.time() + token_data["expires_in"]
+                
                 # 使用 set_auth() 设置认证信息
                 self.api.set_auth(self._access_token, self._refresh_token)
                 self._authenticated = True
+                print(f"Authenticated successfully, token expires in {token_data['expires_in']}s")
                 return True
             return False
         except Exception as e:
