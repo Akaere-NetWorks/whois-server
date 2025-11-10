@@ -49,7 +49,7 @@ async fn main() -> Result<()> {
 
     let args = Cli::parse();
 
-    // Initialize logging
+    // Initialize logging with better formatting
     let log_level = if args.trace {
         Level::TRACE
     } else if args.debug {
@@ -61,6 +61,13 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt()
         .with_max_level(log_level)
         .with_span_events(FmtSpan::CLOSE)
+        .with_target(true)  
+        .with_thread_ids(false) 
+        .with_thread_names(false) 
+        .with_ansi(true)  
+        .with_level(true)  
+        .with_file(false) 
+        .with_line_number(true)
         .init();
 
     // Create statistics state
