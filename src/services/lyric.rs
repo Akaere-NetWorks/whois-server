@@ -17,9 +17,9 @@
  */
 
 use anyhow::Result;
-use serde::{Deserialize, Serialize};
+use serde::{ Deserialize, Serialize };
 use std::time::Duration;
-use tracing::{debug, error};
+use tracing::{ debug, error };
 
 /// Luotianyi lyric API response structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -47,9 +47,10 @@ impl Default for LyricService {
 impl LyricService {
     /// Create a new lyric service
     pub fn new() -> Self {
-        let client = reqwest::Client::builder()
+        let client = reqwest::Client
+            ::builder()
             .timeout(Duration::from_secs(10))
-            .user_agent("WhoisServer/1.0 (https://github.com/akaere/whois-server)")
+            .user_agent("WhoisServer/1.0 (https://github.com/Akaere-NetWorks/whois-server)")
             .build()
             .unwrap_or_else(|_| reqwest::Client::new());
 
@@ -64,27 +65,17 @@ impl LyricService {
 
         let params = [("format", "json")];
 
-        let response = self
-            .client
-            .get(&self.base_url)
-            .query(&params)
-            .send()
-            .await?;
+        let response = self.client.get(&self.base_url).query(&params).send().await?;
 
         let status = response.status();
         debug!("Lyric API response status: {}", status);
 
         if !status.is_success() {
             let error_text = response
-                .text()
-                .await
+                .text().await
                 .unwrap_or_else(|_| "Unable to read error response".to_string());
             debug!("Lyric API error response: {}", error_text);
-            return Err(anyhow::anyhow!(
-                "Lyric request failed: {} - {}",
-                status,
-                error_text
-            ));
+            return Err(anyhow::anyhow!("Lyric request failed: {} - {}", status, error_text));
         }
 
         let response_text = response.text().await?;
@@ -93,13 +84,15 @@ impl LyricService {
             &response_text[..std::cmp::min(200, response_text.len())]
         );
 
-        let lyric_data: LyricResponse = serde_json::from_str(&response_text).map_err(|e| {
-            anyhow::anyhow!(
-                "Failed to parse lyric response: {} - Response: {}",
-                e,
-                &response_text[..std::cmp::min(100, response_text.len())]
-            )
-        })?;
+        let lyric_data: LyricResponse = serde_json
+            ::from_str(&response_text)
+            .map_err(|e| {
+                anyhow::anyhow!(
+                    "Failed to parse lyric response: {} - Response: {}",
+                    e,
+                    &response_text[..std::cmp::min(100, response_text.len())]
+                )
+            })?;
 
         Ok(self.format_lyric_info(&lyric_data))
     }
@@ -161,10 +154,9 @@ pub async fn process_lyric_query(query: &str) -> Result<String> {
         lyric_service.get_random_lyric().await
     } else {
         error!("Invalid lyric query format: {}", query);
-        Ok(format!(
-            "Invalid lyric query format. Use: <any_text>-LYRIC or just -LYRIC\nExample: random-LYRIC\nQuery: {}\n",
-            query
-        ))
+        Ok(
+            format!("Invalid lyric query format. Use: <any_text>-LYRIC or just -LYRIC\nExample: random-LYRIC\nQuery: {}\n", query)
+        )
     }
 }
 
@@ -186,15 +178,9 @@ mod tests {
 
     #[test]
     fn test_lyric_query_parsing() {
-        assert_eq!(
-            LyricService::parse_lyric_query("random-LYRIC"),
-            Some("random".to_string())
-        );
+        assert_eq!(LyricService::parse_lyric_query("random-LYRIC"), Some("random".to_string()));
 
-        assert_eq!(
-            LyricService::parse_lyric_query("-LYRIC"),
-            Some("".to_string())
-        );
+        assert_eq!(LyricService::parse_lyric_query("-LYRIC"), Some("".to_string()));
 
         assert_eq!(LyricService::parse_lyric_query("random"), None);
     }
