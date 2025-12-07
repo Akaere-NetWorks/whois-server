@@ -1,5 +1,5 @@
 use anyhow::Result;
-use tracing::{ debug, info, warn };
+use tracing::{ debug, info };
 
 use crate::config::DN42_LMDB_PATH;
 use crate::dn42::online_backend::{ DN42OnlineFetcher, get_platform_info, is_windows };

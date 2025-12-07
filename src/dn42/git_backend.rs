@@ -294,9 +294,11 @@ impl DN42Registry {
             return Ok(Some(content));
         }
 
-        // Handle person objects (-DN42 suffix)
+        // Handle person objects (-DN42, -NEONETWORK, or -CRXN suffix)
         if
-            normalized_query.ends_with("-DN42") &&
+            (normalized_query.ends_with("-DN42") ||
+                normalized_query.ends_with("-NEONETWORK") ||
+                normalized_query.ends_with("-CRXN")) &&
             let Some(content) = self.get_from_storage(
                 &format!("person/{}", normalized_query)
             ).await?
@@ -454,9 +456,11 @@ impl DN42Registry {
             return Ok(Some(content));
         }
 
-        // Handle person objects (-DN42 suffix)
+        // Handle person objects (-DN42, -NEONETWORK, or -CRXN suffix)
         if
-            normalized_query.ends_with("-DN42") &&
+            (normalized_query.ends_with("-DN42") ||
+                normalized_query.ends_with("-NEONETWORK") ||
+                normalized_query.ends_with("-CRXN")) &&
             let Some(content) = self.get_from_storage(
                 &format!("person/{}", normalized_query)
             ).await?
