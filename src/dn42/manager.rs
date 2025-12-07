@@ -1,13 +1,15 @@
 use anyhow::Result;
-use tracing::{debug, info, warn};
+use tracing::{ debug, info, warn };
 
 use crate::config::DN42_LMDB_PATH;
-use crate::dn42::online_backend::{DN42OnlineFetcher, get_platform_info, is_windows};
+use crate::dn42::online_backend::{ DN42OnlineFetcher, get_platform_info, is_windows };
 use crate::dn42::query::{
-    DN42QueryType, format_ipv4_network_response, format_ipv6_network_response,
+    DN42QueryType,
+    format_ipv4_network_response,
+    format_ipv6_network_response,
     format_query_response,
 };
-use crate::storage::{SharedLmdbStorage, create_shared_storage};
+use crate::storage::{ SharedLmdbStorage, create_shared_storage };
 
 /// DN42 platform-aware manager that automatically selects Git or online mode
 pub struct DN42Manager {
@@ -30,8 +32,9 @@ impl DN42Manager {
         } else {
             info!("DN42 Manager: Platform detected: {}", get_platform_info());
             info!("DN42 Manager: Using git repository mode for Unix-like systems");
-            let storage = create_shared_storage(DN42_LMDB_PATH)
-                .map_err(|e| anyhow::anyhow!("Failed to create LMDB storage: {}", e))?;
+            let storage = create_shared_storage(DN42_LMDB_PATH).map_err(|e|
+                anyhow::anyhow!("Failed to create LMDB storage: {}", e)
+            )?;
             DN42Mode::Git(storage)
         };
 
@@ -115,11 +118,7 @@ impl DN42Manager {
                 // Fetch route data
                 let route_content = fetcher.find_ipv4_network("route", ip, mask).await?;
 
-                Ok(format_ipv4_network_response(
-                    query,
-                    inetnum_content,
-                    route_content,
-                ))
+                Ok(format_ipv4_network_response(query, inetnum_content, route_content))
             }
             DN42QueryType::IPv6Network { ip, mask } => {
                 // Fetch inet6num data
@@ -128,11 +127,7 @@ impl DN42Manager {
                 // Fetch route6 data
                 let route6_content = fetcher.find_ipv6_network("route6", ip, mask).await?;
 
-                Ok(format_ipv6_network_response(
-                    query,
-                    inet6num_content,
-                    route6_content,
-                ))
+                Ok(format_ipv6_network_response(query, inet6num_content, route6_content))
             }
             _ => {
                 // For other query types, fetch the object directly
@@ -148,7 +143,7 @@ impl DN42Manager {
     /// Query raw data using online fetcher
     async fn query_raw_online_static(
         fetcher: &mut DN42OnlineFetcher,
-        query: &str,
+        query: &str
     ) -> Result<String> {
         let query_type = DN42QueryType::parse(query);
 
@@ -182,23 +177,17 @@ impl DN42Manager {
 
     /// Query using git-based LMDB storage
     async fn query_git_static(query: &str) -> Result<String> {
-        // For git mode, delegate to the existing DN42 system
-        warn!(
-            "DN42 Manager: Git mode query delegation not implemented - falling back to existing system"
-        );
+        debug!("DN42 Manager: Processing Git mode query: {}", query);
 
-        // This should call the existing DN42 system
+        // Use git backend's process_dn42_query which already implements LMDB querying
         crate::dn42::git_backend::process_dn42_query(query).await
     }
 
     /// Query raw data using git-based LMDB storage
     async fn query_raw_git_static(query: &str) -> Result<String> {
-        // For git mode, delegate to the existing DN42 system
-        warn!(
-            "DN42 Manager: Git mode raw query delegation not implemented - falling back to existing system"
-        );
+        debug!("DN42 Manager: Processing Git mode raw query: {}", query);
 
-        // This should call the existing DN42 system
+        // Use git backend's query_dn42_raw which already implements LMDB querying
         crate::dn42::git_backend::query_dn42_raw(query).await
     }
 }
