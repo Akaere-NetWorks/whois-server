@@ -10,7 +10,7 @@ RUN cargo build --release
 FROM debian:13-slim
 
 WORKDIR /app
-RUN apt update && apt install -y python3 python3-pip libpython3.11 git --no-install-recommends && rm -rf /var/lib/apt/lists/*
+RUN apt update && apt install -y python3 python3-pip libpython3.13 git --no-install-recommends && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /app/target/release/whois-server .
 COPY --from=builder /app/src/services/pixiv ./pixiv/
 COPY --from=builder /app/requirements.txt .
