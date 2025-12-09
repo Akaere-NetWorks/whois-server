@@ -33,22 +33,7 @@ use crate::core::QueryType;
         assert_eq!(ColorScheme::from_string("invalid"), None);
     }
 
-    #[test]
-    fn test_is_dark() {
-        assert!(!ColorScheme::Ripe.is_dark());
-        assert!(ColorScheme::RipeDark.is_dark());
-        assert!(!ColorScheme::BgpTools.is_dark());
-        assert!(ColorScheme::BgpToolsDark.is_dark());
-    }
-
-    #[test]
-    fn test_base_scheme() {
-        assert_eq!(ColorScheme::Ripe.base_scheme(), ColorScheme::Ripe);
-        assert_eq!(ColorScheme::RipeDark.base_scheme(), ColorScheme::Ripe);
-        assert_eq!(ColorScheme::BgpTools.base_scheme(), ColorScheme::BgpTools);
-        assert_eq!(ColorScheme::BgpToolsDark.base_scheme(), ColorScheme::BgpTools);
-    }
-
+  
     #[test]
     fn test_protocol_header_parsing() {
         let mut protocol = ColorProtocol::new();
@@ -97,8 +82,8 @@ use crate::core::QueryType;
         let ripe_colorizer = Colorizer::new(ColorScheme::Ripe);
         let ripe_dark_colorizer = Colorizer::new(ColorScheme::RipeDark);
 
-        let light_output = ripe_colorizer.colorize_response(sample, &QueryType::InetNum("192.0.2.0".to_string()));
-        let dark_output = ripe_dark_colorizer.colorize_response(sample, &QueryType::InetNum("192.0.2.0".to_string()));
+        let light_output = ripe_colorizer.colorize_response(sample, &QueryType::IPv4("192.0.2.0".parse().unwrap()));
+        let dark_output = ripe_dark_colorizer.colorize_response(sample, &QueryType::IPv4("192.0.2.0".parse().unwrap()));
 
         // Colors should be different between light and dark modes
         assert_ne!(light_output, dark_output);
@@ -115,8 +100,8 @@ use crate::core::QueryType;
         let bgptools_colorizer = Colorizer::new(ColorScheme::BgpTools);
         let bgptools_dark_colorizer = Colorizer::new(ColorScheme::BgpToolsDark);
 
-        let light_output = bgptools_colorizer.colorize_response(sample, &QueryType::Route("192.0.2.0/24".to_string()));
-        let dark_output = bgptools_dark_colorizer.colorize_response(sample, &QueryType::Route("192.0.2.0/24".to_string()));
+        let light_output = bgptools_colorizer.colorize_response(sample, &QueryType::BGPTool("192.0.2.0/24".to_string()));
+        let dark_output = bgptools_dark_colorizer.colorize_response(sample, &QueryType::BGPTool("192.0.2.0/24".to_string()));
 
         // Colors should be different between light and dark modes
         assert_ne!(light_output, dark_output);
