@@ -595,7 +595,12 @@ async fn process_pixiv_query_internal_rust(query: &str, json_output: bool) -> Re
         }
     } else if base_query.starts_with("ranking") {
         let mode = if base_query.contains(':') {
-            Some(&base_query[base_query.find(':').unwrap() + 1..])
+            let pos = base_query.find(':').unwrap_or(0);
+            if pos + 1 < base_query.len() {
+                Some(&base_query[pos + 1..])
+            } else {
+                None
+            }
         } else {
             None
         };

@@ -858,8 +858,8 @@ async fn get_dn42_registry() -> Result<&'static DN42Registry> {
     } else {
         let registry = DN42Registry::new().await?;
         match DN42_REGISTRY_INSTANCE.set(registry) {
-            Ok(_) => Ok(DN42_REGISTRY_INSTANCE.get().unwrap()),
-            Err(_) => Ok(DN42_REGISTRY_INSTANCE.get().unwrap()), // Another thread set it
+            Ok(_) => Ok(DN42_REGISTRY_INSTANCE.get().expect("Registry should be set after successful initialization")),
+            Err(_) => DN42_REGISTRY_INSTANCE.get().ok_or_else(|| anyhow::anyhow!("Failed to get DN42 registry instance after set")),
         }
     }
 }

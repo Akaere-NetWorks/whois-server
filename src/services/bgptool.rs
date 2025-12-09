@@ -46,7 +46,8 @@ mod tests {
     #[test]
     fn test_format_bgptool_response() {
         let sample_response = "AS213605\nDescription: Test AS\nCountry: US";
-        let formatted = format_bgptool_response(sample_response).unwrap();
+        let formatted = format_bgptool_response(sample_response)
+            .expect("Failed to format bgptool response in test");
 
         assert!(formatted.contains("% BGP Tools Query"));
         assert!(formatted.contains("% Data from bgp.tools"));

@@ -21,7 +21,7 @@ use tracing::{debug, error, info, warn};
 /// Strip ANSI color codes from a string
 fn strip_ansi_codes(s: &str) -> String {
     // ANSI escape code pattern: \x1b[...m
-    let re = Regex::new(r"\x1b\[[0-9;]*m").unwrap();
+    let re = Regex::new(r"\x1b\[[0-9;]*m").expect("Invalid ANSI regex pattern");
     re.replace_all(s, "").to_string()
 }
 
@@ -1054,7 +1054,7 @@ impl PatchManager {
 
 /// Initialize the patch system - load from LMDB storage
 pub fn init_patches(_patches_dir: &str) -> Result<usize, Box<dyn std::error::Error>> {
-    let mut manager = PATCH_MANAGER.write().unwrap();
+    let mut manager = PATCH_MANAGER.write().map_err(|_| anyhow::anyhow!("Patch manager mutex poisoned"))?;
     manager.load_patches_from_storage()
 }
 
@@ -1065,7 +1065,7 @@ pub async fn update_patches_from_remote(
     // Spawn blocking task to avoid Send issues with RwLock
     let url = update_url.map(|s| s.to_string());
     let result = tokio::task::spawn_blocking(move || {
-        let mut manager = PATCH_MANAGER.write().unwrap();
+        let mut manager = PATCH_MANAGER.write().map_err(|_| "Patch manager mutex poisoned".to_string())?;
         // Use tokio runtime handle to run async code in blocking context
         match tokio::runtime::Handle::current()
             .block_on(manager.update_patches_from_remote(url.as_deref()))
@@ -1102,7 +1102,7 @@ pub async fn process_update_patch_query() -> Result<String, Box<dyn std::error::
 /// Apply patches to a WHOIS response
 pub fn apply_response_patches(query: &str, response: String) -> String {
     debug!("Applying patches for query: {}", query);
-    let manager = PATCH_MANAGER.read().unwrap();
+    let manager = PATCH_MANAGER.read().expect("Patch manager mutex poisoned in apply_response_patches");
     let result = manager.apply_patches(query, response);
     debug!("Patch application completed");
     result
@@ -1111,13 +1111,13 @@ pub fn apply_response_patches(query: &str, response: String) -> String {
 /// Reload all patch files from LMDB storage
 #[allow(dead_code)]
 pub fn reload_patches(_patches_dir: &str) -> Result<usize, Box<dyn std::error::Error>> {
-    let mut manager = PATCH_MANAGER.write().unwrap();
+    let mut manager = PATCH_MANAGER.write().map_err(|_| anyhow::anyhow!("Patch manager mutex poisoned"))?;
     manager.load_patches_from_storage()
 }
 
 /// Get the number of loaded patches
 pub fn get_patches_count() -> (usize, usize) {
-    let manager = PATCH_MANAGER.read().unwrap();
+    let manager = PATCH_MANAGER.read().expect("Patch manager mutex poisoned in get_patches_count");
     let files = manager.patch_files.len();
     let patches = manager.patch_files.iter().map(|pf| pf.patches.len()).sum();
     (files, patches)

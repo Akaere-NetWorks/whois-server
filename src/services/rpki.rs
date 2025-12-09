@@ -206,7 +206,8 @@ mod tests {
             generated_time: "2025-06-17T15:27:27Z".to_string(),
         };
 
-        let formatted = format_rpki_response("1.1.1.0/24", "13335", &response).unwrap();
+        let formatted = format_rpki_response("1.1.1.0/24", "13335", &response)
+            .expect("Failed to format rpki response in test");
 
         assert!(formatted.contains("% RPKI Validation Query"));
         assert!(formatted.contains("% Query: 1.1.1.0/24-13335-RPKI"));

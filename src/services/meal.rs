@@ -150,45 +150,45 @@ pub async fn query_random_meal() -> Result<String> {
 fn format_meal_info(meal: &Meal) -> String {
     let mut result = String::new();
 
-    writeln!(result, "% Meal Information from TheMealDB").unwrap();
-    writeln!(result, "% https://www.themealdb.com/").unwrap();
-    writeln!(result).unwrap();
+    let _ = writeln!(result, "% Meal Information from TheMealDB");
+    let _ = writeln!(result, "% https://www.themealdb.com/");
+    let _ = writeln!(result);
 
-    writeln!(result, "meal-id:           {}", meal.id_meal).unwrap();
-    writeln!(result, "meal-name:         {}", meal.str_meal).unwrap();
+    let _ = writeln!(result, "meal-id:           {}", meal.id_meal);
+    let _ = writeln!(result, "meal-name:         {}", meal.str_meal);
 
     if let Some(category) = &meal.str_category {
-        writeln!(result, "category:          {}", category).unwrap();
+        let _ = writeln!(result, "category:          {}", category);
     }
 
     if let Some(area) = &meal.str_area {
-        writeln!(result, "cuisine:           {}", area).unwrap();
+        let _ = writeln!(result, "cuisine:           {}", area);
     }
 
     if let Some(tags) = &meal.str_tags
         && !tags.trim().is_empty()
     {
-        writeln!(result, "tags:              {}", tags).unwrap();
+        let _ = writeln!(result, "tags:              {}", tags);
     }
 
     let ingredients = meal.get_ingredients();
     if !ingredients.is_empty() {
-        writeln!(result).unwrap();
-        writeln!(result, "% Ingredients").unwrap();
+        let _ = writeln!(result);
+        let _ = writeln!(result, "% Ingredients");
         for ingredient in ingredients {
-            writeln!(result, "ingredient:        {}", ingredient).unwrap();
+            let _ = writeln!(result, "ingredient:        {}", ingredient);
         }
     }
 
     if let Some(instructions) = &meal.str_instructions
         && !instructions.trim().is_empty()
     {
-        writeln!(result).unwrap();
-        writeln!(result, "% Instructions").unwrap();
+        let _ = writeln!(result);
+        let _ = writeln!(result, "% Instructions");
         let instructions = instructions.replace('\r', "");
         for (i, line) in instructions.lines().enumerate() {
             if !line.trim().is_empty() {
-                writeln!(result, "instruction-{}:     {}", i + 1, line.trim()).unwrap();
+                let _ = writeln!(result, "instruction-{}:     {}", i + 1, line.trim());
             }
         }
     }
@@ -196,19 +196,19 @@ fn format_meal_info(meal: &Meal) -> String {
     if let Some(youtube) = &meal.str_youtube
         && !youtube.trim().is_empty()
     {
-        writeln!(result).unwrap();
-        writeln!(result, "youtube-video:     {}", youtube).unwrap();
+        let _ = writeln!(result);
+        let _ = writeln!(result, "youtube-video:     {}", youtube);
     }
 
     if let Some(image) = &meal.str_meal_thumb
         && !image.trim().is_empty()
     {
-        writeln!(result, "meal-image:        {}", image).unwrap();
+        let _ = writeln!(result, "meal-image:        {}", image);
     }
 
-    writeln!(result).unwrap();
-    writeln!(result, "% Query: 今天吃什么 or -MEAL").unwrap();
-    writeln!(result, "% Powered by TheMealDB API").unwrap();
+    let _ = writeln!(result);
+    let _ = writeln!(result, "% Query: 今天吃什么 or -MEAL");
+    let _ = writeln!(result, "% Powered by TheMealDB API");
 
     result
 }
@@ -259,74 +259,74 @@ pub async fn query_random_chinese_meal() -> Result<String> {
 fn format_chinese_meal_info(category: &str, name: &str, recipe: &ChineseRecipe) -> String {
     let mut result = String::new();
 
-    writeln!(result, "% 中国菜谱 - Chinese Recipe").unwrap();
-    writeln!(result, "% 数据来源：程序员做饭指南").unwrap();
-    writeln!(result).unwrap();
+    let _ = writeln!(result, "% 中国菜谱 - Chinese Recipe");
+    let _ = writeln!(result, "% 数据来源：程序员做饭指南");
+    let _ = writeln!(result);
 
-    writeln!(result, "dish-name:         {}", name).unwrap();
-    writeln!(result, "category:          {}", category).unwrap();
+    let _ = writeln!(result, "dish-name:         {}", name);
+    let _ = writeln!(result, "category:          {}", category);
 
     if let Some(difficulty) = recipe.difficulty {
-        writeln!(result, "difficulty:        {} / 10", difficulty).unwrap();
+        let _ = writeln!(result, "difficulty:        {} / 10", difficulty);
     }
 
     if let Some(descriptions) = &recipe.description
         && !descriptions.is_empty()
     {
-        writeln!(result).unwrap();
-        writeln!(result, "% 描述 (Description)").unwrap();
+        let _ = writeln!(result);
+        let _ = writeln!(result, "% 描述 (Description)");
         for desc in descriptions {
-            writeln!(result, "description:       {}", desc).unwrap();
+            let _ = writeln!(result, "description:       {}", desc);
         }
     }
 
     if let Some(ingredients) = &recipe.ingredients_tools
         && !ingredients.is_empty()
     {
-        writeln!(result).unwrap();
-        writeln!(result, "% 原料和工具 (Ingredients & Tools)").unwrap();
+        let _ = writeln!(result);
+        let _ = writeln!(result, "% 原料和工具 (Ingredients & Tools)");
         for (i, ingredient) in ingredients.iter().enumerate() {
-            writeln!(result, "ingredient-{}:      {}", i + 1, ingredient).unwrap();
+            let _ = writeln!(result, "ingredient-{}:      {}", i + 1, ingredient);
         }
     }
 
     if let Some(amounts) = &recipe.ingredient_amounts
         && !amounts.is_empty()
     {
-        writeln!(result).unwrap();
-        writeln!(result, "% 食材用量 (Ingredient Amounts)").unwrap();
+        let _ = writeln!(result);
+        let _ = writeln!(result, "% 食材用量 (Ingredient Amounts)");
         for (i, amount) in amounts.iter().enumerate() {
-            writeln!(result, "amount-{}:          {}", i + 1, amount).unwrap();
+            let _ = writeln!(result, "amount-{}:          {}", i + 1, amount);
         }
     }
 
     if let Some(steps) = &recipe.steps
         && !steps.is_empty()
     {
-        writeln!(result).unwrap();
-        writeln!(result, "% 操作步骤 (Cooking Steps)").unwrap();
+        let _ = writeln!(result);
+        let _ = writeln!(result, "% 操作步骤 (Cooking Steps)");
         for (i, step) in steps.iter().enumerate() {
-            writeln!(result, "step-{}:            {}", i + 1, step).unwrap();
+            let _ = writeln!(result, "step-{}:            {}", i + 1, step);
         }
     }
 
     if let Some(additional) = &recipe.additional
         && !additional.is_empty()
     {
-        writeln!(result).unwrap();
-        writeln!(result, "% 附加信息 (Additional Info)").unwrap();
+        let _ = writeln!(result);
+        let _ = writeln!(result, "% 附加信息 (Additional Info)");
         for info in additional {
-            writeln!(result, "info:              {}", info).unwrap();
+            let _ = writeln!(result, "info:              {}", info);
         }
     }
 
-    writeln!(result).unwrap();
-    writeln!(result, "% Query: 今天吃什么中国 or -MEAL-CN").unwrap();
-    writeln!(
+    let _ = writeln!(result);
+    let _ = writeln!(result, "% Query: 今天吃什么中国 or -MEAL-CN");
+    let _ = writeln!(
         result,
         "% Source: 程序员做饭指南 https://github.com/Anduin2017/HowToCook"
     )
-    .unwrap();
+    ;
 
     result
 }

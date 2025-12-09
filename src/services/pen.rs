@@ -25,7 +25,7 @@ impl PenEntry {
     pub fn new(number: u32, organization: String, contact: String, email: String) -> Self {
         let cached_at = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .expect("System time should be after Unix epoch")
             .as_secs();
 
         let oid = format!("1.3.6.1.4.1.{}", number);
@@ -72,7 +72,7 @@ impl PenEntry {
     pub fn is_expired(&self) -> bool {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .expect("System time should be after Unix epoch")
             .as_secs();
 
         // 30 days = 30 * 24 * 60 * 60 = 2592000 seconds
@@ -105,7 +105,7 @@ impl PenService {
             Ok(Some(last_update)) => {
                 let now = SystemTime::now()
                     .duration_since(UNIX_EPOCH)
-                    .unwrap()
+                    .expect("System time should be after Unix epoch")
                     .as_secs();
                 // Update if older than 1 day (86400 seconds)
                 Ok(now - last_update > 86400)
@@ -131,7 +131,7 @@ impl PenService {
         // Update timestamp
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .expect("System time should be after Unix epoch")
             .as_secs();
         let last_update_key = "pen_last_update";
         self.storage.put_json(last_update_key, &now)?;
@@ -266,7 +266,7 @@ impl PenService {
             Ok(Some(last_update)) => {
                 let now = SystemTime::now()
                     .duration_since(UNIX_EPOCH)
-                    .unwrap()
+                    .expect("System time should be after Unix epoch")
                     .as_secs();
                 // Refresh if older than 1 day (86400 seconds)
                 now - last_update > 86400
@@ -591,7 +591,7 @@ mod tests {
         // Set cached_at to 31 days ago
         entry.cached_at = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .expect("System time should be after Unix epoch")
             .as_secs()
             - (31 * 24 * 60 * 60);
 

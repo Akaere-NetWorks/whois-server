@@ -62,8 +62,12 @@ pub async fn create_stats_state() -> StatsState {
         Ok(s) => Arc::new(s),
         Err(e) => {
             error!("Failed to create LMDB storage for stats: {}", e);
-            error!("Starting with empty statistics");
-            Arc::new(LmdbStorage::new(STATS_LMDB_PATH).unwrap())
+            error!("Will not be able to persist statistics");
+            // Create a dummy storage that doesn't persist
+            Arc::new(LmdbStorage::new("/tmp/stats_dummy").unwrap_or_else(|_| {
+                // As a last resort, create in-memory storage
+                panic!("Failed to create any storage for statistics")
+            }))
         }
     };
 

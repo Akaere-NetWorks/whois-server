@@ -520,7 +520,7 @@ impl DnsService {
         // If no A records found, use 1.1.1.1 as fallback
         if nameservers.is_empty() {
             // Use fixed 1.1.1.1 DNS server as fallback
-            nameservers.push("1.1.1.1:53".parse().unwrap());
+            nameservers.push("1.1.1.1:53".parse().expect("Invalid DNS server address"));
         }
 
         Ok(nameservers)

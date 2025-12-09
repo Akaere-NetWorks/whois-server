@@ -214,7 +214,8 @@ mod tests {
             }],
         };
 
-        let result = format_bird_output(&test_data, "140.78.0.0/16").unwrap();
+        let result = format_bird_output(&test_data, "140.78.0.0/16")
+            .expect("Failed to format bird output in test");
 
         assert!(result.contains("% RIPE STAT Looking Glass data"));
         assert!(result.contains("route 140.78.0.0/16 via 2.56.11.1"));

@@ -193,8 +193,8 @@ impl Colorizer {
                         "price" | "original-price" => {
                             if value.contains("(%↓)") || value.contains("Free") {
                                 // Green for discounted games and free games
-                                let price_regex = Regex::new(r"(\$[\d,]+\.?\d*|Free)").unwrap();
-                                let discount_regex = Regex::new(r"(\d+%↓)").unwrap();
+                                let price_regex = Regex::new(r"(\$[\d,]+\.?\d*|Free)").expect("Invalid regex pattern");
+                                let discount_regex = Regex::new(r"(\d+%↓)").expect("Invalid regex pattern");
                                 let colored_value = price_regex
                                     .replace_all(value, "\x1b[1;92m$1\x1b[0m")
                                     .to_string();
@@ -204,7 +204,7 @@ impl Colorizer {
                                 format!("\x1b[1;95m{}:\x1b[0m{}", attr, final_value)
                             } else {
                                 // White for full-price games (no discount)
-                                let price_regex = Regex::new(r"(\$[\d,]+\.?\d*)").unwrap();
+                                let price_regex = Regex::new(r"(\$[\d,]+\.?\d*)").expect("Invalid regex pattern");
                                 let colored_value = price_regex
                                     .replace_all(value, "\x1b[97m$1\x1b[0m")
                                     .to_string();
@@ -305,7 +305,7 @@ impl Colorizer {
                         | "nixos-url" | "opensuse-url" | "npm-url" | "registry-url"
                         | "pypi-url" | "crates-io-url" | "docs-rs-url" | "api-url"
                         | "github-url" | "clone-url" | "ssh-url" | "avatar-url" => {
-                            let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
+                            let url_regex = Regex::new(r"(https?://[^\s]+)").expect("Invalid regex pattern");
                             let colored_value = url_regex
                                 .replace_all(value, "\x1b[4;94m$1\x1b[0m")
                                 .to_string();
@@ -345,7 +345,7 @@ impl Colorizer {
                     }
                     QueryType::BGPTool(_) | QueryType::Prefixes(_) => {
                         // BGP/prefix queries - highlight network paths and ASNs
-                        let asn_regex = Regex::new(r"(AS\d+)").unwrap();
+                        let asn_regex = Regex::new(r"(AS\d+)").expect("Invalid regex pattern");
                         let ip_regex = Regex::new(
                             r"(\d+\.\d+\.\d+\.\d+(?:/\d+)?|[0-9a-fA-F:]+::[0-9a-fA-F:]*(?:/\d+)?)",
                         )
@@ -362,10 +362,10 @@ impl Colorizer {
                         if line.contains("DNS Resolution Results") || line.contains("Query:") {
                             format!("\x1b[1;96m{}\x1b[0m", line) // Bold cyan for headers
                         } else if line.contains(" A ") && !line.contains("AAAA") {
-                            let ip_regex = Regex::new(r"(\d+\.\d+\.\d+\.\d+)").unwrap();
+                            let ip_regex = Regex::new(r"(\d+\.\d+\.\d+\.\d+)").expect("Invalid regex pattern");
                             ip_regex.replace_all(line, "\x1b[92m$1\x1b[0m").to_string()
                         } else if line.contains(" AAAA ") {
-                            let ipv6_regex = Regex::new(r"([0-9a-fA-F:]+::[0-9a-fA-F:]*)").unwrap();
+                            let ipv6_regex = Regex::new(r"([0-9a-fA-F:]+::[0-9a-fA-F:]*)").expect("Invalid regex pattern");
                             ipv6_regex
                                 .replace_all(line, "\x1b[92m$1\x1b[0m")
                                 .to_string()
@@ -428,7 +428,7 @@ impl Colorizer {
                         if line.contains("Route:") || line.contains("Prefix:") {
                             format!("\x1b[92m{}\x1b[0m", line) // Green for routes
                         } else if line.contains("Origin ASN:") || line.contains("AS-Path:") {
-                            let asn_regex = Regex::new(r"(AS\d+)").unwrap();
+                            let asn_regex = Regex::new(r"(AS\d+)").expect("Invalid regex pattern");
                             asn_regex.replace_all(line, "\x1b[93m$1\x1b[0m").to_string()
                         } else if line.contains("RPKI Status:") {
                             if line.contains("Valid") {
@@ -452,10 +452,10 @@ impl Colorizer {
                         } else if line.contains("*>") || line.contains("best") {
                             format!("\x1b[92m{}\x1b[0m", line) // Green for best path
                         } else if line.contains("AS") && line.contains("Path") {
-                            let asn_regex = Regex::new(r"(AS\d+|{\d+}|\d+)").unwrap();
+                            let asn_regex = Regex::new(r"(AS\d+|{\d+}|\d+)").expect("Invalid regex pattern");
                             asn_regex.replace_all(line, "\x1b[93m$1\x1b[0m").to_string()
                         } else if line.contains("Next Hop:") || line.contains("Nexthop:") {
-                            let ip_regex = Regex::new(r"(\d+\.\d+\.\d+\.\d+)").unwrap();
+                            let ip_regex = Regex::new(r"(\d+\.\d+\.\d+\.\d+)").expect("Invalid regex pattern");
                             ip_regex.replace_all(line, "\x1b[94m$1\x1b[0m").to_string()
                         } else if line.contains("MED:") || line.contains("Local Pref:") {
                             format!("\x1b[95m{}\x1b[0m", line) // Magenta for BGP attributes
@@ -493,7 +493,7 @@ impl Colorizer {
                         {
                             format!("\x1b[1;91m{}\x1b[0m", line) // Bright red for offline
                         } else if line.contains("app-id:") || line.contains("steamid:") {
-                            let id_regex = Regex::new(r"(\d+)").unwrap();
+                            let id_regex = Regex::new(r"(\d+)").expect("Invalid regex pattern");
                             id_regex
                                 .replace_all(line, "\x1b[1;93m$1\x1b[0m")
                                 .to_string()
@@ -502,8 +502,8 @@ impl Colorizer {
                         } else if line.contains("price:") || line.contains("original-price:") {
                             if line.contains("(%↓)") || line.contains("Free") {
                                 // Green for discounted games and free games
-                                let price_regex = Regex::new(r"(\$[\d,]+\.?\d*|Free)").unwrap();
-                                let discount_regex = Regex::new(r"(\d+%↓)").unwrap();
+                                let price_regex = Regex::new(r"(\$[\d,]+\.?\d*|Free)").expect("Invalid regex pattern");
+                                let discount_regex = Regex::new(r"(\d+%↓)").expect("Invalid regex pattern");
                                 let colored = price_regex
                                     .replace_all(line, "\x1b[1;92m$1\x1b[0m")
                                     .to_string();
@@ -512,13 +512,13 @@ impl Colorizer {
                                     .to_string()
                             } else {
                                 // Red for full-price games
-                                let price_regex = Regex::new(r"(\$[\d,]+\.?\d*)").unwrap();
+                                let price_regex = Regex::new(r"(\$[\d,]+\.?\d*)").expect("Invalid regex pattern");
                                 price_regex
                                     .replace_all(line, "\x1b[1;91m$1\x1b[0m")
                                     .to_string()
                             }
                         } else if line.contains("metacritic-score:") {
-                            let score_regex = Regex::new(r"(\d+)").unwrap();
+                            let score_regex = Regex::new(r"(\d+)").expect("Invalid regex pattern");
                             score_regex
                                 .replace_all(line, "\x1b[1;93m$1\x1b[0m")
                                 .to_string()
@@ -535,7 +535,7 @@ impl Colorizer {
                             || line.contains("website:")
                             || line.contains("metacritic-url:")
                         {
-                            let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
+                            let url_regex = Regex::new(r"(https?://[^\s]+)").expect("Invalid regex pattern");
                             url_regex
                                 .replace_all(line, "\x1b[4;94m$1\x1b[0m")
                                 .to_string()
@@ -562,7 +562,7 @@ impl Colorizer {
                         } else if line.contains(". Game Information") {
                             format!("\x1b[1;93m{}\x1b[0m", line) // Bright yellow for entry headers
                         } else if line.contains("app-id:") {
-                            let id_regex = Regex::new(r"(\d+)").unwrap();
+                            let id_regex = Regex::new(r"(\d+)").expect("Invalid regex pattern");
                             id_regex
                                 .replace_all(line, "\x1b[1;93m$1\x1b[0m")
                                 .to_string()
@@ -573,8 +573,8 @@ impl Colorizer {
                         } else if line.contains("price:") {
                             if line.contains("(%↓)") || line.contains("Free") {
                                 // Green for discounted games and free games
-                                let price_regex = Regex::new(r"(\$[\d,]+\.?\d*|Free)").unwrap();
-                                let discount_regex = Regex::new(r"(\d+%↓)").unwrap();
+                                let price_regex = Regex::new(r"(\$[\d,]+\.?\d*|Free)").expect("Invalid regex pattern");
+                                let discount_regex = Regex::new(r"(\d+%↓)").expect("Invalid regex pattern");
                                 let colored = price_regex
                                     .replace_all(line, "\x1b[1;92m$1\x1b[0m")
                                     .to_string();
@@ -583,7 +583,7 @@ impl Colorizer {
                                     .to_string()
                             } else {
                                 // Red for full-price games
-                                let price_regex = Regex::new(r"(\$[\d,]+\.?\d*)").unwrap();
+                                let price_regex = Regex::new(r"(\$[\d,]+\.?\d*)").expect("Invalid regex pattern");
                                 price_regex
                                     .replace_all(line, "\x1b[1;91m$1\x1b[0m")
                                     .to_string()
@@ -591,7 +591,7 @@ impl Colorizer {
                         } else if line.contains("platforms:") {
                             format!("\x1b[95m{}\x1b[0m", line) // Magenta for platforms
                         } else if line.contains("steam-url:") {
-                            let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
+                            let url_regex = Regex::new(r"(https?://[^\s]+)").expect("Invalid regex pattern");
                             url_regex
                                 .replace_all(line, "\x1b[4;94m$1\x1b[0m")
                                 .to_string()
@@ -606,14 +606,14 @@ impl Colorizer {
                         if line.contains("IMDb Information for:") {
                             format!("\x1b[1;96m{}\x1b[0m", line) // Bold cyan for headers
                         } else if line.contains("imdb-id:") {
-                            let id_regex = Regex::new(r"(tt\d+)").unwrap();
+                            let id_regex = Regex::new(r"(tt\d+)").expect("Invalid regex pattern");
                             id_regex
                                 .replace_all(line, "\x1b[1;93m$1\x1b[0m")
                                 .to_string()
                         } else if line.contains("title:") {
                             format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for titles
                         } else if line.contains("year:") || line.contains("released:") {
-                            let year_regex = Regex::new(r"(\d{4})").unwrap();
+                            let year_regex = Regex::new(r"(\d{4})").expect("Invalid regex pattern");
                             year_regex
                                 .replace_all(line, "\x1b[1;93m$1\x1b[0m")
                                 .to_string()
@@ -626,7 +626,7 @@ impl Colorizer {
                                 format!("\x1b[95m{}\x1b[0m", line) // Magenta for other types
                             }
                         } else if line.contains("imdb-rating:") {
-                            let rating_regex = Regex::new(r"(\d+\.\d+/10)").unwrap();
+                            let rating_regex = Regex::new(r"(\d+\.\d+/10)").expect("Invalid regex pattern");
                             if line.contains("8.") || line.contains("9.") {
                                 rating_regex
                                     .replace_all(line, "\x1b[1;92m$1\x1b[0m")
@@ -641,12 +641,12 @@ impl Colorizer {
                                     .to_string() // Red for low ratings
                             }
                         } else if line.contains("metascore:") {
-                            let score_regex = Regex::new(r"(\d+/100)").unwrap();
+                            let score_regex = Regex::new(r"(\d+/100)").expect("Invalid regex pattern");
                             score_regex
                                 .replace_all(line, "\x1b[1;95m$1\x1b[0m")
                                 .to_string()
                         } else if line.contains("box-office:") {
-                            let money_regex = Regex::new(r"(\$[\d,]+)").unwrap();
+                            let money_regex = Regex::new(r"(\$[\d,]+)").expect("Invalid regex pattern");
                             money_regex
                                 .replace_all(line, "\x1b[1;92m$1\x1b[0m")
                                 .to_string()
@@ -667,14 +667,14 @@ impl Colorizer {
                                 format!("\x1b[93m{}\x1b[0m", line) // Yellow for other ratings
                             }
                         } else if line.contains("imdb-url:") || line.contains("website:") {
-                            let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
+                            let url_regex = Regex::new(r"(https?://[^\s]+)").expect("Invalid regex pattern");
                             url_regex
                                 .replace_all(line, "\x1b[4;94m$1\x1b[0m")
                                 .to_string()
                         } else if line.contains("country:") || line.contains("language:") {
                             format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for location/language
                         } else if line.contains("runtime:") {
-                            let time_regex = Regex::new(r"(\d+\s*min)").unwrap();
+                            let time_regex = Regex::new(r"(\d+\s*min)").expect("Invalid regex pattern");
                             time_regex
                                 .replace_all(line, "\x1b[1;96m$1\x1b[0m")
                                 .to_string()
@@ -691,14 +691,14 @@ impl Colorizer {
                         } else if line.contains(". Title Information") {
                             format!("\x1b[1;93m{}\x1b[0m", line) // Bright yellow for entry headers
                         } else if line.contains("imdb-id:") {
-                            let id_regex = Regex::new(r"(tt\d+)").unwrap();
+                            let id_regex = Regex::new(r"(tt\d+)").expect("Invalid regex pattern");
                             id_regex
                                 .replace_all(line, "\x1b[1;93m$1\x1b[0m")
                                 .to_string()
                         } else if line.contains("title:") {
                             format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for titles
                         } else if line.contains("year:") {
-                            let year_regex = Regex::new(r"(\d{4})").unwrap();
+                            let year_regex = Regex::new(r"(\d{4})").expect("Invalid regex pattern");
                             year_regex
                                 .replace_all(line, "\x1b[1;93m$1\x1b[0m")
                                 .to_string()
@@ -711,7 +711,7 @@ impl Colorizer {
                                 format!("\x1b[95m{}\x1b[0m", line) // Magenta for other types
                             }
                         } else if line.contains("imdb-url:") {
-                            let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
+                            let url_regex = Regex::new(r"(https?://[^\s]+)").expect("Invalid regex pattern");
                             url_regex
                                 .replace_all(line, "\x1b[4;94m$1\x1b[0m")
                                 .to_string()
@@ -726,7 +726,7 @@ impl Colorizer {
                         if line.contains("Wikipedia Article Information:") {
                             format!("\x1b[1;96m{}\x1b[0m", line) // Bold cyan for headers
                         } else if line.contains("page-id:") {
-                            let id_regex = Regex::new(r"(\d+)").unwrap();
+                            let id_regex = Regex::new(r"(\d+)").expect("Invalid regex pattern");
                             id_regex
                                 .replace_all(line, "\x1b[1;93m$1\x1b[0m")
                                 .to_string()
@@ -735,7 +735,7 @@ impl Colorizer {
                         } else if line.contains("source:") {
                             format!("\x1b[96m{}\x1b[0m", line) // Cyan for source (Wikipedia)
                         } else if line.contains("article-length:") {
-                            let size_regex = Regex::new(r"(\d+)\s*bytes").unwrap();
+                            let size_regex = Regex::new(r"(\d+)\s*bytes").expect("Invalid regex pattern");
                             size_regex
                                 .replace_all(line, "\x1b[1;93m$1 bytes\x1b[0m")
                                 .to_string()
@@ -748,7 +748,7 @@ impl Colorizer {
                         } else if line.contains("summary:") {
                             format!("\x1b[1;37m{}\x1b[0m", line) // Bold white for article summary
                         } else if line.contains("wikipedia-url:") || line.contains("edit-url:") {
-                            let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
+                            let url_regex = Regex::new(r"(https?://[^\s]+)").expect("Invalid regex pattern");
                             url_regex
                                 .replace_all(line, "\x1b[4;94m$1\x1b[0m")
                                 .to_string()
@@ -854,7 +854,7 @@ impl Colorizer {
                         if line.contains("ACGC Character Information:") {
                             format!("\x1b[1;96m{}\x1b[0m", line) // Bold cyan for headers
                         } else if line.contains("page-id:") {
-                            let id_regex = Regex::new(r"(\d+)").unwrap();
+                            let id_regex = Regex::new(r"(\d+)").expect("Invalid regex pattern");
                             id_regex
                                 .replace_all(line, "\x1b[1;93m$1\x1b[0m")
                                 .to_string()
@@ -911,13 +911,13 @@ impl Colorizer {
                         } else if line.contains("clothing:") || line.contains("appearance:") {
                             format!("\x1b[93m{}\x1b[0m", line) // Yellow for appearance/clothing
                         } else if line.contains("age:") || line.contains("birthday:") {
-                            let number_regex = Regex::new(r"(\d+)").unwrap();
+                            let number_regex = Regex::new(r"(\d+)").expect("Invalid regex pattern");
                             number_regex
                                 .replace_all(line, "\x1b[1;93m$1\x1b[0m")
                                 .to_string()
                         } else if line.contains("height:") || line.contains("weight:") {
                             let measurement_regex =
-                                Regex::new(r"(\d+[\.\d]*\s*[cm|kg|m])").unwrap();
+                                Regex::new(r"(\d+[\.\d]*\s*[cm|kg|m])").expect("Invalid regex pattern");
                             measurement_regex
                                 .replace_all(line, "\x1b[1;92m$1\x1b[0m")
                                 .to_string()
@@ -942,7 +942,7 @@ impl Colorizer {
                         {
                             format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for origin/hobby
                         } else if line.contains("moegirl-url:") {
-                            let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
+                            let url_regex = Regex::new(r"(https?://[^\s]+)").expect("Invalid regex pattern");
                             url_regex
                                 .replace_all(line, "\x1b[4;94m$1\x1b[0m")
                                 .to_string()
@@ -981,7 +981,7 @@ impl Colorizer {
                     let value = parts[1];
 
                     // Apply regex patterns to value for network elements
-                    let asn_regex = Regex::new(r"(AS\d+)").unwrap();
+                    let asn_regex = Regex::new(r"(AS\d+)").expect("Invalid regex pattern");
                     let ip_regex = Regex::new(
                         r"(\d+\.\d+\.\d+\.\d+(?:/\d+)?|[0-9a-fA-F:]+::[0-9a-fA-F:]*(?:/\d+)?)",
                     )
@@ -1087,8 +1087,8 @@ impl Colorizer {
                         "price" | "original-price" => {
                             if value.contains("(%↓)") || value.contains("Free") {
                                 // Green for discounted games and free games
-                                let price_regex = Regex::new(r"(\$[\d,]+\.?\d*|Free)").unwrap();
-                                let discount_regex = Regex::new(r"(\d+%↓)").unwrap();
+                                let price_regex = Regex::new(r"(\$[\d,]+\.?\d*|Free)").expect("Invalid regex pattern");
+                                let discount_regex = Regex::new(r"(\d+%↓)").expect("Invalid regex pattern");
                                 let colored_value = price_regex
                                     .replace_all(value, "\x1b[1;92m$1\x1b[0m")
                                     .to_string();
@@ -1098,7 +1098,7 @@ impl Colorizer {
                                 format!("\x1b[95m{}:\x1b[0m{}", attr, final_value)
                             } else {
                                 // White for full-price games (no discount)
-                                let price_regex = Regex::new(r"(\$[\d,]+\.?\d*)").unwrap();
+                                let price_regex = Regex::new(r"(\$[\d,]+\.?\d*)").expect("Invalid regex pattern");
                                 let colored_value = price_regex
                                     .replace_all(value, "\x1b[97m$1\x1b[0m")
                                     .to_string();
@@ -1133,7 +1133,7 @@ impl Colorizer {
                         // Email search - highlight email addresses
                         let email_regex =
                             Regex::new(r"([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})")
-                                .unwrap();
+                                .expect("Invalid regex pattern");
                         email_regex
                             .replace_all(line, "\x1b[96m$1\x1b[0m")
                             .to_string()
@@ -1143,7 +1143,7 @@ impl Colorizer {
                         if line.contains("ms") || line.contains("hop") {
                             format!("\x1b[93m{}\x1b[0m", line) // Yellow for timing info
                         } else {
-                            let ip_regex = Regex::new(r"(\d+\.\d+\.\d+\.\d+)").unwrap();
+                            let ip_regex = Regex::new(r"(\d+\.\d+\.\d+\.\d+)").expect("Invalid regex pattern");
                             ip_regex.replace_all(line, "\x1b[92m$1\x1b[0m").to_string()
                         }
                     }
@@ -1179,13 +1179,13 @@ impl Colorizer {
                         {
                             format!("\x1b[1;91m{}\x1b[0m", line) // Bright red for offline
                         } else if line.contains("Players:") || line.contains("players online") {
-                            let player_regex = Regex::new(r"(\d+/\d+|\d+ players?)").unwrap();
+                            let player_regex = Regex::new(r"(\d+/\d+|\d+ players?)").expect("Invalid regex pattern");
                             let colored = player_regex
                                 .replace_all(line, "\x1b[1;95m$1\x1b[0m")
                                 .to_string();
                             format!("\x1b[95m{}\x1b[0m", colored)
                         } else if line.contains("Version:") {
-                            let version_regex = Regex::new(r"(\d+\.\d+[\.\d]*)").unwrap();
+                            let version_regex = Regex::new(r"(\d+\.\d+[\.\d]*)").expect("Invalid regex pattern");
                             let colored = version_regex
                                 .replace_all(line, "\x1b[1;94m$1\x1b[0m")
                                 .to_string();
@@ -1193,13 +1193,13 @@ impl Colorizer {
                         } else if line.contains("MOTD:") || line.contains("Description:") {
                             format!("\x1b[96m{}\x1b[0m", line)
                         } else if line.contains("Latency:") || line.contains("ms") {
-                            let latency_regex = Regex::new(r"(\d+)\s*ms").unwrap();
+                            let latency_regex = Regex::new(r"(\d+)\s*ms").expect("Invalid regex pattern");
                             let colored = latency_regex
                                 .replace_all(line, "\x1b[1;93m$1ms\x1b[0m")
                                 .to_string();
                             format!("\x1b[93m{}\x1b[0m", colored)
                         } else if line.contains("Max Players:") || line.contains("Slots:") {
-                            let slot_regex = Regex::new(r"(\d+)").unwrap();
+                            let slot_regex = Regex::new(r"(\d+)").expect("Invalid regex pattern");
                             let colored = slot_regex
                                 .replace_all(line, "\x1b[1;95m$1\x1b[0m")
                                 .to_string();
@@ -1232,7 +1232,7 @@ impl Colorizer {
                             || line.contains("skin-url:")
                             || line.contains("avatar-url:")
                         {
-                            let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
+                            let url_regex = Regex::new(r"(https?://[^\s]+)").expect("Invalid regex pattern");
                             let colored = url_regex
                                 .replace_all(line, "\x1b[4;94m$1\x1b[0m")
                                 .to_string();
@@ -1263,7 +1263,7 @@ impl Colorizer {
                         {
                             format!("\x1b[1;91m{}\x1b[0m", line) // Bright red for offline status
                         } else if line.contains("app-id:") || line.contains("steamid:") {
-                            let id_regex = Regex::new(r"(\d+)").unwrap();
+                            let id_regex = Regex::new(r"(\d+)").expect("Invalid regex pattern");
                             let colored = id_regex
                                 .replace_all(line, "\x1b[1;93m$1\x1b[0m")
                                 .to_string();
@@ -1273,8 +1273,8 @@ impl Colorizer {
                         } else if line.contains("price:") || line.contains("original-price:") {
                             if line.contains("(%↓)") || line.contains("Free") {
                                 // Green for discounted games and free games
-                                let price_regex = Regex::new(r"(\$[\d,]+\.?\d*|Free)").unwrap();
-                                let discount_regex = Regex::new(r"(\d+%↓)").unwrap();
+                                let price_regex = Regex::new(r"(\$[\d,]+\.?\d*|Free)").expect("Invalid regex pattern");
+                                let discount_regex = Regex::new(r"(\d+%↓)").expect("Invalid regex pattern");
                                 let mut colored = price_regex
                                     .replace_all(line, "\x1b[1;92m$1\x1b[0m")
                                     .to_string();
@@ -1284,20 +1284,20 @@ impl Colorizer {
                                 format!("\x1b[95m{}\x1b[0m", colored)
                             } else {
                                 // Red for full-price games
-                                let price_regex = Regex::new(r"(\$[\d,]+\.?\d*)").unwrap();
+                                let price_regex = Regex::new(r"(\$[\d,]+\.?\d*)").expect("Invalid regex pattern");
                                 let colored = price_regex
                                     .replace_all(line, "\x1b[1;91m$1\x1b[0m")
                                     .to_string();
                                 format!("\x1b[95m{}\x1b[0m", colored)
                             }
                         } else if line.contains("discount:") {
-                            let discount_regex = Regex::new(r"(\d+%)").unwrap();
+                            let discount_regex = Regex::new(r"(\d+%)").expect("Invalid regex pattern");
                             let colored = discount_regex
                                 .replace_all(line, "\x1b[1;91m$1\x1b[0m")
                                 .to_string();
                             format!("\x1b[93m{}\x1b[0m", colored)
                         } else if line.contains("metacritic-score:") {
-                            let score_regex = Regex::new(r"(\d+)").unwrap();
+                            let score_regex = Regex::new(r"(\d+)").expect("Invalid regex pattern");
                             let colored = score_regex
                                 .replace_all(line, "\x1b[1;93m$1\x1b[0m")
                                 .to_string();
@@ -1305,7 +1305,7 @@ impl Colorizer {
                         } else if line.contains("recommendations:")
                             || line.contains("achievements:")
                         {
-                            let num_regex = Regex::new(r"(\d+)").unwrap();
+                            let num_regex = Regex::new(r"(\d+)").expect("Invalid regex pattern");
                             let colored = num_regex
                                 .replace_all(line, "\x1b[1;96m$1\x1b[0m")
                                 .to_string();
@@ -1323,7 +1323,7 @@ impl Colorizer {
                             || line.contains("website:")
                             || line.contains("metacritic-url:")
                         {
-                            let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
+                            let url_regex = Regex::new(r"(https?://[^\s]+)").expect("Invalid regex pattern");
                             let colored = url_regex
                                 .replace_all(line, "\x1b[4;94m$1\x1b[0m")
                                 .to_string();
@@ -1342,7 +1342,7 @@ impl Colorizer {
                             || line.contains("avatar-medium:")
                             || line.contains("avatar-full:")
                         {
-                            let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
+                            let url_regex = Regex::new(r"(https?://[^\s]+)").expect("Invalid regex pattern");
                             let colored = url_regex
                                 .replace_all(line, "\x1b[4;96m$1\x1b[0m")
                                 .to_string();
@@ -1360,7 +1360,7 @@ impl Colorizer {
                         } else if line.contains(". Game Information") {
                             format!("\x1b[1;93m{}\x1b[0m", line) // Bold yellow for game entry headers
                         } else if line.contains("app-id:") {
-                            let id_regex = Regex::new(r"(\d+)").unwrap();
+                            let id_regex = Regex::new(r"(\d+)").expect("Invalid regex pattern");
                             let colored = id_regex
                                 .replace_all(line, "\x1b[1;93m$1\x1b[0m")
                                 .to_string();
@@ -1372,8 +1372,8 @@ impl Colorizer {
                         } else if line.contains("price:") {
                             if line.contains("(%↓)") || line.contains("Free") {
                                 // Green for discounted games and free games
-                                let price_regex = Regex::new(r"(\$[\d,]+\.?\d*|Free)").unwrap();
-                                let discount_regex = Regex::new(r"(\d+%↓)").unwrap();
+                                let price_regex = Regex::new(r"(\$[\d,]+\.?\d*|Free)").expect("Invalid regex pattern");
+                                let discount_regex = Regex::new(r"(\d+%↓)").expect("Invalid regex pattern");
                                 let mut colored = price_regex
                                     .replace_all(line, "\x1b[1;92m$1\x1b[0m")
                                     .to_string();
@@ -1383,7 +1383,7 @@ impl Colorizer {
                                 format!("\x1b[95m{}\x1b[0m", colored)
                             } else {
                                 // Red for full-price games
-                                let price_regex = Regex::new(r"(\$[\d,]+\.?\d*)").unwrap();
+                                let price_regex = Regex::new(r"(\$[\d,]+\.?\d*)").expect("Invalid regex pattern");
                                 let colored = price_regex
                                     .replace_all(line, "\x1b[1;91m$1\x1b[0m")
                                     .to_string();
@@ -1394,7 +1394,7 @@ impl Colorizer {
                         } else if line.contains("status: Coming Soon") {
                             format!("\x1b[93m{}\x1b[0m", line) // Yellow for coming soon
                         } else if line.contains("steam-url:") {
-                            let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
+                            let url_regex = Regex::new(r"(https?://[^\s]+)").expect("Invalid regex pattern");
                             let colored = url_regex
                                 .replace_all(line, "\x1b[4;94m$1\x1b[0m")
                                 .to_string();
@@ -1414,13 +1414,13 @@ impl Colorizer {
                         } else if line.contains("maintainer:") && line.contains("orphaned") {
                             format!("\x1b[1;91m{}\x1b[0m", line) // Bright red for orphaned
                         } else if line.contains("votes:") {
-                            let vote_regex = Regex::new(r"(\d+)").unwrap();
+                            let vote_regex = Regex::new(r"(\d+)").expect("Invalid regex pattern");
                             let colored = vote_regex
                                 .replace_all(line, "\x1b[1;93m$1\x1b[0m")
                                 .to_string();
                             format!("\x1b[95m{}\x1b[0m", colored)
                         } else if line.contains("popularity:") {
-                            let pop_regex = Regex::new(r"(\d+\.\d+)").unwrap();
+                            let pop_regex = Regex::new(r"(\d+\.\d+)").expect("Invalid regex pattern");
                             let colored = pop_regex
                                 .replace_all(line, "\x1b[1;95m$1\x1b[0m")
                                 .to_string();
@@ -1434,7 +1434,7 @@ impl Colorizer {
                         } else if line.contains("conflicts:") {
                             format!("\x1b[93m{}\x1b[0m", line)
                         } else if line.contains("aur-url:") || line.contains("upstream-url:") {
-                            let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
+                            let url_regex = Regex::new(r"(https?://[^\s]+)").expect("Invalid regex pattern");
                             let colored = url_regex
                                 .replace_all(line, "\x1b[4;94m$1\x1b[0m")
                                 .to_string();
@@ -1572,7 +1572,7 @@ impl Colorizer {
                         if line.contains("IMDb Information for:") {
                             format!("\x1b[1;96m{}\x1b[0m", line) // Bold cyan for headers
                         } else if line.contains("imdb-id:") {
-                            let id_regex = Regex::new(r"(tt\d+)").unwrap();
+                            let id_regex = Regex::new(r"(tt\d+)").expect("Invalid regex pattern");
                             let colored = id_regex
                                 .replace_all(line, "\x1b[1;93m$1\x1b[0m")
                                 .to_string();
@@ -1580,13 +1580,13 @@ impl Colorizer {
                         } else if line.contains("title:") {
                             format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for titles
                         } else if line.contains("year:") || line.contains("released:") {
-                            let year_regex = Regex::new(r"(\d{4})").unwrap();
+                            let year_regex = Regex::new(r"(\d{4})").expect("Invalid regex pattern");
                             let colored = year_regex
                                 .replace_all(line, "\x1b[1;93m$1\x1b[0m")
                                 .to_string();
                             format!("\x1b[95m{}\x1b[0m", colored)
                         } else if line.contains("imdb-rating:") {
-                            let rating_regex = Regex::new(r"(\d+\.\d+/10)").unwrap();
+                            let rating_regex = Regex::new(r"(\d+\.\d+/10)").expect("Invalid regex pattern");
                             if line.contains("8.") || line.contains("9.") {
                                 let colored = rating_regex
                                     .replace_all(line, "\x1b[1;92m$1\x1b[0m")
@@ -1604,7 +1604,7 @@ impl Colorizer {
                                 format!("\x1b[91m{}\x1b[0m", colored) // Red for low ratings
                             }
                         } else if line.contains("box-office:") {
-                            let money_regex = Regex::new(r"(\$[\d,]+)").unwrap();
+                            let money_regex = Regex::new(r"(\$[\d,]+)").expect("Invalid regex pattern");
                             let colored = money_regex
                                 .replace_all(line, "\x1b[1;92m$1\x1b[0m")
                                 .to_string();
@@ -1626,13 +1626,13 @@ impl Colorizer {
                                 format!("\x1b[93m{}\x1b[0m", line) // Yellow for other ratings
                             }
                         } else if line.contains("imdb-url:") || line.contains("website:") {
-                            let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
+                            let url_regex = Regex::new(r"(https?://[^\s]+)").expect("Invalid regex pattern");
                             let colored = url_regex
                                 .replace_all(line, "\x1b[4;94m$1\x1b[0m")
                                 .to_string();
                             format!("\x1b[94m{}\x1b[0m", colored)
                         } else if line.contains("runtime:") {
-                            let time_regex = Regex::new(r"(\d+\s*min)").unwrap();
+                            let time_regex = Regex::new(r"(\d+\s*min)").expect("Invalid regex pattern");
                             let colored = time_regex
                                 .replace_all(line, "\x1b[1;96m$1\x1b[0m")
                                 .to_string();
@@ -1650,7 +1650,7 @@ impl Colorizer {
                         } else if line.contains(". Title Information") {
                             format!("\x1b[1;93m{}\x1b[0m", line) // Bold yellow for entry headers
                         } else if line.contains("imdb-id:") {
-                            let id_regex = Regex::new(r"(tt\d+)").unwrap();
+                            let id_regex = Regex::new(r"(tt\d+)").expect("Invalid regex pattern");
                             let colored = id_regex
                                 .replace_all(line, "\x1b[1;93m$1\x1b[0m")
                                 .to_string();
@@ -1658,7 +1658,7 @@ impl Colorizer {
                         } else if line.contains("title:") {
                             format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for titles
                         } else if line.contains("year:") {
-                            let year_regex = Regex::new(r"(\d{4})").unwrap();
+                            let year_regex = Regex::new(r"(\d{4})").expect("Invalid regex pattern");
                             let colored = year_regex
                                 .replace_all(line, "\x1b[1;93m$1\x1b[0m")
                                 .to_string();
@@ -1672,7 +1672,7 @@ impl Colorizer {
                                 format!("\x1b[95m{}\x1b[0m", line) // Magenta for other types
                             }
                         } else if line.contains("imdb-url:") {
-                            let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
+                            let url_regex = Regex::new(r"(https?://[^\s]+)").expect("Invalid regex pattern");
                             let colored = url_regex
                                 .replace_all(line, "\x1b[4;94m$1\x1b[0m")
                                 .to_string();
@@ -1690,7 +1690,7 @@ impl Colorizer {
                         if line.contains("Wikipedia Article Information:") {
                             format!("\x1b[1;96m{}\x1b[0m", line) // Bold cyan for headers
                         } else if line.contains("page-id:") {
-                            let id_regex = Regex::new(r"(\d+)").unwrap();
+                            let id_regex = Regex::new(r"(\d+)").expect("Invalid regex pattern");
                             let colored = id_regex
                                 .replace_all(line, "\x1b[1;93m$1\x1b[0m")
                                 .to_string();
@@ -1700,7 +1700,7 @@ impl Colorizer {
                         } else if line.contains("source:") {
                             format!("\x1b[96m{}\x1b[0m", line) // Cyan for source (Wikipedia)
                         } else if line.contains("article-length:") {
-                            let size_regex = Regex::new(r"(\d+)\s*bytes").unwrap();
+                            let size_regex = Regex::new(r"(\d+)\s*bytes").expect("Invalid regex pattern");
                             let colored = size_regex
                                 .replace_all(line, "\x1b[1;93m$1 bytes\x1b[0m")
                                 .to_string();
@@ -1714,7 +1714,7 @@ impl Colorizer {
                         } else if line.contains("summary:") {
                             format!("\x1b[1;37m{}\x1b[0m", line) // Bold white for article summary
                         } else if line.contains("wikipedia-url:") || line.contains("edit-url:") {
-                            let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
+                            let url_regex = Regex::new(r"(https?://[^\s]+)").expect("Invalid regex pattern");
                             let colored = url_regex
                                 .replace_all(line, "\x1b[4;94m$1\x1b[0m")
                                 .to_string();
@@ -1822,7 +1822,7 @@ impl Colorizer {
                         if line.contains("ACGC Character Information:") {
                             format!("\x1b[1;96m{}\x1b[0m", line) // Bold cyan for headers
                         } else if line.contains("page-id:") {
-                            let id_regex = Regex::new(r"(\d+)").unwrap();
+                            let id_regex = Regex::new(r"(\d+)").expect("Invalid regex pattern");
                             let colored = id_regex
                                 .replace_all(line, "\x1b[1;93m$1\x1b[0m")
                                 .to_string();
@@ -1880,14 +1880,14 @@ impl Colorizer {
                         } else if line.contains("clothing:") || line.contains("appearance:") {
                             format!("\x1b[93m{}\x1b[0m", line) // Yellow for appearance/clothing
                         } else if line.contains("age:") || line.contains("birthday:") {
-                            let number_regex = Regex::new(r"(\d+)").unwrap();
+                            let number_regex = Regex::new(r"(\d+)").expect("Invalid regex pattern");
                             let colored = number_regex
                                 .replace_all(line, "\x1b[1;93m$1\x1b[0m")
                                 .to_string();
                             format!("\x1b[95m{}\x1b[0m", colored)
                         } else if line.contains("height:") || line.contains("weight:") {
                             let measurement_regex =
-                                Regex::new(r"(\d+[\.\d]*\s*[cm|kg|m])").unwrap();
+                                Regex::new(r"(\d+[\.\d]*\s*[cm|kg|m])").expect("Invalid regex pattern");
                             let colored = measurement_regex
                                 .replace_all(line, "\x1b[1;92m$1\x1b[0m")
                                 .to_string();
@@ -1913,7 +1913,7 @@ impl Colorizer {
                         {
                             format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for origin/hobby
                         } else if line.contains("moegirl-url:") {
-                            let url_regex = Regex::new(r"(https?://[^\s]+)").unwrap();
+                            let url_regex = Regex::new(r"(https?://[^\s]+)").expect("Invalid regex pattern");
                             let colored = url_regex
                                 .replace_all(line, "\x1b[4;94m$1\x1b[0m")
                                 .to_string();
@@ -1924,7 +1924,7 @@ impl Colorizer {
                     }
                     _ => {
                         // Apply general network pattern highlighting
-                        let asn_regex = Regex::new(r"(AS\d+)").unwrap();
+                        let asn_regex = Regex::new(r"(AS\d+)").expect("Invalid regex pattern");
                         let ip_regex = Regex::new(
                             r"(\d+\.\d+\.\d+\.\d+(?:/\d+)?|[0-9a-fA-F:]+::[0-9a-fA-F:]*(?:/\d+)?)",
                         )

@@ -868,13 +868,14 @@ mod tests {
         assert_eq!(
             service
                 .parse_minecraft_target("mc.hypixel.net:25565")
-                .unwrap(),
+                .expect("Failed to parse minecraft target with port"),
             ("mc.hypixel.net".to_string(), 25565,)
         );
 
         // Test hostname without port (should default to 25565)
         assert_eq!(
-            service.parse_minecraft_target("mc.hypixel.net").unwrap(),
+            service.parse_minecraft_target("mc.hypixel.net")
+                .expect("Failed to parse minecraft target without port"),
             ("mc.hypixel.net".to_string(), 25565,)
         );
 
@@ -882,7 +883,7 @@ mod tests {
         assert_eq!(
             service
                 .parse_minecraft_target("192.168.1.100:25566")
-                .unwrap(),
+                .expect("Failed to parse minecraft IP with port"),
             ("192.168.1.100".to_string(), 25566,)
         );
 

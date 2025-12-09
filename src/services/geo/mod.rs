@@ -37,7 +37,8 @@ mod tests {
             time: "2025-06-08T18:05:15.809098".to_string(),
         };
 
-        let formatted = format_rir_geo_response("2001:67c:2e8::/48", &response).unwrap();
+        let formatted = format_rir_geo_response("2001:67c:2e8::/48", &response)
+            .expect("Failed to format rir geo response in test");
         assert!(formatted.contains("% RIPE NCC STAT RIR Geographic Query"));
         assert!(formatted.contains("% Query: 2001:67c:2e8::/48"));
         assert!(formatted.contains("% No RIR geographic data available"));
@@ -75,7 +76,8 @@ mod tests {
             time: "2025-06-08T18:05:15.809098".to_string(),
         };
 
-        let formatted = format_rir_geo_response("2001:67c:2e8::/48", &response).unwrap();
+        let formatted = format_rir_geo_response("2001:67c:2e8::/48", &response)
+            .expect("Failed to format rir geo response in test");
         assert!(formatted.contains("% RIPE NCC STAT RIR Geographic Query"));
         assert!(formatted.contains("% Query: 2001:67c:2e8::/48"));
         assert!(formatted.contains("RIR Geographic Location Results"));

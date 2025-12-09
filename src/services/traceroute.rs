@@ -28,7 +28,7 @@ fn strip_ansi_codes(text: &str) -> String {
     // Regex pattern to match ANSI escape sequences
     // Matches sequences like \x1b[...m (color codes) and \x1b[...J (clear screen)
     static ANSI_REGEX: std::sync::OnceLock<Regex> = std::sync::OnceLock::new();
-    let regex = ANSI_REGEX.get_or_init(|| Regex::new(r"\x1b\[[0-9;]*[mJKH]").unwrap());
+    let regex = ANSI_REGEX.get_or_init(|| Regex::new(r"\x1b\[[0-9;]*[mJKH]").expect("Invalid ANSI regex pattern"));
 
     regex.replace_all(text, "").to_string()
 }

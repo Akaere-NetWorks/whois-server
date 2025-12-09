@@ -249,7 +249,8 @@ source:         DN42
             },
         ];
 
-        let response = format_desc_response("AS64512", &fields).unwrap();
+        let response = format_desc_response("AS64512", &fields)
+            .expect("Failed to format desc response in test");
         println!("Formatted response:\n{}", response);
 
         assert!(response.contains("Description Query Results for: AS64512"));
@@ -267,7 +268,8 @@ source:         DN42
             value: "Single description".to_string(),
         }];
 
-        let response = format_desc_response("example.com", &fields).unwrap();
+        let response = format_desc_response("example.com", &fields)
+            .expect("Failed to format desc response for domain test");
         println!("Single description response:\n{}", response);
 
         assert!(response.contains("Description Query Results for: example.com"));
@@ -280,7 +282,8 @@ source:         DN42
     fn test_format_empty_desc_response() {
         let fields = vec![];
 
-        let response = format_desc_response("test.example", &fields).unwrap();
+        let response = format_desc_response("test.example", &fields)
+            .expect("Failed to format desc response for subdomain test");
         println!("Empty description response:\n{}", response);
 
         assert!(response.contains("Description Query Results for: test.example"));

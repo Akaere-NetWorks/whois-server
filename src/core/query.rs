@@ -517,7 +517,7 @@ pub fn analyze_query(query: &str) -> QueryType {
 
     // Check if it's a domain format
     let domain_regex =
-        Regex::new(r"^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$").unwrap();
+        Regex::new(r"^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$").expect("Invalid domain regex");
     if domain_regex.is_match(query) {
         return QueryType::Domain(query.to_string());
     }

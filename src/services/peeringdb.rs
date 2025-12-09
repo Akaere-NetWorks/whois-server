@@ -23,7 +23,7 @@ impl PeeringDBCacheEntry {
     fn new(response: String) -> Self {
         let cached_at = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .expect("System time should be after Unix epoch")
             .as_secs();
         Self {
             response,
@@ -34,7 +34,7 @@ impl PeeringDBCacheEntry {
     fn is_expired(&self) -> bool {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .expect("System time should be after Unix epoch")
             .as_secs();
         (now - self.cached_at) > PEERINGDB_CACHE_TTL
     }
@@ -244,7 +244,7 @@ pub async fn query_peeringdb_asn(asn: &str) -> Result<String> {
             response: no_data_response.clone(),
             cached_at: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
-                .unwrap()
+                .expect("System time should be after Unix epoch")
                 .as_secs(),
         };
         let cache_data = serde_json::to_string(&cache_entry).unwrap_or_default();
@@ -328,7 +328,7 @@ pub async fn query_peeringdb_ix(ix_id: &str) -> Result<String> {
             response: no_data_response.clone(),
             cached_at: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
-                .unwrap()
+                .expect("System time should be after Unix epoch")
                 .as_secs(),
         };
         let cache_data = serde_json::to_string(&cache_entry).unwrap_or_default();

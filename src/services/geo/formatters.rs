@@ -771,7 +771,8 @@ pub async fn format_prefixes_response(
 
                 let task = tokio::spawn(async move {
                     // Acquire semaphore permit to limit concurrency
-                    let _permit = permit.acquire().await.unwrap();
+                    let _permit = permit.acquire().await
+                        .expect("Semaphore should not be closed during operation");
 
                     debug!(
                         "Querying IPinfo for IP: {} (from prefix: {})",
