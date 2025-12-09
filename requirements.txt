@@ -1,4 +1,0 @@
-# Pixiv Service Python Dependencies
-# Install with: pip install -r requirements.txt
-
-pixivpy3>=3.7.4

@@ -55,6 +55,11 @@ russh = "0.45"
 russh-keys = "0.45"
 async-trait = "0.1"
 
-[dependencies.pyo3]
-version = "0.27.1"
-features = ["auto-initialize"]
+# Pixiv client dependencies
+base64 = "0.21"
+uuid = { version = "1.0", features = ["v4", "serde"] }
+hmac = "0.12"
+md5 = "0.7"
+thiserror = "1.0"
+lazy_static = "1.4"
+url = "2.2"

@@ -14,5 +14,6 @@ patches/*.bak
 patches/*.old
 patches/*.tmp
 
-# Python Virtual Environments
+# Python Virtual Environments And Pixiv Py
 /venv
+pixivpy
