@@ -5,7 +5,8 @@ target/
 .env
 *.md
 cache/
-data/
+# Keep data/recipes.json as it's included via include_str!
+data/README.md
 patches/
 plugins/
 .claude/

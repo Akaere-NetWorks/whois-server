@@ -3,6 +3,7 @@ FROM rust:1-trixie as builder
 
 WORKDIR /app
 COPY src ./src/
+COPY data ./data/
 COPY Cargo.toml .
 COPY Cargo.lock .
 RUN cargo build --release
