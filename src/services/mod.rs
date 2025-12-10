@@ -1,5 +1,6 @@
 pub mod acgc;
 pub mod bgptool;
+pub mod cfstatus;
 pub mod crt;
 pub mod desc;
 pub mod dns;
@@ -38,6 +39,7 @@ pub use rpki::*;
 pub use whois::*;
 // pub use iana_cache::*; // Used via explicit imports in modules
 pub use acgc::*;
+pub use cfstatus::*;
 pub use crt::*;
 pub use desc::*;
 pub use dns::*;

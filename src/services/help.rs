@@ -51,8 +51,9 @@ pub fn generate_help_response() -> String {
     output.push_str("example: AS15169-PREFIXES\n");
     output.push('\n');
     output.push_str("AS15169-PEERINGDB   - PeeringDB network information (ASN with AS prefix)\n");
-    output
-        .push_str("4718-PEERINGDB      - PeeringDB Internet Exchange info (pure number = IX ID)\n");
+    output.push_str(
+        "4718-PEERINGDB      - PeeringDB Internet Exchange info (pure number = IX ID)\n"
+    );
     output.push_str("example: AS15169-PEERINGDB, 4718-PEERINGDB\n");
     output.push('\n');
 
@@ -168,6 +169,15 @@ pub fn generate_help_response() -> String {
     output.push('\n');
     output.push_str("google.com-CRT      - Certificate Transparency logs\n");
     output.push_str("example: google.com-CRT\n");
+    output.push('\n');
+
+    output.push_str("SERVICE STATUS:\n");
+    output.push_str("-".repeat(40).as_str());
+    output.push('\n');
+    output.push_str("-CFSTATUS           - Cloudflare service status\n");
+    output.push_str("components-CFSTATUS - Cloudflare components status\n");
+    output.push_str("incidents-CFSTATUS  - Cloudflare unresolved incidents\n");
+    output.push_str("example: -CFSTATUS\n");
     output.push('\n');
 
     output.push_str("GAMING SERVICES:\n");

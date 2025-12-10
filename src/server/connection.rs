@@ -56,6 +56,7 @@ use crate::services::{
     process_aur_query,
     process_bgptool_query,
     process_cargo_query,
+    process_cfstatus_query,
     process_crt_query,
     process_debian_query,
     process_desc_query,
@@ -338,6 +339,10 @@ pub async fn handle_connection(
         QueryType::Crt(base_query) => {
             debug!("Processing Certificate Transparency query: {}", base_query);
             process_crt_query(&format!("{}-CRT", base_query)).await
+        }
+        QueryType::CfStatus(base_query) => {
+            debug!("Processing Cloudflare Status query: {}", base_query);
+            process_cfstatus_query(&format!("{}-CFSTATUS", base_query)).await
         }
         QueryType::Minecraft(base_query) => {
             debug!("Processing Minecraft server query: {}", base_query);
