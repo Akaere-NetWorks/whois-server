@@ -2,7 +2,7 @@
 FROM rust:1-trixie as builder
 
 WORKDIR /app
-COPY src .
+COPY src ./src/
 COPY Cargo.toml .
 COPY Cargo.lock .
 RUN cargo build --release

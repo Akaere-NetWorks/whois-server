@@ -1,0 +1,13 @@
+target/
+.git/
+.gitignore
+.github/
+.env
+*.md
+cache/
+data/
+patches/
+plugins/
+.claude/
+Dockerfile
+.dockerignore
