@@ -72,7 +72,7 @@ pub mod web;
 
 // Re-export commonly used types for convenience
 pub use core::query_processor::process_query;
-pub use core::{ColorScheme, QueryType, analyze_query};
+pub use core::{ ColorScheme, QueryType, analyze_query };
 
 /// Simple API for querying WHOIS information
 ///
@@ -103,7 +103,7 @@ pub use core::{ColorScheme, QueryType, analyze_query};
 /// ```
 pub async fn query(input: &str) -> anyhow::Result<String> {
     let query_type = analyze_query(input);
-    process_query(input, &query_type, None).await
+    process_query(input, &query_type, None, None).await
 }
 
 /// Query with color scheme support
@@ -124,8 +124,8 @@ pub async fn query(input: &str) -> anyhow::Result<String> {
 /// ```
 pub async fn query_with_color(
     input: &str,
-    color_scheme: Option<ColorScheme>,
+    color_scheme: Option<ColorScheme>
 ) -> anyhow::Result<String> {
     let query_type = analyze_query(input);
-    process_query(input, &query_type, color_scheme).await
+    process_query(input, &query_type, color_scheme, None).await
 }

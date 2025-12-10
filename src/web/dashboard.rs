@@ -17,16 +17,16 @@
  */
 
 use crate::core::query_processor::process_query;
-use crate::core::{StatsState, analyze_query, get_stats_response};
-use crate::web::json_formatter::{JsonFormatter, WhoisApiResponse};
-use crate::web::pixiv_proxy::{proxy_pixiv_image, proxy_health};
+use crate::core::{ StatsState, analyze_query, get_stats_response };
+use crate::web::json_formatter::{ JsonFormatter, WhoisApiResponse };
+use crate::web::pixiv_proxy::{ proxy_pixiv_image, proxy_health };
 use crate::config;
 use axum::{
     Router,
-    extract::{Path, Query, State},
+    extract::{ Path, Query, State },
     http::StatusCode,
-    response::{Html, IntoResponse, Json},
-    routing::{get, post},
+    response::{ Html, IntoResponse, Json },
+    routing::{ get, post },
 };
 use serde::Deserialize;
 use std::time::Instant;
@@ -39,7 +39,7 @@ struct ApiQuery {
 
 pub async fn run_web_server(
     stats: StatsState,
-    port: u16,
+    port: u16
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut app = Router::new()
         .route("/", get(dashboard))
@@ -58,9 +58,7 @@ pub async fn run_web_server(
             .route("/pixiv-proxy-health", get(proxy_health));
     }
 
-    let app = app
-        .layer(CorsLayer::permissive())
-        .with_state(stats);
+    let app = app.layer(CorsLayer::permissive()).with_state(stats);
 
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port)).await?;
     axum::serve(listener, app).await?;
@@ -82,19 +80,21 @@ async fn get_stats_api(State(stats): State<StatsState>) -> impl IntoResponse {
 // GET /api/whois?q=query
 async fn whois_api_get(
     State(stats): State<StatsState>,
-    Query(params): Query<ApiQuery>,
+    Query(params): Query<ApiQuery>
 ) -> impl IntoResponse {
     let start_time = Instant::now();
     let query = params.q.trim();
 
     if query.is_empty() {
         let formatter = JsonFormatter::new();
-        return Json(formatter.format_error(
-            query,
-            "Query parameter 'q' is required and cannot be empty",
-            "unknown",
-            start_time.elapsed().as_millis() as u64,
-        ));
+        return Json(
+            formatter.format_error(
+                query,
+                "Query parameter 'q' is required and cannot be empty",
+                "unknown",
+                start_time.elapsed().as_millis() as u64
+            )
+        );
     }
 
     process_whois_query(query, stats, start_time).await
@@ -103,19 +103,21 @@ async fn whois_api_get(
 // POST /api/whois with JSON body: {"q": "query"}
 async fn whois_api_post(
     State(stats): State<StatsState>,
-    Json(query_data): Json<ApiQuery>,
+    Json(query_data): Json<ApiQuery>
 ) -> impl IntoResponse {
     let start_time = Instant::now();
     let query = query_data.q.trim();
 
     if query.is_empty() {
         let formatter = JsonFormatter::new();
-        return Json(formatter.format_error(
-            query,
-            "Query field 'q' is required and cannot be empty",
-            "unknown",
-            start_time.elapsed().as_millis() as u64,
-        ));
+        return Json(
+            formatter.format_error(
+                query,
+                "Query field 'q' is required and cannot be empty",
+                "unknown",
+                start_time.elapsed().as_millis() as u64
+            )
+        );
     }
 
     process_whois_query(query, stats, start_time).await
@@ -124,7 +126,7 @@ async fn whois_api_post(
 async fn process_whois_query(
     query: &str,
     stats: StatsState,
-    start_time: Instant,
+    start_time: Instant
 ) -> Json<WhoisApiResponse> {
     let formatter = JsonFormatter::new();
 
@@ -133,7 +135,7 @@ async fn process_whois_query(
     let query_type = analyze_query(query);
 
     // 处理查询
-    match process_query(query, &query_type, None).await {
+    match process_query(query, &query_type, None, None).await {
         Ok(result) => {
             // 更新统计信息
             {
@@ -141,19 +143,24 @@ async fn process_whois_query(
                 stats_guard.total_requests += 1;
             }
 
-            Json(formatter.format_response(
-                query,
-                result,
-                &query_type_str,
-                start_time.elapsed().as_millis() as u64,
-            ))
+            Json(
+                formatter.format_response(
+                    query,
+                    result,
+                    &query_type_str,
+                    start_time.elapsed().as_millis() as u64
+                )
+            )
         }
-        Err(e) => Json(formatter.format_error(
-            query,
-            &format!("Query processing failed: {}", e),
-            &query_type_str,
-            start_time.elapsed().as_millis() as u64,
-        )),
+        Err(e) =>
+            Json(
+                formatter.format_error(
+                    query,
+                    &format!("Query processing failed: {}", e),
+                    &query_type_str,
+                    start_time.elapsed().as_millis() as u64
+                )
+            ),
     }
 }
 
@@ -183,9 +190,10 @@ fn detect_query_type(query: &str) -> String {
     }
 
     // ASN检测
-    if query_lower.starts_with("as")
-        && query_trimmed.len() > 2
-        && query_trimmed[2..].parse::<u32>().is_ok()
+    if
+        query_lower.starts_with("as") &&
+        query_trimmed.len() > 2 &&
+        query_trimmed[2..].parse::<u32>().is_ok()
     {
         return "asn".to_string();
     }
@@ -230,18 +238,16 @@ async fn api_docs() -> impl IntoResponse {
 // OpenAPI规范JSON
 async fn openapi_spec() -> impl IntoResponse {
     let spec = include_str!("openapi.json");
-    (
-        [(axum::http::header::CONTENT_TYPE, "application/json")],
-        spec,
-    )
+    ([(axum::http::header::CONTENT_TYPE, "application/json")], spec)
 }
 
 // GET /raw/:query - 返回原始WHOIS结果，不做任何JSON处理
 async fn raw_whois_query(
     Path(query_param): Path<String>,
-    State(stats): State<StatsState>,
+    State(stats): State<StatsState>
 ) -> impl IntoResponse {
-    let query = urlencoding::decode(&query_param)
+    let query = urlencoding
+        ::decode(&query_param)
         .unwrap_or_else(|_| std::borrow::Cow::Borrowed(&query_param))
         .to_string();
 
@@ -249,10 +255,7 @@ async fn raw_whois_query(
 
     if query.is_empty() {
         return (
-            [(
-                axum::http::header::CONTENT_TYPE,
-                "text/plain; charset=utf-8",
-            )],
+            [(axum::http::header::CONTENT_TYPE, "text/plain; charset=utf-8")],
             "Error: Query parameter is required and cannot be empty".to_string(),
         );
     }
@@ -261,7 +264,7 @@ async fn raw_whois_query(
     let query_type = analyze_query(query);
 
     // 处理查询
-    match process_query(query, &query_type, None).await {
+    match process_query(query, &query_type, None, None).await {
         Ok(result) => {
             // 更新统计信息
             {
@@ -269,28 +272,20 @@ async fn raw_whois_query(
                 stats_guard.total_requests += 1;
             }
 
-            (
-                [(
-                    axum::http::header::CONTENT_TYPE,
-                    "text/plain; charset=utf-8",
-                )],
-                result,
-            )
+            ([(axum::http::header::CONTENT_TYPE, "text/plain; charset=utf-8")], result)
         }
-        Err(e) => (
-            [(
-                axum::http::header::CONTENT_TYPE,
-                "text/plain; charset=utf-8",
-            )],
-            format!("Error: Query processing failed: {}", e),
-        ),
+        Err(e) =>
+            (
+                [(axum::http::header::CONTENT_TYPE, "text/plain; charset=utf-8")],
+                format!("Error: Query processing failed: {}", e),
+            ),
     }
 }
 
 // GET /pixiv/:query - Return pure JSON for Pixiv queries
 async fn pixiv_json_query(
     State(stats): State<StatsState>,
-    Path(query): Path<String>,
+    Path(query): Path<String>
 ) -> impl IntoResponse {
     let query = query.trim();
 
@@ -311,16 +306,13 @@ async fn pixiv_json_query(
                 stats_guard.total_requests += 1;
             }
 
-            (
-                StatusCode::OK,
-                [(axum::http::header::CONTENT_TYPE, "application/json")],
-                json_result,
-            )
+            (StatusCode::OK, [(axum::http::header::CONTENT_TYPE, "application/json")], json_result)
         }
-        Err(e) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            [(axum::http::header::CONTENT_TYPE, "application/json")],
-            format!(r#"{{"error": "{}"}}"#, e.to_string().replace('"', "\\\"")),
-        ),
+        Err(e) =>
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                [(axum::http::header::CONTENT_TYPE, "application/json")],
+                format!(r#"{{"error": "{}"}}"#, e.to_string().replace('"', "\\\"")),
+            ),
     }
 }

@@ -98,9 +98,13 @@ use crate::services::{
 pub async fn process_query(
     query: &str,
     query_type: &QueryType,
-    color_scheme: Option<ColorScheme>
+    color_scheme: Option<ColorScheme>,
+    client_ip: Option<String>
 ) -> Result<String> {
     debug!("Processing query: {} (type: {:?})", query, query_type);
+
+    // Start timing the query
+    let start_time = std::time::Instant::now();
 
     // Process the query based on its type
     let result = match query_type {
@@ -413,6 +417,24 @@ pub async fn process_query(
             }
         }
     };
+
+    // Calculate response time
+    let response_time = start_time.elapsed().as_millis() as u64;
+
+    // Send telemetry data if client IP is provided
+    if let Some(ip) = client_ip {
+        let query_object = query.to_string();
+        let query_type_str = crate::core::telemetry::query_type_to_string(query_type);
+
+        let telemetry_data = crate::core::telemetry::TelemetryData::new(
+            query_object,
+            query_type_str,
+            ip,
+            response_time
+        );
+
+        crate::core::telemetry::send_telemetry(telemetry_data).await;
+    }
 
     // Apply colorization if scheme is provided, then apply patches
     match result {

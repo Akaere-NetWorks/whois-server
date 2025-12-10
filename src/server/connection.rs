@@ -191,6 +191,9 @@ pub async fn handle_connection(
 
     debug!("Received query from {}: {} (color: {:?})", addr, query, color_protocol.scheme);
 
+    // Start timing the query
+    let start_time = std::time::Instant::now();
+
     // Analyze query type
     let query_type = analyze_query(&query);
 
@@ -592,6 +595,20 @@ pub async fn handle_connection(
 
             // Record statistics
             crate::core::record_request(&stats, formatted_response.len()).await;
+
+            // Send telemetry data
+            let response_time = start_time.elapsed().as_millis() as u64;
+            let client_ip = addr.ip().to_string();
+            let query_type_str = crate::core::telemetry::query_type_to_string(&query_type);
+
+            let telemetry_data = crate::core::telemetry::TelemetryData::new(
+                query.clone(),
+                query_type_str,
+                client_ip,
+                response_time
+            );
+
+            crate::core::telemetry::send_telemetry(telemetry_data).await;
         }
         Err(e) => {
             error!("Failed to send response for {}: {}", query, e);
@@ -618,7 +635,8 @@ pub async fn handle_connection(
 pub async fn handle_query(
     query: &str,
     query_type: &QueryType,
-    color_scheme: Option<ColorScheme>
+    color_scheme: Option<ColorScheme>,
+    client_ip: Option<String>
 ) -> Result<String> {
-    crate::core::process_query(query, query_type, color_scheme).await
+    crate::core::process_query(query, query_type, color_scheme, client_ip).await
 }

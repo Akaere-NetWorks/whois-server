@@ -3,6 +3,7 @@ pub mod patch;
 pub mod query;
 pub mod query_processor;
 pub mod stats;
+pub mod telemetry;
 pub mod utils;
 
 pub use color::*;
