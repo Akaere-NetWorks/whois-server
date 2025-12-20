@@ -19,8 +19,7 @@
 use anyhow::{Context, Result};
 use reqwest;
 use serde::{Deserialize, Serialize};
-use tracing::{debug, error};
-
+use crate::{log_debug, log_error};
 const ALMA_REPO_BASE: &str = "https://repo.almalinux.org/almalinux/9/BaseOS/x86_64/os";
 const ALMA_APPSTREAM_BASE: &str = "https://repo.almalinux.org/almalinux/9/AppStream/x86_64/os";
 const ALMA_EXTRAS_BASE: &str = "https://repo.almalinux.org/almalinux/9/extras/x86_64/os";
@@ -51,7 +50,7 @@ struct AlmaSearchResponse {
 }
 
 pub async fn process_alma_query(package_name: &str) -> Result<String> {
-    debug!("Processing AlmaLinux query for package: {}", package_name);
+    log_debug!("Processing AlmaLinux query for package: {}", package_name);
 
     if package_name.is_empty() {
         return Err(anyhow::anyhow!("Package name cannot be empty"));
@@ -76,7 +75,7 @@ pub async fn process_alma_query(package_name: &str) -> Result<String> {
             }
         }
         Err(e) => {
-            error!(
+            log_error!(
                 "AlmaLinux packages query failed for {}: {}",
                 package_name, e
             );
@@ -100,7 +99,7 @@ async fn query_alma_packages(package_name: &str) -> Result<Vec<AlmaPackageResult
     ];
 
     for (repo_name, repo_base) in &repositories {
-        debug!(
+        log_debug!(
             "Checking AlmaLinux {} repository for: {}",
             repo_name, package_name
         );
@@ -110,7 +109,7 @@ async fn query_alma_packages(package_name: &str) -> Result<Vec<AlmaPackageResult
 
         match client.get(&repodata_url).send().await {
             Ok(response) if response.status().is_success() => {
-                debug!("Found repodata for {} repository", repo_name);
+                log_debug!("Found repodata for {} repository", repo_name);
                 // For now, create a package entry indicating the repository exists
                 let package = AlmaPackageResult {
                     name: package_name.to_string(),
@@ -130,16 +129,16 @@ async fn query_alma_packages(package_name: &str) -> Result<Vec<AlmaPackageResult
                 return Ok(vec![package]);
             }
             Ok(_) => {
-                debug!("{} repository returned non-success status", repo_name);
+                log_debug!("{} repository returned non-success status", repo_name);
             }
             Err(e) => {
-                debug!("Failed to access {} repository: {}", repo_name, e);
+                log_debug!("Failed to access {} repository: {}", repo_name, e);
             }
         }
     }
 
     // If repository access fails, return empty result
-    debug!("Repository access failed for: {}", package_name);
+    log_debug!("Repository access failed for: {}", package_name);
     Ok(vec![])
 }
 

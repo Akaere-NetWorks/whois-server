@@ -1,19 +1,18 @@
 use anyhow::Result;
-use tracing::debug;
-
 use super::whois::query_whois;
 use crate::config::DEFAULT_WHOIS_PORT;
 
+use crate::{log_debug};
 // BGP Tools WHOIS server
 const BGPTOOLS_WHOIS_SERVER: &str = "bgp.tools";
 
 /// Process BGP Tools queries ending with -BGPTOOL
 pub async fn process_bgptool_query(base_query: &str) -> Result<String> {
-    debug!("Processing BGP Tools query for: {}", base_query);
+    log_debug!("Processing BGP Tools query for: {}", base_query);
 
     // Format query for BGP Tools (add -v flag as expected by bgp.tools)
     let formatted_query = format!(" -v {}", base_query);
-    debug!("Formatted BGP Tools query: {}", formatted_query);
+    log_debug!("Formatted BGP Tools query: {}", formatted_query);
 
     // Query BGP Tools WHOIS server directly
     let response = query_whois(&formatted_query, BGPTOOLS_WHOIS_SERVER, DEFAULT_WHOIS_PORT).await?;

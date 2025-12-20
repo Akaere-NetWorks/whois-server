@@ -9,12 +9,11 @@ use std::net::SocketAddr;
 use std::path::Path;
 use std::sync::Arc;
 use tokio::net::TcpListener;
-use tracing::{debug, error, info, warn};
-
 use super::certificates::SshCertificateManager;
 use super::handler::WhoisSshHandler;
 use super::history::SshConnectionHistory;
 
+use crate::{log_debug, log_error, log_info, log_warn};
 /// SSH server configuration
 #[derive(Debug, Clone)]
 pub struct SshServerConfig {
@@ -48,7 +47,7 @@ impl SshServer {
 
         // Initialize SSH connection history storage
         let history_db_path = Path::new(&config.cache_dir).join("history.lmdb");
-        debug!(
+        log_debug!(
             "Initializing SSH connection history at path: {:?}",
             history_db_path
         );
@@ -89,10 +88,10 @@ impl SshServer {
         // Log host key fingerprint
         match self.cert_manager.get_public_key_fingerprint().await {
             Ok(fingerprint) => {
-                info!("SSH server host key fingerprint: {}", fingerprint);
+                log_info!("SSH server host key fingerprint: {}", fingerprint);
             }
             Err(e) => {
-                warn!("Failed to get host key fingerprint: {}", e);
+                log_warn!("Failed to get host key fingerprint: {}", e);
             }
         }
 
@@ -107,13 +106,13 @@ impl SshServer {
             .ok_or_else(|| anyhow::anyhow!("SSH server not initialized - host key not loaded"))?;
 
         let bind_addr = format!("{}:{}", self.config.listen_addr, self.config.port);
-        info!("Starting SSH server on {}", bind_addr);
+        log_info!("Starting SSH server on {}", bind_addr);
 
         let listener = TcpListener::bind(&bind_addr)
             .await
             .with_context(|| format!("Failed to bind SSH server to {}", bind_addr))?;
 
-        info!("SSH server listening on {}", bind_addr);
+        log_info!("SSH server listening on {}", bind_addr);
 
         // Create server configuration
         let server_config = Arc::new(server::Config {
@@ -127,7 +126,7 @@ impl SshServer {
         loop {
             match listener.accept().await {
                 Ok((stream, client_addr)) => {
-                    info!("SSH connection from {}", client_addr);
+                    log_info!("SSH connection from {}", client_addr);
 
                     let history = Arc::clone(&self.history);
                     let host_key = Arc::clone(host_key);
@@ -138,12 +137,12 @@ impl SshServer {
                             Self::handle_connection(stream, client_addr, history, host_key, config)
                                 .await
                         {
-                            error!("SSH connection error from {}: {}", client_addr, e);
+                            log_error!("SSH connection error from {}: {}", client_addr, e);
                         }
                     });
                 }
                 Err(e) => {
-                    error!("Failed to accept SSH connection: {}", e);
+                    log_error!("Failed to accept SSH connection: {}", e);
                 }
             }
         }
@@ -164,7 +163,7 @@ impl SshServer {
             .await
             .with_context(|| format!("SSH session failed for {}", client_addr))?;
 
-        debug!("SSH session completed for {}", client_addr);
+        log_debug!("SSH session completed for {}", client_addr);
         Ok(())
     }
 

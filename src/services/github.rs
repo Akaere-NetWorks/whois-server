@@ -19,8 +19,7 @@
 use anyhow::{Context, Result};
 use reqwest;
 use serde::{Deserialize, Serialize};
-use tracing::{debug, error};
-
+use crate::{log_debug, log_error};
 const GITHUB_API_URL: &str = "https://api.github.com";
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -101,7 +100,7 @@ struct GitHubLicense {
 }
 
 pub async fn process_github_query(query: &str) -> Result<String> {
-    debug!("Processing GitHub query: {}", query);
+    log_debug!("Processing GitHub query: {}", query);
 
     if query.is_empty() {
         return Err(anyhow::anyhow!("Query cannot be empty"));
@@ -130,7 +129,7 @@ pub async fn process_github_query(query: &str) -> Result<String> {
         match query_github_repository(owner, repo).await {
             Ok(repository) => Ok(format_github_repository_response(&repository, query)),
             Err(e) => {
-                error!("GitHub repository query failed for {}: {}", query, e);
+                log_error!("GitHub repository query failed for {}: {}", query, e);
                 Ok(format_github_not_found(query, "repository"))
             }
         }
@@ -143,7 +142,7 @@ pub async fn process_github_query(query: &str) -> Result<String> {
         match query_github_user(query).await {
             Ok(user) => Ok(format_github_user_response(&user, query)),
             Err(e) => {
-                error!("GitHub user query failed for {}: {}", query, e);
+                log_error!("GitHub user query failed for {}: {}", query, e);
                 Ok(format_github_not_found(query, "user"))
             }
         }
@@ -168,7 +167,7 @@ async fn query_github_user(username: &str) -> Result<GitHubUser> {
 
     let user_url = format!("{}/users/{}", GITHUB_API_URL, urlencoding::encode(username));
 
-    debug!("Querying GitHub API: {}", user_url);
+    log_debug!("Querying GitHub API: {}", user_url);
 
     let response = client
         .get(&user_url)
@@ -209,7 +208,7 @@ async fn query_github_repository(owner: &str, repo: &str) -> Result<GitHubReposi
         urlencoding::encode(repo)
     );
 
-    debug!("Querying GitHub API: {}", repo_url);
+    log_debug!("Querying GitHub API: {}", repo_url);
 
     let response = client
         .get(&repo_url)

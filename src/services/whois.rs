@@ -4,44 +4,43 @@ use anyhow::Result;
 use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream as AsyncTcpStream;
-use tracing::{debug, warn};
-
 use crate::config::{
     DEFAULT_WHOIS_PORT, DEFAULT_WHOIS_SERVER, RADB_WHOIS_PORT, RADB_WHOIS_SERVER, TIMEOUT_SECONDS,
 };
 use crate::services::iana_cache::IanaCache;
 
+use crate::{log_debug, log_warn};
 pub async fn query_with_iana_referral(query: &str) -> Result<String> {
-    debug!("Querying with IANA referral: {}", query);
+    log_debug!("Querying with IANA referral: {}", query);
 
     // Try to get WHOIS server from cache
     let iana_cache = IanaCache::new()?;
     let whois_server = match iana_cache.get_whois_server(query).await {
         Some(server) => server,
         None => {
-            debug!("No IANA referral found for {}, using default server", query);
+            log_debug!("No IANA referral found for {}, using default server", query);
             DEFAULT_WHOIS_SERVER.to_string()
         }
     };
 
-    debug!("Using WHOIS server: {}", whois_server);
+    log_debug!("Using WHOIS server: {}", whois_server);
 
     // Query the WHOIS server
     match query_whois(query, &whois_server, DEFAULT_WHOIS_PORT).await {
         Ok(response) => {
             // Check if response indicates transferred/no data and try RADB fallback
             if should_try_radb_fallback(&response, query) {
-                debug!(
+                log_debug!(
                     "Primary response suggests transferred resource, trying RADB fallback for: {}",
                     query
                 );
                 match query_whois(query, RADB_WHOIS_SERVER, RADB_WHOIS_PORT).await {
                     Ok(radb_response) => {
                         if is_meaningful_response(&radb_response, query) {
-                            debug!("RADB provided meaningful data for: {}", query);
+                            log_debug!("RADB provided meaningful data for: {}", query);
                             Ok(radb_response)
                         } else {
-                            debug!(
+                            log_debug!(
                                 "RADB response not meaningful, combining with original response"
                             );
                             // Combine both responses with a note about the fallback attempt
@@ -54,7 +53,7 @@ pub async fn query_with_iana_referral(query: &str) -> Result<String> {
                         }
                     }
                     Err(e) => {
-                        debug!("RADB query failed for {}: {}", query, e);
+                        log_debug!("RADB query failed for {}: {}", query, e);
                         // Add a note about the failed fallback attempt
                         let enhanced = format!(
                             "{}\n\n% Note: RADB fallback attempted but failed: {}\n",
@@ -69,19 +68,19 @@ pub async fn query_with_iana_referral(query: &str) -> Result<String> {
             }
         }
         Err(e) => {
-            warn!(
+            log_warn!(
                 "Query failed on {}, attempting to refresh IANA cache: {}",
                 whois_server, e
             );
 
             // Query failed, try to refresh IANA cache
             if let Some(refreshed_server) = iana_cache.refresh_cache_on_failure(query).await {
-                debug!("Retrying with refreshed server: {}", refreshed_server);
+                log_debug!("Retrying with refreshed server: {}", refreshed_server);
                 match query_whois(query, &refreshed_server, DEFAULT_WHOIS_PORT).await {
                     Ok(response) => Ok(response),
                     Err(_) => {
                         // If refreshed server also fails, try RADB as final fallback
-                        debug!(
+                        log_debug!(
                             "Refreshed server failed, trying RADB as final fallback for: {}",
                             query
                         );
@@ -95,11 +94,11 @@ pub async fn query_with_iana_referral(query: &str) -> Result<String> {
                 }
             } else {
                 // If refresh also fails, try RADB then default server as last resort
-                debug!("IANA refresh failed, trying RADB fallback for: {}", query);
+                log_debug!("IANA refresh failed, trying RADB fallback for: {}", query);
                 match query_whois(query, RADB_WHOIS_SERVER, RADB_WHOIS_PORT).await {
                     Ok(radb_resp) => Ok(radb_resp),
                     Err(_) => {
-                        debug!("RADB failed, trying default server as final fallback");
+                        log_debug!("RADB failed, trying default server as final fallback");
                         query_whois(query, DEFAULT_WHOIS_SERVER, DEFAULT_WHOIS_PORT).await
                     }
                 }
@@ -110,7 +109,7 @@ pub async fn query_with_iana_referral(query: &str) -> Result<String> {
 
 pub async fn query_whois(query: &str, server: &str, port: u16) -> Result<String> {
     let address = format!("{}:{}", server, port);
-    debug!("Querying WHOIS server: {}", address);
+    log_debug!("Querying WHOIS server: {}", address);
 
     let timeout = Duration::from_secs(TIMEOUT_SECONDS);
 
@@ -135,7 +134,7 @@ pub async fn query_whois(query: &str, server: &str, port: u16) -> Result<String>
 
     // Try to disable Nagle's algorithm
     if let Err(e) = stream.set_nodelay(true) {
-        warn!("Failed to set TCP_NODELAY: {}", e);
+        log_warn!("Failed to set TCP_NODELAY: {}", e);
     }
 
     // Prepare and send the query - WHOIS protocol expects CRLF-terminated query
@@ -181,13 +180,13 @@ pub async fn query_whois(query: &str, server: &str, port: u16) -> Result<String>
                 // Prevent excessively large responses
                 if total_bytes > 1_000_000 {
                     // 1MB limit
-                    debug!("Response exceeded size limit (1MB), truncating");
+                    log_debug!("Response exceeded size limit (1MB), truncating");
                     break;
                 }
 
                 // Check if we've been reading for too long
                 if read_start.elapsed() > timeout {
-                    debug!("Read timeout reached after {} bytes", total_bytes);
+                    log_debug!("Read timeout reached after {} bytes", total_bytes);
                     break;
                 }
             }
@@ -198,14 +197,14 @@ pub async fn query_whois(query: &str, server: &str, port: u16) -> Result<String>
                 ));
             }
             Err(_) => {
-                debug!("Timeout reading WHOIS response after {} bytes", total_bytes);
+                log_debug!("Timeout reading WHOIS response after {} bytes", total_bytes);
                 break; // Just break on timeout, return what we have so far
             }
         }
     }
 
     // Log response info for debugging
-    debug!("Received {} bytes from {}", total_bytes, address);
+    log_debug!("Received {} bytes from {}", total_bytes, address);
 
     if response.is_empty() {
         return Err(anyhow::anyhow!("Empty response from WHOIS server"));
@@ -245,7 +244,7 @@ fn should_try_radb_fallback(response: &str, query: &str) -> bool {
         .collect();
 
     if meaningful_lines.len() < 3 {
-        debug!(
+        log_debug!(
             "Response has very few meaningful lines ({}), suggesting RADB fallback",
             meaningful_lines.len()
         );
@@ -262,7 +261,7 @@ fn should_try_radb_fallback(response: &str, query: &str) -> bool {
 
     // If query looks like a CIDR block but response has no routing info, try RADB
     if (query.contains('/') || query.contains('-')) && !has_routing_info {
-        debug!(
+        log_debug!(
             "Query appears to be for routing info but response lacks routing fields, suggesting RADB fallback"
         );
         return true;
@@ -271,7 +270,7 @@ fn should_try_radb_fallback(response: &str, query: &str) -> bool {
     // Check for transfer indicators
     for indicator in &transfer_indicators {
         if response_lower.contains(indicator) {
-            debug!(
+            log_debug!(
                 "Found transfer indicator '{}', suggesting RADB fallback",
                 indicator
             );

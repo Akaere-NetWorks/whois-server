@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use std::time::Duration;
 use tokio::net::TcpListener;
 use tokio::sync::mpsc;
-use tracing::{error, info};
+use crate::{log_error, log_info};
 
 use super::connection::handle_connection;
 use crate::core::StatsState;
@@ -32,7 +32,7 @@ pub async fn run_async_server(
             accept_result = listener.accept() => {
                 match accept_result {
                     Ok((stream, addr)) => {
-                        info!("Accepted connection from {}", addr);
+                        log_info!("Accepted connection from {}", addr);
                         let tx_clone = tx.clone();
                         let stats_clone = stats.clone();
 
@@ -44,7 +44,7 @@ pub async fn run_async_server(
                         // Handle connection
                         tokio::spawn(async move {
                             if let Err(e) = handle_connection(stream, addr, timeout, dump_traffic, &dump_dir, stats_clone, enable_color).await {
-                                error!("Connection handling error: {}", e);
+                                log_error!("Connection handling error: {}", e);
                             }
 
                             // Notify completion
@@ -52,7 +52,7 @@ pub async fn run_async_server(
                         });
                     }
                     Err(e) => {
-                        error!("Failed to accept connection: {}", e);
+                        log_error!("Failed to accept connection: {}", e);
                     }
                 }
             }

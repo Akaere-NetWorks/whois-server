@@ -1,9 +1,8 @@
 use anyhow::Result;
 use reqwest::Client;
-use tracing::{debug, warn};
-
 use super::types::{MeituanCityData, MeituanCityResponse, MeituanIpResponse};
 
+use crate::{log_debug, log_warn};
 /// Combined Meituan response containing both IP location and city details
 #[derive(Debug, Clone)]
 pub struct MeituanCombinedResponse {
@@ -21,7 +20,7 @@ pub struct MeituanCombinedResponse {
 
 /// Query Meituan API for geo-location information (async version)
 pub async fn query_meituan(client: &Client, ip: &str) -> Result<MeituanCombinedResponse> {
-    debug!("Querying Meituan API for: {}", ip);
+    log_debug!("Querying Meituan API for: {}", ip);
 
     // Step 1: Get IP location data
     let ip_url = format!(
@@ -37,7 +36,7 @@ pub async fn query_meituan(client: &Client, ip: &str) -> Result<MeituanCombinedR
         .await?;
 
     if !ip_response.status().is_success() {
-        warn!(
+        log_warn!(
             "Meituan IP API returned non-success status: {}",
             ip_response.status()
         );
@@ -48,7 +47,7 @@ pub async fn query_meituan(client: &Client, ip: &str) -> Result<MeituanCombinedR
     }
 
     let ip_body = ip_response.text().await?;
-    debug!("Meituan IP API response body: {}", ip_body);
+    log_debug!("Meituan IP API response body: {}", ip_body);
 
     let ip_api_response: MeituanIpResponse = serde_json::from_str(&ip_body)
         .map_err(|e| anyhow::anyhow!("Failed to parse Meituan IP API response: {}", e))?;
@@ -72,17 +71,17 @@ pub async fn query_meituan(client: &Client, ip: &str) -> Result<MeituanCombinedR
 
     let city_details = if city_response.status().is_success() {
         let city_body = city_response.text().await?;
-        debug!("Meituan City API response body: {}", city_body);
+        log_debug!("Meituan City API response body: {}", city_body);
 
         match serde_json::from_str::<MeituanCityResponse>(&city_body) {
             Ok(city_api_response) => city_api_response.data,
             Err(e) => {
-                warn!("Failed to parse Meituan City API response: {}", e);
+                log_warn!("Failed to parse Meituan City API response: {}", e);
                 None
             }
         }
     } else {
-        warn!(
+        log_warn!(
             "Meituan City API returned non-success status: {}",
             city_response.status()
         );

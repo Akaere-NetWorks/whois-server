@@ -20,8 +20,7 @@ use anyhow::Result;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
-use tracing::{debug, error};
-
+use crate::{log_debug, log_error};
 /// MediaWiki API response structures for page information
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MediaWikiResponse {
@@ -93,7 +92,7 @@ impl AcgcService {
 
     /// Search for a character by name and return detailed information
     pub async fn query_character_info(&self, query: &str) -> Result<String> {
-        debug!("Querying ACGC character info for: {}", query);
+        log_debug!("Querying ACGC character info for: {}", query);
 
         // First, try to search for the character
         match self.search_character(query).await {
@@ -101,7 +100,7 @@ impl AcgcService {
                 if !search_results.is_empty() {
                     // Get detailed info for the first search result
                     let first_result = &search_results[0];
-                    debug!(
+                    log_debug!(
                         "Found character, getting details for: {}",
                         first_result.title
                     );
@@ -114,7 +113,7 @@ impl AcgcService {
                 }
             }
             Err(e) => {
-                error!("ACGC search failed for '{}': {}", query, e);
+                log_error!("ACGC search failed for '{}': {}", query, e);
                 Ok(format!("ACGC Query Failed for: {}\nError: {}\n", query, e))
             }
         }
@@ -122,7 +121,7 @@ impl AcgcService {
 
     /// Search for characters by name
     async fn search_character(&self, query: &str) -> Result<Vec<MediaWikiSearchResult>> {
-        debug!("Searching Moegirl Wiki for: {}", query);
+        log_debug!("Searching Moegirl Wiki for: {}", query);
 
         let params = [
             ("action", "query"),
@@ -162,7 +161,7 @@ impl AcgcService {
 
     /// Get detailed character information by page title
     async fn get_character_details(&self, title: &str) -> Result<String> {
-        debug!("Getting character details for: {}", title);
+        log_debug!("Getting character details for: {}", title);
 
         let params = [
             ("action", "query"),
@@ -487,7 +486,7 @@ pub async fn process_acgc_query(query: &str) -> Result<String> {
     let acgc_service = AcgcService::new();
 
     if let Some(character_query) = AcgcService::parse_acgc_query(query) {
-        debug!("Processing ACGC query for: {}", character_query);
+        log_debug!("Processing ACGC query for: {}", character_query);
 
         if character_query.is_empty() {
             return Ok(
@@ -498,7 +497,7 @@ pub async fn process_acgc_query(query: &str) -> Result<String> {
 
         acgc_service.query_character_info(&character_query).await
     } else {
-        error!("Invalid ACGC query format: {}", query);
+        log_error!("Invalid ACGC query format: {}", query);
         Ok(format!(
             "Invalid ACGC query format. Use: <character_name>-ACGC\nExample: 利姆鲁-ACGC\nQuery: {}\n",
             query

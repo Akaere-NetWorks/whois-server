@@ -27,8 +27,8 @@ mod web;
 
 use anyhow::Result;
 use clap::Parser;
-use tracing::{Level, info};
-use tracing_subscriber::fmt::format::FmtSpan;
+
+use core::logger::init_from_args;
 
 use config::Cli;
 use core::{create_stats_state, get_patches_count, init_patches, save_stats_on_shutdown};
@@ -41,7 +41,6 @@ use services::pen::start_pen_periodic_update;
 use ssh::{SshServer, server::SshServerConfig};
 use tokio::time::{Duration, interval};
 use web::run_web_server;
-
 #[tokio::main]
 async fn main() -> Result<()> {
     // Load environment variables from .env file
@@ -49,26 +48,9 @@ async fn main() -> Result<()> {
 
     let args = Cli::parse();
 
-    // Initialize logging with better formatting
-    let log_level = if args.trace {
-        Level::TRACE
-    } else if args.debug {
-        Level::DEBUG
-    } else {
-        Level::INFO
-    };
-
-    tracing_subscriber::fmt()
-        .with_max_level(log_level)
-        .with_span_events(FmtSpan::CLOSE)
-        .with_target(true)  
-        .with_thread_ids(false) 
-        .with_thread_names(false) 
-        .with_ansi(true)  
-        .with_level(true)  
-        .with_file(false) 
-        .with_line_number(true)
-        .init();
+    // Initialize systemd-style logger
+    init_from_args(args.debug, args.trace, false)
+        .map_err(|e| anyhow::anyhow!("Failed to initialize logger: {}", e))?;
 
     // Create statistics state
     let stats = create_stats_state().await;
@@ -77,59 +59,55 @@ async fn main() -> Result<()> {
     create_dump_dir_if_needed(args.dump_traffic, &args.dump_dir)?;
 
     // Initialize patch system
-    info!("Loading response patches from ./patches directory...");
+    log_init_start!("Response Patches Loader");
     match init_patches("./patches") {
         Ok(_count) => {
             let (files, rules) = get_patches_count();
-            info!("Loaded {} patch files with {} rules total", files, rules);
+            log_init_ok_with_details!("Response Patches Loader", &format!("{} files, {} rules", files, rules));
         }
         Err(e) => {
-            tracing::warn!("Failed to load patches: {} (continuing without patches)", e);
+            log_init_warn!("Response Patches Loader", &format!("continuing without patches: {}", e));
         }
     }
 
     // Initialize DN42 manager (platform-aware)
-    info!("Initializing DN42 system...");
+    log_init_start!("DN42 System");
     if let Err(e) = initialize_dn42_manager().await {
-        tracing::error!("Failed to initialize DN42 manager: {}", e);
+        log_init_failed!("DN42 System", &format!("manager initialization failed: {}", e));
     } else {
         let platform_info = get_dn42_platform_info().await.unwrap_or("Unknown");
         let is_online = is_dn42_online_mode().await.unwrap_or(false);
-        info!(
-            "DN42 system initialized successfully - Platform: {}, Mode: {}",
-            platform_info,
-            if is_online { "Online" } else { "Git" }
-        );
+        log_init_ok_with_details!("DN42 System", &format!("Platform: {}, Mode: {}", platform_info, if is_online { "Online" } else { "Git" }));
     }
 
     // Start DN42 sync task (Git mode) or maintenance task (Online mode)
     tokio::spawn(async move {
         if let Ok(is_online) = is_dn42_online_mode().await {
             if is_online {
-                info!("Starting DN42 online mode maintenance task (every hour)");
+                log_info!("Starting DN42 online mode maintenance task (every hour)");
                 let mut maintenance_interval = interval(Duration::from_secs(3600)); // 1 hour
                 maintenance_interval.tick().await; // Skip the first tick
 
                 loop {
                     maintenance_interval.tick().await;
-                    info!("Running scheduled DN42 online maintenance");
+                    log_info!("Running scheduled DN42 online maintenance");
                     if let Err(e) = dn42_manager_maintenance().await {
-                        tracing::error!("DN42 online maintenance failed: {}", e);
+                        log_error!("DN42 online maintenance failed: {}", e);
                     }
                 }
             } else {
-                info!("Starting DN42 git mode periodic sync");
+                log_info!("Starting DN42 git mode periodic sync");
                 start_periodic_sync().await;
             }
         } else {
-            tracing::error!("Failed to determine DN42 mode, falling back to git sync");
+            log_error!("Failed to determine DN42 mode, falling back to git sync");
             start_periodic_sync().await;
         }
     });
 
     // Start PEN (Private Enterprise Numbers) periodic update task
     tokio::spawn(async move {
-        info!("Starting PEN periodic update task");
+        log_task_start!("PEN Periodic Update Service");
         start_pen_periodic_update().await;
     });
 
@@ -137,9 +115,9 @@ async fn main() -> Result<()> {
     let web_stats = stats.clone();
     let web_port = args.web_port;
     tokio::spawn(async move {
-        info!("Starting web server on port {}", web_port);
+        log_task_start!(&format!("Web Server on port {}", web_port));
         if let Err(e) = run_web_server(web_stats, web_port).await {
-            tracing::error!("Web server error: {}", e);
+            log_error!("Web server error: {}", e);
         }
     });
 
@@ -152,29 +130,29 @@ async fn main() -> Result<()> {
         };
 
         tokio::spawn(async move {
-            info!("Starting SSH server on port {}", ssh_config.port);
+            log_task_start!(&format!("SSH Server on port {}", ssh_config.port));
             let mut ssh_server = match SshServer::new(ssh_config) {
                 Ok(server) => server,
                 Err(e) => {
-                    tracing::error!("Failed to create SSH server: {}", e);
+                    log_error!("Failed to create SSH server: {}", e);
                     return;
                 }
             };
 
             if let Err(e) = ssh_server.initialize().await {
-                tracing::error!("Failed to initialize SSH server: {}", e);
+                log_error!("Failed to initialize SSH server: {}", e);
                 return;
             }
 
             if let Err(e) = ssh_server.start().await {
-                tracing::error!("SSH server error: {}", e);
+                log_error!("SSH server error: {}", e);
             }
         });
     }
 
     // Create server address
     let addr = format!("{}:{}", args.host, args.port);
-    info!("Starting WHOIS server on {}", addr);
+    log_task_start!(&format!("WHOIS Server on {}", addr));
 
     // Start async server
     let result = run_async_server(
@@ -189,7 +167,7 @@ async fn main() -> Result<()> {
     .await;
 
     // Save stats on shutdown
-    info!("Saving statistics before shutdown...");
+    log_info!("Saving statistics before shutdown...");
     save_stats_on_shutdown(&stats).await;
 
     result

@@ -1,22 +1,21 @@
 use anyhow::Result;
 use std::collections::HashSet;
-use tracing::debug;
-
 // Removed unused import
 use crate::dn42::query_dn42_raw_managed;
 
+use crate::{log_debug};
 /// Process email search queries ending with -EMAIL
 pub async fn process_email_search(base_query: &str) -> Result<String> {
-    debug!("Processing email search for: {}", base_query);
+    log_debug!("Processing email search for: {}", base_query);
 
     // First, query the base object to get references
     let base_response = query_dn42_raw_managed(base_query).await?;
-    debug!("Base response length: {} chars", base_response.len());
+    log_debug!("Base response length: {} chars", base_response.len());
 
     // Start with emails from the base object itself
     let mut emails = HashSet::new();
     let base_emails = extract_emails(&base_response);
-    debug!(
+    log_debug!(
         "Found {} emails in base object: {:?}",
         base_emails.len(),
         base_emails
@@ -25,11 +24,11 @@ pub async fn process_email_search(base_query: &str) -> Result<String> {
 
     // Extract references from the base object
     let references = extract_references(&base_response);
-    debug!("Found references: {:?}", references);
+    log_debug!("Found references: {:?}", references);
 
     // If no references found and no emails in base, try some common related queries
     if references.is_empty() && emails.is_empty() {
-        debug!("No references or emails found, trying related queries");
+        log_debug!("No references or emails found, trying related queries");
 
         // Try querying with common suffixes if not already present
         let mut related_queries = vec![];
@@ -42,11 +41,11 @@ pub async fn process_email_search(base_query: &str) -> Result<String> {
         }
 
         for related_query in related_queries {
-            debug!("Trying related query: {}", related_query);
+            log_debug!("Trying related query: {}", related_query);
             match query_dn42_raw_managed(&related_query).await {
                 Ok(related_response) => {
                     let related_emails = extract_emails(&related_response);
-                    debug!(
+                    log_debug!(
                         "Found {} emails in related query {}: {:?}",
                         related_emails.len(),
                         related_query,
@@ -58,14 +57,14 @@ pub async fn process_email_search(base_query: &str) -> Result<String> {
                     let related_refs = extract_references(&related_response);
                     for ref_name in related_refs {
                         if !references.contains(&ref_name) {
-                            debug!(
+                            log_debug!(
                                 "Querying additional reference from {}: {}",
                                 related_query, ref_name
                             );
                             match query_dn42_raw_managed(&ref_name).await {
                                 Ok(ref_response) => {
                                     let ref_emails = extract_emails(&ref_response);
-                                    debug!(
+                                    log_debug!(
                                         "Found {} emails in additional reference {}: {:?}",
                                         ref_emails.len(),
                                         ref_name,
@@ -74,7 +73,7 @@ pub async fn process_email_search(base_query: &str) -> Result<String> {
                                     emails.extend(ref_emails);
                                 }
                                 Err(e) => {
-                                    debug!(
+                                    log_debug!(
                                         "Failed to query additional reference {}: {}",
                                         ref_name, e
                                     );
@@ -84,7 +83,7 @@ pub async fn process_email_search(base_query: &str) -> Result<String> {
                     }
                 }
                 Err(e) => {
-                    debug!("Related query {} failed: {}", related_query, e);
+                    log_debug!("Related query {} failed: {}", related_query, e);
                 }
             }
         }
@@ -92,11 +91,11 @@ pub async fn process_email_search(base_query: &str) -> Result<String> {
 
     // Query each reference to find email addresses
     for reference in references {
-        debug!("Querying reference: {}", reference);
+        log_debug!("Querying reference: {}", reference);
         match query_dn42_raw_managed(&reference).await {
             Ok(ref_response) => {
                 let ref_emails = extract_emails(&ref_response);
-                debug!(
+                log_debug!(
                     "Found {} emails in {}: {:?}",
                     ref_emails.len(),
                     reference,
@@ -105,12 +104,12 @@ pub async fn process_email_search(base_query: &str) -> Result<String> {
                 emails.extend(ref_emails);
             }
             Err(e) => {
-                debug!("Failed to query reference {}: {}", reference, e);
+                log_debug!("Failed to query reference {}: {}", reference, e);
             }
         }
     }
 
-    debug!("Total unique emails found: {}", emails.len());
+    log_debug!("Total unique emails found: {}", emails.len());
 
     // Format response
     format_email_response(&emails)
@@ -154,18 +153,18 @@ fn extract_emails(response: &str) -> Vec<String> {
 
         // Look for various email fields
         if let Some(email) = extract_field_value(line, "abuse-mailbox") {
-            debug!("Found abuse-mailbox: {}", email);
+            log_debug!("Found abuse-mailbox: {}", email);
             emails.push(email);
         } else if let Some(email) = extract_field_value(line, "e-mail") {
-            debug!("Found e-mail: {}", email);
+            log_debug!("Found e-mail: {}", email);
             emails.push(email);
         } else if let Some(email) = extract_field_value(line, "email") {
-            debug!("Found email: {}", email);
+            log_debug!("Found email: {}", email);
             emails.push(email);
         } else if let Some(email) = extract_field_value(line, "abuse-c") {
             // Sometimes abuse-c contains email directly
             if email.contains("@") {
-                debug!("Found email in abuse-c: {}", email);
+                log_debug!("Found email in abuse-c: {}", email);
                 emails.push(email);
             }
         }

@@ -23,11 +23,10 @@ use std::path::Path;
 use std::sync::Arc;
 use tokio::fs;
 use tokio::sync::RwLock;
-use tracing::{error, info, warn};
-
 use crate::config::STATS_LMDB_PATH;
 use crate::storage::lmdb::LmdbStorage;
 
+use crate::{log_error, log_info, log_warn};
 // Legacy stats file path for migration
 const LEGACY_STATS_FILE: &str = "stats.json";
 
@@ -58,11 +57,15 @@ const STATS_KEY_DAILY_PREFIX: &str = "stats:daily:";
 const STATS_KEY_HOURLY_PREFIX: &str = "stats:hourly:";
 
 pub async fn create_stats_state() -> StatsState {
+    use crate::{log_init_ok_with_details, log_init_failed};
+
     let storage = match LmdbStorage::new(STATS_LMDB_PATH) {
-        Ok(s) => Arc::new(s),
+        Ok(s) => {
+            log_init_ok_with_details!("Statistics Storage", &format!("LMDB at {}", STATS_LMDB_PATH));
+            Arc::new(s)
+        },
         Err(e) => {
-            error!("Failed to create LMDB storage for stats: {}", e);
-            error!("Will not be able to persist statistics");
+            log_init_failed!("Statistics Storage", &format!("LMDB creation failed: {}", e));
             // Create a dummy storage that doesn't persist
             Arc::new(LmdbStorage::new("/tmp/stats_dummy").unwrap_or_else(|_| {
                 // As a last resort, create in-memory storage
@@ -73,7 +76,7 @@ pub async fn create_stats_state() -> StatsState {
 
     // Try to migrate from legacy stats.json if it exists and LMDB is empty
     if let Err(e) = migrate_from_legacy_json(&storage).await {
-        warn!("Failed to migrate legacy stats.json: {}", e);
+        log_warn!("Failed to migrate legacy stats.json: {}", e);
     }
 
     let stats = load_stats_from_lmdb(&storage).await.unwrap_or_default();
@@ -97,17 +100,17 @@ async fn migrate_from_legacy_json(
 
     // Check if LMDB already has data (avoid re-migration)
     if storage.exists(STATS_KEY_TOTAL)? {
-        info!("LMDB already contains statistics data, skipping migration");
+        log_info!("LMDB already contains statistics data, skipping migration");
         return Ok(());
     }
 
-    info!("Found legacy stats.json, migrating to LMDB...");
+    log_info!("Found legacy stats.json, migrating to LMDB...");
 
     // Read and parse legacy JSON file
     let json_data = fs::read_to_string(legacy_path).await?;
     let legacy_stats: TotalStats = serde_json::from_str(&json_data)?;
 
-    info!(
+    log_info!(
         "Migrating {} total requests, {} daily entries, {} hourly entries",
         legacy_stats.total_requests,
         legacy_stats.daily_stats.len(),
@@ -117,18 +120,18 @@ async fn migrate_from_legacy_json(
     // Save to LMDB
     save_stats_to_lmdb(storage, &legacy_stats).await?;
 
-    info!("Successfully migrated statistics from stats.json to LMDB");
+    log_info!("Successfully migrated statistics from stats.json to LMDB");
 
     // Rename the old file to .migrated for backup
     let backup_path = format!("{}.migrated", LEGACY_STATS_FILE);
     if let Err(e) = fs::rename(legacy_path, &backup_path).await {
-        warn!(
+        log_warn!(
             "Failed to rename legacy stats.json to {}: {}",
             backup_path, e
         );
-        warn!("You may want to manually delete or rename stats.json");
+        log_warn!("You may want to manually delete or rename stats.json");
     } else {
-        info!("Renamed legacy stats.json to {}", backup_path);
+        log_info!("Renamed legacy stats.json to {}", backup_path);
     }
 
     Ok(())
@@ -141,14 +144,14 @@ async fn load_stats_from_lmdb(
     let (total_requests, total_bytes_served) =
         match storage.get_json::<(u64, u64)>(STATS_KEY_TOTAL)? {
             Some((req, bytes)) => {
-                info!(
+                log_info!(
                     "Loaded total statistics from LMDB: {} requests, {} bytes",
                     req, bytes
                 );
                 (req, bytes)
             }
             None => {
-                info!("No existing stats in LMDB, starting with empty statistics");
+                log_info!("No existing stats in LMDB, starting with empty statistics");
                 (0, 0)
             }
         };
@@ -163,7 +166,7 @@ async fn load_stats_from_lmdb(
             }
         }
     }
-    info!("Loaded {} daily stats entries from LMDB", daily_stats.len());
+    log_info!("Loaded {} daily stats entries from LMDB", daily_stats.len());
 
     // Load hourly stats
     let mut hourly_stats = HashMap::new();
@@ -175,7 +178,7 @@ async fn load_stats_from_lmdb(
             }
         }
     }
-    info!(
+    log_info!(
         "Loaded {} hourly stats entries from LMDB",
         hourly_stats.len()
     );
@@ -231,7 +234,7 @@ async fn cleanup_old_stats(storage: &Arc<LmdbStorage>, stats: &mut TotalStats) {
     }
 
     if !daily_to_remove.is_empty() {
-        info!(
+        log_info!(
             "Cleaning up {} old daily stats entries",
             daily_to_remove.len()
         );
@@ -240,7 +243,7 @@ async fn cleanup_old_stats(storage: &Arc<LmdbStorage>, stats: &mut TotalStats) {
             // Remove from LMDB as well
             let key = format!("{}{}", STATS_KEY_DAILY_PREFIX, date);
             if let Err(e) = storage.delete(&key) {
-                error!("Failed to delete old daily stat {}: {}", key, e);
+                log_error!("Failed to delete old daily stat {}: {}", key, e);
             }
         }
     }
@@ -254,7 +257,7 @@ async fn cleanup_old_stats(storage: &Arc<LmdbStorage>, stats: &mut TotalStats) {
     }
 
     if !hourly_to_remove.is_empty() {
-        info!(
+        log_info!(
             "Cleaning up {} old hourly stats entries",
             hourly_to_remove.len()
         );
@@ -263,7 +266,7 @@ async fn cleanup_old_stats(storage: &Arc<LmdbStorage>, stats: &mut TotalStats) {
             // Remove from LMDB as well
             let key = format!("{}{}", STATS_KEY_HOURLY_PREFIX, datetime);
             if let Err(e) = storage.delete(&key) {
-                error!("Failed to delete old hourly stat {}: {}", key, e);
+                log_error!("Failed to delete old hourly stat {}: {}", key, e);
             }
         }
     }
@@ -316,7 +319,7 @@ pub async fn record_request(stats_manager: &StatsState, response_size: usize) {
 
         tokio::spawn(async move {
             if let Err(e) = save_stats_to_lmdb(&storage, &stats_copy).await {
-                error!("Failed to save statistics to LMDB: {}", e);
+                log_error!("Failed to save statistics to LMDB: {}", e);
             }
         });
     }
@@ -403,8 +406,8 @@ pub async fn get_stats_response(stats_manager: &StatsState) -> StatsResponse {
 pub async fn save_stats_on_shutdown(stats_manager: &StatsState) {
     let stats_data = get_stats(stats_manager).await;
     if let Err(e) = save_stats_to_lmdb(&stats_manager.storage, &stats_data).await {
-        error!("Failed to save statistics to LMDB on shutdown: {}", e);
+        log_error!("Failed to save statistics to LMDB on shutdown: {}", e);
     } else {
-        info!("Statistics saved successfully to LMDB on shutdown");
+        log_info!("Statistics saved successfully to LMDB on shutdown");
     }
 }

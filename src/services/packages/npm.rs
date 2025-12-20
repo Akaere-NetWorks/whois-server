@@ -20,8 +20,7 @@ use anyhow::{Context, Result};
 use reqwest;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use tracing::{debug, error};
-
+use crate::{log_debug, log_error};
 const NPM_REGISTRY_URL: &str = "https://registry.npmjs.org/";
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -112,7 +111,7 @@ struct NPMDist {
 }
 
 pub async fn process_npm_query(package_name: &str) -> Result<String> {
-    debug!("Processing NPM query for package: {}", package_name);
+    log_debug!("Processing NPM query for package: {}", package_name);
 
     if package_name.is_empty() {
         return Err(anyhow::anyhow!("Package name cannot be empty"));
@@ -160,7 +159,7 @@ pub async fn process_npm_query(package_name: &str) -> Result<String> {
     match query_npm_package(package_name).await {
         Ok(package) => Ok(format_npm_response(&package, package_name)),
         Err(e) => {
-            error!("NPM package query failed for {}: {}", package_name, e);
+            log_error!("NPM package query failed for {}: {}", package_name, e);
             Ok(format_npm_not_found(package_name))
         }
     }
@@ -182,7 +181,7 @@ async fn query_npm_package(package_name: &str) -> Result<NPMPackage> {
     };
     let package_url = format!("{}{}", NPM_REGISTRY_URL, encoded_name);
 
-    debug!("Querying NPM registry: {}", package_url);
+    log_debug!("Querying NPM registry: {}", package_url);
 
     let response = client
         .get(&package_url)

@@ -1,8 +1,6 @@
 #![allow(non_snake_case)]
 
 use anyhow::Result;
-use tracing::debug;
-
 use super::ipinfo_api::query_ipinfo_api;
 use super::meituan::MeituanCombinedResponse;
 use super::types::{
@@ -11,6 +9,7 @@ use super::types::{
 };
 use super::utils::{extract_ip_from_prefix, truncate_string};
 
+use crate::{log_debug};
 /// Format RIR geo location response
 pub fn format_rir_geo_response(resource: &str, response: &RirGeoResponse) -> Result<String> {
     let mut formatted = String::new();
@@ -752,7 +751,7 @@ pub async fn format_prefixes_response(
 
     if let Some(prefixes) = &data.prefixes {
         if !prefixes.is_empty() {
-            debug!(
+            log_debug!(
                 "Processing {} prefixes with concurrent IPinfo queries",
                 prefixes.len()
             );
@@ -774,14 +773,14 @@ pub async fn format_prefixes_response(
                     let _permit = permit.acquire().await
                         .expect("Semaphore should not be closed during operation");
 
-                    debug!(
+                    log_debug!(
                         "Querying IPinfo for IP: {} (from prefix: {})",
                         ip_addr, prefix
                     );
 
                     let (country, as_name) = match query_ipinfo_api(&client, &ip_addr).await {
                         Ok(ipinfo_response) => {
-                            debug!(
+                            log_debug!(
                                 "IPinfo response for {}: as_name={:?}, country={:?}",
                                 ip_addr, ipinfo_response.as_name, ipinfo_response.country
                             );
@@ -798,7 +797,7 @@ pub async fn format_prefixes_response(
                             (country, as_name)
                         }
                         Err(e) => {
-                            debug!("IPinfo query failed for {}: {}", ip_addr, e);
+                            log_debug!("IPinfo query failed for {}: {}", ip_addr, e);
                             ("N/A".to_string(), "N/A".to_string())
                         }
                     };
@@ -815,13 +814,13 @@ pub async fn format_prefixes_response(
                 match task.await {
                     Ok(result) => prefix_data.push(result),
                     Err(e) => {
-                        debug!("Task join error: {}", e);
+                        log_debug!("Task join error: {}", e);
                         // Continue with other results
                     }
                 }
             }
 
-            debug!(
+            log_debug!(
                 "Completed IPinfo queries for {} prefixes",
                 prefix_data.len()
             );

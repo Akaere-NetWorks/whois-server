@@ -3,11 +3,10 @@ use std::net::{ Ipv4Addr, Ipv6Addr };
 use std::path::Path;
 use std::process::Command;
 use tokio::time::{ Duration, interval };
-use tracing::{ debug, error, info, warn };
-
 use crate::config::{ DN42_LMDB_PATH, DN42_REGISTRY_PATH };
 use crate::storage::{ SharedLmdbStorage, create_shared_storage };
 
+use crate::{log_debug, log_error, log_info, log_warn};
 const DN42_REGISTRY_URL: &str = "https://git.pysio.online/pysio/mirrors-dn42.git";
 
 /// DN42 registry manager with LMDB storage
@@ -22,13 +21,13 @@ impl DN42Registry {
             anyhow::anyhow!("Failed to create LMDB storage: {}", e)
         )?;
 
-        info!("DN42Registry created successfully with LMDB storage");
+        log_info!("DN42Registry created successfully with LMDB storage");
         Ok(DN42Registry { storage })
     }
 
     /// Initialize the DN42 registry (sync and populate LMDB)
     pub async fn initialize(&self) -> Result<()> {
-        info!("Initializing DN42 registry with LMDB storage");
+        log_info!("Initializing DN42 registry with LMDB storage");
 
         // Sync the registry from git
         self.sync_registry().await?;
@@ -36,13 +35,13 @@ impl DN42Registry {
         // Populate LMDB with registry data
         self.populate_lmdb().await?;
 
-        info!("DN42 registry initialization completed");
+        log_info!("DN42 registry initialization completed");
         Ok(())
     }
 
     /// Sync DN42 registry from git repository
     async fn sync_registry(&self) -> Result<()> {
-        info!("Starting DN42 registry synchronization from {}", DN42_REGISTRY_URL);
+        log_info!("Starting DN42 registry synchronization from {}", DN42_REGISTRY_URL);
 
         let registry_path = Path::new(DN42_REGISTRY_PATH);
 
@@ -52,33 +51,33 @@ impl DN42Registry {
                 // If directory exists, check if it's a git repository
                 let git_dir = registry_path.join(".git");
                 if git_dir.exists() {
-                    info!("Repository exists, pulling latest changes...");
+                    log_info!("Repository exists, pulling latest changes...");
                     pull_latest_changes()
                 } else {
-                    warn!(
+                    log_warn!(
                         "Directory exists but is not a git repository. Attempting fresh clone..."
                     );
                     // Remove directory and clone fresh
                     if let Err(remove_err) = std::fs::remove_dir_all(registry_path) {
-                        error!("Failed to remove directory: {}", remove_err);
+                        log_error!("Failed to remove directory: {}", remove_err);
                         return Err(anyhow::anyhow!("Failed to remove directory: {}", remove_err));
                     }
                     clone_repository()
                 }
             } else {
                 // Directory doesn't exist, clone repository
-                info!("Repository doesn't exist, cloning from {}", DN42_REGISTRY_URL);
+                log_info!("Repository doesn't exist, cloning from {}", DN42_REGISTRY_URL);
                 clone_repository()
             }
         }).await?;
 
         match result {
             Ok(_) => {
-                info!("DN42 registry synchronization completed successfully");
+                log_info!("DN42 registry synchronization completed successfully");
                 Ok(())
             }
             Err(e) => {
-                error!("DN42 registry synchronization failed: {}", e);
+                log_error!("DN42 registry synchronization failed: {}", e);
                 Err(e)
             }
         }
@@ -86,7 +85,7 @@ impl DN42Registry {
 
     /// Populate LMDB with registry data after git sync
     async fn populate_lmdb(&self) -> Result<()> {
-        info!("Populating LMDB with DN42 registry data");
+        log_info!("Populating LMDB with DN42 registry data");
 
         // Verify the registry directory exists
         let registry_path = Path::new(DN42_REGISTRY_PATH);
@@ -113,7 +112,7 @@ impl DN42Registry {
 
     /// Update the registry and refresh LMDB data (incremental)
     pub async fn update(&self) -> Result<()> {
-        info!("Updating DN42 registry and LMDB data (incremental)");
+        log_info!("Updating DN42 registry and LMDB data (incremental)");
 
         // Sync from git
         self.sync_registry().await?;
@@ -121,14 +120,14 @@ impl DN42Registry {
         // Perform incremental update (no need to clear everything)
         self.populate_lmdb().await?;
 
-        info!("DN42 registry incremental update completed");
+        log_info!("DN42 registry incremental update completed");
         Ok(())
     }
 
     /// Force full refresh of LMDB data (clear and repopulate)
     #[allow(dead_code)]
     pub async fn force_full_refresh(&self) -> Result<()> {
-        info!("Forcing full DN42 registry refresh");
+        log_info!("Forcing full DN42 registry refresh");
 
         // Sync from git
         self.sync_registry().await?;
@@ -141,34 +140,34 @@ impl DN42Registry {
             ::spawn_blocking(move || storage.force_full_refresh(&registry_path_str)).await?
             .map_err(|e| anyhow::anyhow!("Failed to force full LMDB refresh: {}", e))?;
 
-        info!("DN42 registry full refresh completed");
+        log_info!("DN42 registry full refresh completed");
         Ok(())
     }
 
     /// Query DN42 registry data and return formatted response
     pub async fn query(&self, query: &str) -> Result<String> {
-        debug!("DN42: Processing query: {}", query);
+        log_debug!("DN42: Processing query: {}", query);
 
         let mut response = String::new();
         response.push_str(&format!("% Query: {}\n", query));
 
         // Handle different query types
         if let Some(result) = self.handle_ip_query(query).await? {
-            debug!(
+            log_debug!(
                 "DN42: Query '{}' matched as IP query, response length: {} bytes",
                 query,
                 result.len()
             );
             response.push_str(&result);
         } else if let Some(result) = self.handle_object_query(query).await? {
-            debug!(
+            log_debug!(
                 "DN42: Query '{}' matched as object query, response length: {} bytes",
                 query,
                 result.len()
             );
             response.push_str(&result);
         } else {
-            debug!("DN42: Query '{}' did not match any data", query);
+            log_debug!("DN42: Query '{}' did not match any data", query);
             response.push_str("% 404 Not Found\n");
         }
 
@@ -177,7 +176,7 @@ impl DN42Registry {
 
     /// Query DN42 registry and return raw data (for email processing)
     pub async fn query_raw(&self, query: &str) -> Result<String> {
-        debug!("Processing DN42 raw query: {}", query);
+        log_debug!("Processing DN42 raw query: {}", query);
 
         // Handle different query types and return just the content
         if let Some(result) = self.handle_ip_query_raw(query).await? {
@@ -574,7 +573,7 @@ impl DN42Registry {
         ip: Ipv4Addr,
         query_mask: u8
     ) -> Result<Option<String>> {
-        debug!(
+        log_debug!(
             "DN42: Searching for IPv4 network in '{}' for IP {} with mask /{}",
             subdir,
             ip,
@@ -591,14 +590,14 @@ impl DN42Registry {
             let network_str = format!("{}_{}", network_ip, mask);
             let key = format!("{}/{}", subdir, network_str);
 
-            debug!("DN42: Checking IPv4 network: {}", network_str);
+            log_debug!("DN42: Checking IPv4 network: {}", network_str);
             if self.key_exists(&key).await? {
-                debug!("DN42: Found matching IPv4 network: {}", network_str);
+                log_debug!("DN42: Found matching IPv4 network: {}", network_str);
                 return Ok(Some(network_str));
             }
         }
 
-        debug!("DN42: No matching IPv4 network found in '{}' for IP {}", subdir, ip);
+        log_debug!("DN42: No matching IPv4 network found in '{}' for IP {}", subdir, ip);
         Ok(None)
     }
 
@@ -609,7 +608,7 @@ impl DN42Registry {
         ip: Ipv6Addr,
         query_mask: u8
     ) -> Result<Option<String>> {
-        debug!(
+        log_debug!(
             "DN42: Searching for IPv6 network in '{}' for IP {} with mask /{}",
             subdir,
             ip,
@@ -630,20 +629,20 @@ impl DN42Registry {
             let network_str = format!("{}_{}", network_ip, mask);
             let key = format!("{}/{}", subdir, network_str);
 
-            debug!("DN42: Checking IPv6 network: {}", network_str);
+            log_debug!("DN42: Checking IPv6 network: {}", network_str);
             if self.key_exists(&key).await? {
-                debug!("DN42: Found matching IPv6 network: {}", network_str);
+                log_debug!("DN42: Found matching IPv6 network: {}", network_str);
                 return Ok(Some(network_str));
             }
         }
 
-        debug!("DN42: No matching IPv6 network found in '{}' for IP {}", subdir, ip);
+        log_debug!("DN42: No matching IPv6 network found in '{}' for IP {}", subdir, ip);
         Ok(None)
     }
 
     /// Get data from LMDB storage
     async fn get_from_storage(&self, key: &str) -> Result<Option<String>> {
-        debug!("DN42: Requesting data from LMDB for key: {}", key);
+        log_debug!("DN42: Requesting data from LMDB for key: {}", key);
         let storage = self.storage.clone();
         let key_copy = key.to_string();
         let key_for_log = key.to_string();
@@ -652,14 +651,14 @@ impl DN42Registry {
 
         match &result {
             Ok(Some(data)) =>
-                debug!(
+                log_debug!(
                     "DN42: Retrieved data from LMDB for key '{}', length: {} bytes",
                     key_for_log,
                     data.len()
                 ),
-            Ok(None) => debug!("DN42: No data found in LMDB for key: {}", key_for_log),
+            Ok(None) => log_debug!("DN42: No data found in LMDB for key: {}", key_for_log),
             Err(e) =>
-                warn!("DN42: Failed to retrieve data from LMDB for key '{}': {}", key_for_log, e),
+                log_warn!("DN42: Failed to retrieve data from LMDB for key '{}': {}", key_for_log, e),
         }
 
         result
@@ -667,7 +666,7 @@ impl DN42Registry {
 
     /// Check if key exists in LMDB storage
     async fn key_exists(&self, key: &str) -> Result<bool> {
-        debug!("DN42: Checking if key exists in LMDB: {}", key);
+        log_debug!("DN42: Checking if key exists in LMDB: {}", key);
         let storage = self.storage.clone();
         let key_copy = key.to_string();
         let key_for_log = key.to_string();
@@ -675,10 +674,10 @@ impl DN42Registry {
         let result = tokio::task::spawn_blocking(move || storage.exists(&key_copy)).await?;
 
         match &result {
-            Ok(true) => debug!("DN42: Key exists in LMDB: {}", key_for_log),
-            Ok(false) => debug!("DN42: Key does not exist in LMDB: {}", key_for_log),
+            Ok(true) => log_debug!("DN42: Key exists in LMDB: {}", key_for_log),
+            Ok(false) => log_debug!("DN42: Key does not exist in LMDB: {}", key_for_log),
             Err(e) =>
-                warn!("DN42: Error checking key existence in LMDB for '{}': {}", key_for_log, e),
+                log_warn!("DN42: Error checking key existence in LMDB for '{}': {}", key_for_log, e),
         }
 
         result
@@ -698,10 +697,10 @@ fn clone_repository() -> Result<()> {
                     e
                 )
             })?;
-        info!("Created git repository parent directory: {:?}", parent);
+        log_info!("Created git repository parent directory: {:?}", parent);
     }
 
-    info!("Cloning repository from {} to {}", DN42_REGISTRY_URL, DN42_REGISTRY_PATH);
+    log_info!("Cloning repository from {} to {}", DN42_REGISTRY_URL, DN42_REGISTRY_PATH);
 
     // Check if git is available
     let git_check = Command::new("git").args(["--version"]).output();
@@ -709,7 +708,7 @@ fn clone_repository() -> Result<()> {
     match git_check {
         Ok(output) if output.status.success() => {
             let version = String::from_utf8_lossy(&output.stdout);
-            debug!("Git version: {}", version.trim());
+            log_debug!("Git version: {}", version.trim());
         }
         Ok(output) => {
             let stderr = String::from_utf8_lossy(&output.stderr);
@@ -728,12 +727,12 @@ fn clone_repository() -> Result<()> {
         .map_err(|e| anyhow::anyhow!("Failed to execute git clone command: {}", e))?;
 
     if output.status.success() {
-        info!("Successfully cloned DN42 registry to {}", DN42_REGISTRY_PATH);
+        log_info!("Successfully cloned DN42 registry to {}", DN42_REGISTRY_PATH);
 
         // Log any output from git command
         if !output.stdout.is_empty() {
             let stdout = String::from_utf8_lossy(&output.stdout);
-            debug!("Git clone stdout: {}", stdout);
+            log_debug!("Git clone stdout: {}", stdout);
         }
 
         // Verify the data directory exists
@@ -744,14 +743,14 @@ fn clone_repository() -> Result<()> {
             );
         }
 
-        info!("Verified DN42 registry data directory exists: {:?}", data_dir);
+        log_info!("Verified DN42 registry data directory exists: {:?}", data_dir);
         Ok(())
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
         let stdout = String::from_utf8_lossy(&output.stdout);
-        error!("Git clone failed - stderr: {}", stderr);
+        log_error!("Git clone failed - stderr: {}", stderr);
         if !stdout.is_empty() {
-            error!("Git clone failed - stdout: {}", stdout);
+            log_error!("Git clone failed - stdout: {}", stdout);
         }
         Err(anyhow::anyhow!("Git clone failed: {}", stderr))
     }
@@ -759,7 +758,7 @@ fn clone_repository() -> Result<()> {
 
 /// Pull latest changes from the repository using system git command
 fn pull_latest_changes() -> Result<()> {
-    info!("Pulling latest changes from repository");
+    log_info!("Pulling latest changes from repository");
 
     // First, fetch the latest changes
     let fetch_output = Command::new("git")
@@ -769,7 +768,7 @@ fn pull_latest_changes() -> Result<()> {
 
     if !fetch_output.status.success() {
         let stderr = String::from_utf8_lossy(&fetch_output.stderr);
-        error!("Failed to fetch from repository: {}", stderr);
+        log_error!("Failed to fetch from repository: {}", stderr);
         return Err(anyhow::anyhow!("Git fetch failed: {}", stderr));
     }
 
@@ -781,13 +780,13 @@ fn pull_latest_changes() -> Result<()> {
 
     let reset_result = match reset_output {
         Ok(output) if output.status.success() => {
-            info!("Successfully reset to origin/master");
+            log_info!("Successfully reset to origin/master");
             Ok(())
         }
         Ok(output) => {
             // Try origin/main if origin/master failed
             let stderr = String::from_utf8_lossy(&output.stderr);
-            debug!("Reset to origin/master failed: {}, trying origin/main", stderr);
+            log_debug!("Reset to origin/master failed: {}, trying origin/main", stderr);
 
             let main_output = Command::new("git")
                 .args(["reset", "--hard", "origin/main"])
@@ -795,16 +794,16 @@ fn pull_latest_changes() -> Result<()> {
                 .output()?;
 
             if main_output.status.success() {
-                info!("Successfully reset to origin/main");
+                log_info!("Successfully reset to origin/main");
                 Ok(())
             } else {
                 let main_stderr = String::from_utf8_lossy(&main_output.stderr);
-                error!("Failed to reset to origin/main: {}", main_stderr);
+                log_error!("Failed to reset to origin/main: {}", main_stderr);
                 Err(anyhow::anyhow!("Git reset failed: {}", main_stderr))
             }
         }
         Err(e) => {
-            error!("Failed to execute git reset: {}", e);
+            log_error!("Failed to execute git reset: {}", e);
             Err(anyhow::anyhow!("Git reset execution failed: {}", e))
         }
     };
@@ -812,7 +811,7 @@ fn pull_latest_changes() -> Result<()> {
     // Log fetch output if available
     if !fetch_output.stdout.is_empty() {
         let stdout = String::from_utf8_lossy(&fetch_output.stdout);
-        debug!("Git fetch stdout: {}", stdout);
+        log_debug!("Git fetch stdout: {}", stdout);
     }
 
     reset_result
@@ -872,11 +871,11 @@ pub async fn initialize_dn42_system() -> Result<()> {
 
 /// Start the periodic DN42 registry sync task
 pub async fn start_periodic_sync() {
-    info!("Starting periodic DN42 registry sync (every hour)");
+    log_info!("Starting periodic DN42 registry sync (every hour)");
 
     // Initial sync at startup
     if let Err(e) = initialize_dn42_system().await {
-        error!("Initial DN42 registry initialization failed: {}", e);
+        log_error!("Initial DN42 registry initialization failed: {}", e);
     }
 
     // Set up hourly sync
@@ -886,13 +885,13 @@ pub async fn start_periodic_sync() {
     loop {
         interval.tick().await;
 
-        info!("Starting scheduled DN42 registry sync");
+        log_info!("Starting scheduled DN42 registry sync");
         if let Ok(registry) = get_dn42_registry().await {
             if let Err(e) = registry.update().await {
-                error!("Scheduled DN42 registry sync failed: {}", e);
+                log_error!("Scheduled DN42 registry sync failed: {}", e);
             }
         } else {
-            error!("Failed to get DN42 registry instance for scheduled sync");
+            log_error!("Failed to get DN42 registry instance for scheduled sync");
         }
     }
 }

@@ -20,8 +20,7 @@ use anyhow::Result;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
-use tracing::{debug, error};
-
+use crate::{log_debug, log_error};
 /// Wikipedia API response structures
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WikipediaResponse {
@@ -115,7 +114,7 @@ impl WikipediaService {
 
     /// Query Wikipedia article information by title
     pub async fn query_article_info(&self, query: &str) -> Result<String> {
-        debug!("Querying Wikipedia article info for: {}", query);
+        log_debug!("Querying Wikipedia article info for: {}", query);
 
         // First, try to search for the article
         match self.search_article(query).await {
@@ -123,7 +122,7 @@ impl WikipediaService {
                 if !search_results.is_empty() {
                     // Get detailed info for the first search result
                     let first_result = &search_results[0];
-                    debug!("Found article, getting details for: {}", first_result.title);
+                    log_debug!("Found article, getting details for: {}", first_result.title);
                     self.get_article_details(&first_result.title).await
                 } else {
                     Ok(format!(
@@ -133,7 +132,7 @@ impl WikipediaService {
                 }
             }
             Err(e) => {
-                error!("Wikipedia search failed for '{}': {}", query, e);
+                log_error!("Wikipedia search failed for '{}': {}", query, e);
                 Ok(format!(
                     "Wikipedia Query Failed for: {}\nError: {}\n",
                     query, e
@@ -144,7 +143,7 @@ impl WikipediaService {
 
     /// Search for articles by title
     async fn search_article(&self, query: &str) -> Result<Vec<WikipediaSearchResult>> {
-        debug!("Searching Wikipedia for: {}", query);
+        log_debug!("Searching Wikipedia for: {}", query);
 
         let params = [
             ("action", "query"),
@@ -165,14 +164,14 @@ impl WikipediaService {
             .await?;
 
         let status = response.status();
-        debug!("Wikipedia search response status: {}", status);
+        log_debug!("Wikipedia search response status: {}", status);
 
         if !status.is_success() {
             let error_text = response
                 .text()
                 .await
                 .unwrap_or_else(|_| "Unable to read error response".to_string());
-            debug!("Wikipedia search error response: {}", error_text);
+            log_debug!("Wikipedia search error response: {}", error_text);
             return Err(anyhow::anyhow!(
                 "Search request failed: {} - {}",
                 status,
@@ -181,7 +180,7 @@ impl WikipediaService {
         }
 
         let response_text = response.text().await?;
-        debug!(
+        log_debug!(
             "Wikipedia search response body: {}",
             &response_text[..std::cmp::min(500, response_text.len())]
         );
@@ -207,7 +206,7 @@ impl WikipediaService {
 
     /// Get detailed article information by page title
     async fn get_article_details(&self, title: &str) -> Result<String> {
-        debug!("Getting article details for: {}", title);
+        log_debug!("Getting article details for: {}", title);
 
         let params = [
             ("action", "query"),
@@ -232,14 +231,14 @@ impl WikipediaService {
             .await?;
 
         let status = response.status();
-        debug!("Wikipedia details response status: {}", status);
+        log_debug!("Wikipedia details response status: {}", status);
 
         if !status.is_success() {
             let error_text = response
                 .text()
                 .await
                 .unwrap_or_else(|_| "Unable to read error response".to_string());
-            debug!("Wikipedia details error response: {}", error_text);
+            log_debug!("Wikipedia details error response: {}", error_text);
             return Err(anyhow::anyhow!(
                 "Details request failed: {} - {}",
                 status,
@@ -248,7 +247,7 @@ impl WikipediaService {
         }
 
         let response_text = response.text().await?;
-        debug!(
+        log_debug!(
             "Wikipedia details response body: {}",
             &response_text[..std::cmp::min(500, response_text.len())]
         );
@@ -470,7 +469,7 @@ pub async fn process_wikipedia_query(query: &str) -> Result<String> {
     let wikipedia_service = WikipediaService::new();
 
     if let Some(article_query) = WikipediaService::parse_wikipedia_query(query) {
-        debug!("Processing Wikipedia query for: {}", article_query);
+        log_debug!("Processing Wikipedia query for: {}", article_query);
 
         if article_query.is_empty() {
             return Ok(
@@ -480,7 +479,7 @@ pub async fn process_wikipedia_query(query: &str) -> Result<String> {
 
         wikipedia_service.query_article_info(&article_query).await
     } else {
-        error!("Invalid Wikipedia query format: {}", query);
+        log_error!("Invalid Wikipedia query format: {}", query);
         Ok(format!(
             "Invalid Wikipedia query format. Use: <article_name>-WIKIPEDIA\nExample: Rust-WIKIPEDIA\nQuery: {}\n",
             query

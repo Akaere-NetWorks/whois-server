@@ -1,8 +1,7 @@
 use anyhow::Result;
 use serde::Deserialize;
 use std::time::Duration;
-use tracing::debug;
-
+use crate::{log_debug};
 /// IRR Explorer API response structures
 #[derive(Debug, Deserialize)]
 pub struct IrrResponse {
@@ -85,7 +84,7 @@ pub struct Message {
 
 /// Process IRR Explorer queries ending with -IRR
 pub async fn process_irr_query(resource: &str) -> Result<String> {
-    debug!("Processing IRR Explorer query for: {}", resource);
+    log_debug!("Processing IRR Explorer query for: {}", resource);
 
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(10))
@@ -104,7 +103,7 @@ async fn query_irr_explorer_api(
         "https://irrexplorer.nlnog.net/api/prefixes/prefix/{}",
         urlencoding::encode(resource)
     );
-    debug!("IRR Explorer API URL: {}", url);
+    log_debug!("IRR Explorer API URL: {}", url);
 
     let response = client
         .get(&url)

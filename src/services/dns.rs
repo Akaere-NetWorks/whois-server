@@ -3,8 +3,7 @@ use rand::random;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use tokio::net::UdpSocket;
 use tokio::time::{Duration, timeout};
-use tracing::{debug, error, warn};
-
+use crate::{log_debug, log_error, log_warn};
 /// DNS message header
 #[derive(Debug)]
 struct DnsHeader {
@@ -94,13 +93,13 @@ impl DnsService {
         // Use Cloudflare DNS (1.1.1.1) as fixed DNS server
         let root_servers = vec!["1.1.1.1:53".parse()?];
 
-        debug!("DNS resolver initialized with fixed 1.1.1.1 DNS server");
+        log_debug!("DNS resolver initialized with fixed 1.1.1.1 DNS server");
         Ok(Self { root_servers })
     }
 
     /// Perform DNS query for domain names
     pub async fn query_dns(&self, domain: &str) -> Result<String> {
-        debug!("Performing recursive DNS query for domain: {}", domain);
+        log_debug!("Performing recursive DNS query for domain: {}", domain);
 
         let mut output = String::new();
 
@@ -126,7 +125,7 @@ impl DnsService {
                     }
                 }
                 Err(e) => {
-                    debug!(
+                    log_debug!(
                         "Failed to resolve {} records for {}: {}",
                         type_name, domain, e
                     );
@@ -143,7 +142,7 @@ impl DnsService {
             );
         }
 
-        debug!(
+        log_debug!(
             "DNS query completed for {}, result length: {} bytes",
             domain,
             output.len()
@@ -153,14 +152,14 @@ impl DnsService {
 
     /// Perform reverse DNS lookup for IP addresses
     pub async fn query_rdns(&self, ip: IpAddr) -> Result<String> {
-        debug!("Performing recursive reverse DNS query for IP: {}", ip);
+        log_debug!("Performing recursive reverse DNS query for IP: {}", ip);
 
         let ptr_name = match ip {
             IpAddr::V4(ipv4) => self.create_ipv4_ptr_name(ipv4),
             IpAddr::V6(ipv6) => self.create_ipv6_ptr_name(ipv6),
         };
 
-        debug!("Generated PTR name: {}", ptr_name);
+        log_debug!("Generated PTR name: {}", ptr_name);
 
         match self.resolve_recursive(&ptr_name, 12).await {
             // 12 = PTR record type
@@ -176,7 +175,7 @@ impl DnsService {
                 if output.lines().count() <= 3 {
                     output = format!("No reverse DNS record found for IP: {}\n", ip);
                 }
-                debug!(
+                log_debug!(
                     "rDNS query completed for {}, result length: {} bytes",
                     ip,
                     output.len()
@@ -184,7 +183,7 @@ impl DnsService {
                 Ok(output)
             }
             Err(e) => {
-                warn!("Failed to query PTR records for {}: {}", ip, e);
+                log_warn!("Failed to query PTR records for {}: {}", ip, e);
                 Ok(format!("Reverse DNS lookup failed for {}: {}\n", ip, e))
             }
         }
@@ -217,7 +216,7 @@ impl DnsService {
 
     /// Recursive DNS resolution
     async fn resolve_recursive(&self, domain: &str, qtype: u16) -> Result<Vec<DnsRecord>> {
-        debug!(
+        log_debug!(
             "Starting recursive resolution for {} (type {})",
             domain, qtype
         );
@@ -233,7 +232,7 @@ impl DnsService {
             }
 
             depth += 1;
-            debug!(
+            log_debug!(
                 "Recursion depth: {}, querying {} servers",
                 depth,
                 nameservers.len()
@@ -245,7 +244,7 @@ impl DnsService {
             for ns in &nameservers {
                 match self.query_server(*ns, domain, qtype).await {
                     Ok(response) => {
-                        debug!(
+                        log_debug!(
                             "Got response from {}: {} answers, {} authority, {} additional",
                             ns,
                             response.answers.len(),
@@ -265,7 +264,7 @@ impl DnsService {
                         }
                     }
                     Err(e) => {
-                        debug!("Failed to query {}: {}", ns, e);
+                        log_debug!("Failed to query {}: {}", ns, e);
                         continue;
                     }
                 }
@@ -306,7 +305,7 @@ impl DnsService {
         packet.extend_from_slice(&(1u16).to_be_bytes()); // QCLASS (IN)
 
         // Send query with timeout
-        debug!(
+        log_debug!(
             "Sending DNS query to {} for {} (type {})",
             server, domain, qtype
         );
@@ -343,7 +342,7 @@ impl DnsService {
         }
 
         let header = DnsHeader::from_bytes(buffer)?;
-        debug!(
+        log_debug!(
             "Parsed DNS header: {} answers, {} authority, {} additional",
             header.ancount, header.nscount, header.arcount
         );
@@ -656,22 +655,22 @@ pub async fn process_dns_query(query: &str) -> Result<String> {
         query
     };
 
-    debug!("Processing DNS query for: {}", clean_query);
+    log_debug!("Processing DNS query for: {}", clean_query);
 
     // Check if it's an IP address (for rDNS)
     if let Some(ip) = DnsService::parse_ip_address(clean_query) {
-        debug!("Detected IP address, performing reverse DNS lookup");
+        log_debug!("Detected IP address, performing reverse DNS lookup");
         return dns_service.query_rdns(ip).await;
     }
 
     // Check if it's a domain name (for DNS)
     if DnsService::is_domain_name(clean_query) {
-        debug!("Detected domain name, performing DNS lookup");
+        log_debug!("Detected domain name, performing DNS lookup");
         return dns_service.query_dns(clean_query).await;
     }
 
     // Neither IP nor valid domain
-    error!("Invalid DNS query format: {}", clean_query);
+    log_error!("Invalid DNS query format: {}", clean_query);
     Ok(format!(
         "Invalid DNS query format. Please provide a valid domain name or IP address.\nQuery: {}\n",
         clean_query

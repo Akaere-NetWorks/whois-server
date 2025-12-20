@@ -1,11 +1,10 @@
 use anyhow::Result;
 use reqwest::Client;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use tracing::{debug, error, info, warn};
-
 use crate::config::DN42_LMDB_PATH;
 use crate::storage::{SharedLmdbStorage, create_shared_storage};
 
+use crate::{log_debug, log_error, log_info, log_warn};
 const DN42_RAW_BASE_URL: &str = "https://git.pysio.online/pysio/mirrors-dn42/-/raw/master/data";
 const CACHE_EXPIRATION_SECONDS: u64 = 86400; // 1 day
 const CACHE_PREFIX: &str = "online_cache:";
@@ -36,7 +35,7 @@ impl DN42OnlineFetcher {
 
     /// Initialize the online fetcher (create cache database)
     pub async fn initialize(&mut self) -> Result<()> {
-        info!("Initializing DN42 online fetcher with LMDB cache");
+        log_info!("Initializing DN42 online fetcher with LMDB cache");
 
         // Test LMDB storage access
         let test_key = format!("{}test", CACHE_PREFIX);
@@ -46,7 +45,7 @@ impl DN42OnlineFetcher {
             .await?
             .map_err(|e| anyhow::anyhow!("Failed to test LMDB cache storage: {}", e))?;
 
-        info!("DN42 online fetcher initialized successfully with LMDB cache");
+        log_info!("DN42 online fetcher initialized successfully with LMDB cache");
         Ok(())
     }
 
@@ -80,12 +79,12 @@ impl DN42OnlineFetcher {
         .await??;
 
         if let Some(cached_content) = cache_result {
-            debug!("DN42 Online: Cache hit for {}/{}", object_type, file_name);
+            log_debug!("DN42 Online: Cache hit for {}/{}", object_type, file_name);
             return Ok(Some(cached_content));
         }
 
         // Fetch from online
-        debug!(
+        log_debug!(
             "DN42 Online: Fetching {}/{} from remote",
             object_type, file_name
         );
@@ -96,7 +95,7 @@ impl DN42OnlineFetcher {
                 if response.status().is_success() {
                     match response.text().await {
                         Ok(content) => {
-                            info!(
+                            log_info!(
                                 "DN42 Online: Successfully fetched {}/{}, size: {} bytes",
                                 object_type,
                                 file_name,
@@ -121,7 +120,7 @@ impl DN42OnlineFetcher {
                             Ok(Some(content))
                         }
                         Err(e) => {
-                            warn!(
+                            log_warn!(
                                 "DN42 Online: Failed to read response body for {}/{}: {}",
                                 object_type, file_name, e
                             );
@@ -129,10 +128,10 @@ impl DN42OnlineFetcher {
                         }
                     }
                 } else if response.status().as_u16() == 404 {
-                    debug!("DN42 Online: File not found: {}/{}", object_type, file_name);
+                    log_debug!("DN42 Online: File not found: {}/{}", object_type, file_name);
                     Ok(None)
                 } else {
-                    warn!(
+                    log_warn!(
                         "DN42 Online: HTTP error {} for {}/{}",
                         response.status(),
                         object_type,
@@ -142,7 +141,7 @@ impl DN42OnlineFetcher {
                 }
             }
             Err(e) => {
-                error!(
+                log_error!(
                     "DN42 Online: Network error fetching {}/{}: {}",
                     object_type, file_name, e
                 );
@@ -158,7 +157,7 @@ impl DN42OnlineFetcher {
         ip: std::net::Ipv4Addr,
         query_mask: u8,
     ) -> Result<Option<String>> {
-        debug!(
+        log_debug!(
             "DN42 Online: Searching for IPv4 network in '{}' for IP {} with mask /{}",
             object_type, ip, query_mask
         );
@@ -175,14 +174,14 @@ impl DN42OnlineFetcher {
             let network_ip = std::net::Ipv4Addr::from(network_int);
             let network_str = format!("{},{}", network_ip, mask);
 
-            debug!("DN42 Online: Checking IPv4 network file: {}", network_str);
+            log_debug!("DN42 Online: Checking IPv4 network file: {}", network_str);
             if let Some(content) = self.fetch_file(object_type, &network_str).await? {
-                debug!("DN42 Online: Found matching IPv4 network: {}", network_str);
+                log_debug!("DN42 Online: Found matching IPv4 network: {}", network_str);
                 return Ok(Some(content));
             }
         }
 
-        debug!(
+        log_debug!(
             "DN42 Online: No matching IPv4 network found in '{}' for IP {}",
             object_type, ip
         );
@@ -196,7 +195,7 @@ impl DN42OnlineFetcher {
         ip: std::net::Ipv6Addr,
         query_mask: u8,
     ) -> Result<Option<String>> {
-        debug!(
+        log_debug!(
             "DN42 Online: Searching for IPv6 network in '{}' for IP {} with mask /{}",
             object_type, ip, query_mask
         );
@@ -213,14 +212,14 @@ impl DN42OnlineFetcher {
             let network_ip = std::net::Ipv6Addr::from(network_int);
             let network_str = format!("{},{}", network_ip, mask);
 
-            debug!("DN42 Online: Checking IPv6 network file: {}", network_str);
+            log_debug!("DN42 Online: Checking IPv6 network file: {}", network_str);
             if let Some(content) = self.fetch_file(object_type, &network_str).await? {
-                debug!("DN42 Online: Found matching IPv6 network: {}", network_str);
+                log_debug!("DN42 Online: Found matching IPv6 network: {}", network_str);
                 return Ok(Some(content));
             }
         }
 
-        debug!(
+        log_debug!(
             "DN42 Online: No matching IPv6 network found in '{}' for IP {}",
             object_type, ip
         );
@@ -229,7 +228,7 @@ impl DN42OnlineFetcher {
 
     /// Cleanup expired cache entries from LMDB
     pub async fn cleanup_cache(&mut self) -> Result<()> {
-        info!("DN42 Online: Starting LMDB cache cleanup");
+        log_info!("DN42 Online: Starting LMDB cache cleanup");
         let current_time = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
 
         let storage = self.storage.clone();
@@ -262,16 +261,16 @@ impl DN42OnlineFetcher {
         match cleanup_result {
             Ok(removed_count) => {
                 if removed_count > 0 {
-                    info!(
+                    log_info!(
                         "DN42 Online: Cache cleanup completed, removed {} expired entries",
                         removed_count
                     );
                 } else {
-                    debug!("DN42 Online: Cache cleanup completed, no expired entries found");
+                    log_debug!("DN42 Online: Cache cleanup completed, no expired entries found");
                 }
             }
             Err(e) => {
-                warn!("DN42 Online: Cache cleanup failed: {}", e);
+                log_warn!("DN42 Online: Cache cleanup failed: {}", e);
             }
         }
 

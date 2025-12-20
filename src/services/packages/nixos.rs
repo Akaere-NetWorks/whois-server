@@ -19,8 +19,7 @@
 use anyhow::{Context, Result};
 use reqwest;
 use serde::{Deserialize, Serialize};
-use tracing::{debug, error};
-
+use crate::{log_debug, log_error};
 const NIXOS_SEARCH_API: &str = "https://search.nixos.org/packages";
 const NIXOS_SEARCH_URL: &str = "https://search.nixos.org/packages?query=";
 
@@ -60,7 +59,7 @@ struct NixOSMaintainer {
 }
 
 pub async fn process_nixos_query(package_name: &str) -> Result<String> {
-    debug!("Processing NixOS query for package: {}", package_name);
+    log_debug!("Processing NixOS query for package: {}", package_name);
 
     if package_name.is_empty() {
         return Err(anyhow::anyhow!("Package name cannot be empty"));
@@ -80,7 +79,7 @@ pub async fn process_nixos_query(package_name: &str) -> Result<String> {
             }
         }
         Err(e) => {
-            error!("NixOS packages query failed for {}: {}", package_name, e);
+            log_error!("NixOS packages query failed for {}: {}", package_name, e);
             Ok(format_nixos_not_found(package_name))
         }
     }
@@ -103,7 +102,7 @@ async fn query_nixos_packages(package_name: &str) -> Result<NixOSSearchResponse>
         urlencoding::encode(package_name)
     );
 
-    debug!("Querying NixOS search web page: {}", search_url);
+    log_debug!("Querying NixOS search web page: {}", search_url);
 
     let response = client
         .get(&search_url)

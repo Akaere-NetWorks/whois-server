@@ -19,8 +19,7 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
-use tracing::{debug, error, warn};
-
+use crate::{log_debug, log_error, log_warn};
 /// Steam API response structures
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SteamAppDetails {
@@ -235,7 +234,7 @@ impl SteamService {
         // Try to get API key from environment variable (including from .env file)
         let api_key = std::env::var("STEAM_API_KEY").ok();
         if api_key.is_none() {
-            warn!(
+            log_warn!(
                 "STEAM_API_KEY not found in environment variables or .env file - user profile queries will be limited"
             );
         }
@@ -245,7 +244,7 @@ impl SteamService {
 
     /// Query Steam application information
     pub async fn query_app_info(&self, app_id: u32) -> Result<String> {
-        debug!("Querying Steam app info for ID: {}", app_id);
+        log_debug!("Querying Steam app info for ID: {}", app_id);
 
         let url = format!(
             "https://store.steampowered.com/api/appdetails?appids={}&l=english",
@@ -291,7 +290,7 @@ impl SteamService {
                             }
                         }
                         Err(e) => {
-                            error!("Failed to parse Steam app data for {}: {}", app_id, e);
+                            log_error!("Failed to parse Steam app data for {}: {}", app_id, e);
                             Ok(format!(
                                 "Steam App Query Failed for ID: {}\nData parsing error: {}\n",
                                 app_id, e
@@ -306,7 +305,7 @@ impl SteamService {
                 }
             }
             Err(e) => {
-                error!(
+                log_error!(
                     "Failed to parse Steam API response for app {}: {}",
                     app_id, e
                 );
@@ -320,7 +319,7 @@ impl SteamService {
 
     /// Query Steam user profile information
     pub async fn query_user_info(&self, steam_id: &str) -> Result<String> {
-        debug!("Querying Steam user info for ID: {}", steam_id);
+        log_debug!("Querying Steam user info for ID: {}", steam_id);
 
         if let Some(api_key) = &self.api_key {
             let url = format!(
@@ -352,7 +351,7 @@ impl SteamService {
                     }
                 }
                 Err(e) => {
-                    error!("Failed to parse Steam user data for {}: {}", steam_id, e);
+                    log_error!("Failed to parse Steam user data for {}: {}", steam_id, e);
                     Ok(format!(
                         "Steam User Query Failed for ID: {}\nData parsing error: {}\n",
                         steam_id, e
@@ -372,13 +371,13 @@ impl SteamService {
 
     /// Search Steam games by name (fuzzy search)
     pub async fn search_games(&self, query: &str, limit: usize) -> Result<String> {
-        debug!("Searching Steam games for query: {}", query);
+        log_debug!("Searching Steam games for query: {}", query);
 
         // First try the Steam store search API (unofficial but works well)
         match self.search_games_via_store_api(query, limit).await {
             Ok(results) => Ok(results),
             Err(store_error) => {
-                debug!(
+                log_debug!(
                     "Store API search failed, trying app list fallback: {}",
                     store_error
                 );
@@ -876,25 +875,25 @@ pub async fn process_steam_query(query: &str) -> Result<String> {
     let steam_service = SteamService::new();
 
     if let Some(steam_query) = SteamService::parse_steam_query(query) {
-        debug!("Processing Steam query for: {}", steam_query);
+        log_debug!("Processing Steam query for: {}", steam_query);
 
         // Try to determine if this is an app ID or user ID
         if SteamService::is_likely_app_id(&steam_query) {
             // Try parsing as app ID first
             if let Ok(app_id) = steam_query.parse::<u32>() {
-                debug!("Treating as Steam App ID: {}", app_id);
+                log_debug!("Treating as Steam App ID: {}", app_id);
                 return steam_service.query_app_info(app_id).await;
             }
         }
 
         // If not clearly an app ID, treat as user ID/username
-        debug!("Treating as Steam User ID: {}", steam_query);
+        log_debug!("Treating as Steam User ID: {}", steam_query);
 
         // For custom URLs, we'd need to resolve them to Steam IDs first
         // For now, assume it's already a Steam ID
         steam_service.query_user_info(&steam_query).await
     } else {
-        error!("Invalid Steam query format: {}", query);
+        log_error!("Invalid Steam query format: {}", query);
         Ok(format!(
             "Invalid Steam query format. Use: <app_id>-STEAM or <steam_id>-STEAM\nQuery: {}\n",
             query
@@ -907,7 +906,7 @@ pub async fn process_steam_search_query(query: &str) -> Result<String> {
     let steam_service = SteamService::new();
 
     if let Some(search_query) = SteamService::parse_steam_search_query(query) {
-        debug!("Processing Steam search query for: {}", search_query);
+        log_debug!("Processing Steam search query for: {}", search_query);
 
         if search_query.is_empty() {
             return Ok(
@@ -918,7 +917,7 @@ pub async fn process_steam_search_query(query: &str) -> Result<String> {
         // Search for games with a limit of 10 results
         steam_service.search_games(&search_query, 10).await
     } else {
-        error!("Invalid Steam search query format: {}", query);
+        log_error!("Invalid Steam search query format: {}", query);
         Ok(format!(
             "Invalid Steam search query format. Use: <search_term>-STEAMSEARCH\nExample: Counter-Strike-STEAMSEARCH\nQuery: {}\n",
             query

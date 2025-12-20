@@ -1,8 +1,7 @@
 use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
-use tracing::debug;
-
+use crate::{log_debug};
 // RIPE STAT Looking Glass API
 const RIPE_STAT_API_BASE: &str = "https://stat.ripe.net";
 
@@ -43,13 +42,13 @@ struct PeerData {
 
 /// Process Looking Glass queries ending with -LG (async version)
 pub async fn process_looking_glass_query(resource: &str) -> Result<String> {
-    debug!("Processing Looking Glass query for: {}", resource);
+    log_debug!("Processing Looking Glass query for: {}", resource);
 
     let url = format!(
         "{}/data/looking-glass/data.json?resource={}",
         RIPE_STAT_API_BASE, resource
     );
-    debug!("Requesting URL: {}", url);
+    log_debug!("Requesting URL: {}", url);
 
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(10))

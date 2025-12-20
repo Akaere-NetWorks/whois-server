@@ -20,8 +20,7 @@ use anyhow::{Context, Result};
 use reqwest;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use tracing::{debug, error};
-
+use crate::{log_debug, log_error};
 const CRATES_IO_API_URL: &str = "https://crates.io/api/v1/crates/";
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -100,7 +99,7 @@ struct CrateCategory {
 }
 
 pub async fn process_cargo_query(crate_name: &str) -> Result<String> {
-    debug!("Processing Cargo query for crate: {}", crate_name);
+    log_debug!("Processing Cargo query for crate: {}", crate_name);
 
     if crate_name.is_empty() {
         return Err(anyhow::anyhow!("Crate name cannot be empty"));
@@ -120,7 +119,7 @@ pub async fn process_cargo_query(crate_name: &str) -> Result<String> {
     match query_crates_io_crate(crate_name).await {
         Ok(crate_data) => Ok(format_cargo_response(&crate_data, crate_name)),
         Err(e) => {
-            error!("Cargo crate query failed for {}: {}", crate_name, e);
+            log_error!("Cargo crate query failed for {}: {}", crate_name, e);
             Ok(format_cargo_not_found(crate_name))
         }
     }
@@ -135,7 +134,7 @@ async fn query_crates_io_crate(crate_name: &str) -> Result<CratesResponse> {
 
     let crate_url = format!("{}{}", CRATES_IO_API_URL, urlencoding::encode(crate_name));
 
-    debug!("Querying crates.io API: {}", crate_url);
+    log_debug!("Querying crates.io API: {}", crate_url);
 
     let response = client
         .get(&crate_url)

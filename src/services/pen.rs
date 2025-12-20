@@ -1,9 +1,8 @@
 use crate::storage::lmdb::LmdbStorage;
+use crate::{log_debug, log_info, log_warn};
 use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
-use tracing::{debug, info, warn};
-
 /// IANA Private Enterprise Number entry
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PenEntry {
@@ -116,7 +115,7 @@ impl PenService {
 
     /// Force update cache data
     pub async fn force_update(&self) -> Result<()> {
-        info!("Force updating IANA Private Enterprise Numbers data...");
+        log_info!("Force updating IANA Private Enterprise Numbers data...");
 
         // Download the file content
         let content = self.download_pen_data().await?;
@@ -136,7 +135,7 @@ impl PenService {
         let last_update_key = "pen_last_update";
         self.storage.put_json(last_update_key, &now)?;
 
-        info!("PEN cache updated successfully");
+        log_info!("PEN cache updated successfully");
         Ok(())
     }
 
@@ -147,18 +146,18 @@ impl PenService {
         // Try cache first
         match self.storage.get_json::<PenEntry>(&cache_key) {
             Ok(Some(entry)) if !entry.is_expired() => {
-                debug!("PEN cache hit for number {}", number);
+                log_debug!("PEN cache hit for number {}", number);
                 return Ok(Some(entry.to_whois_format()));
             }
             Ok(Some(_)) => {
-                debug!("PEN cache entry expired for number {}", number);
+                log_debug!("PEN cache entry expired for number {}", number);
                 let _ = self.storage.delete(&cache_key);
             }
             Ok(None) => {
-                debug!("PEN cache miss for number {}", number);
+                log_debug!("PEN cache miss for number {}", number);
             }
             Err(e) => {
-                warn!("Failed to read PEN cache for number {}: {}", number, e);
+                log_warn!("Failed to read PEN cache for number {}: {}", number, e);
             }
         }
 
@@ -236,19 +235,19 @@ impl PenService {
             return Ok(());
         }
 
-        debug!("PEN entries not found, checking for cached file");
+        log_debug!("PEN entries not found, checking for cached file");
 
         // Check if we have cached file content
         let file_cache_key = "pen_file_content";
         if let Ok(Some(content)) = self.storage.get(file_cache_key) {
-            debug!("Re-parsing PEN data from cached file");
+            log_debug!("Re-parsing PEN data from cached file");
             self.parse_pen_data_batched(&content).await?;
             return Ok(());
         }
 
         // No cached data at all, need to download
         // This should only happen if the periodic update task hasn't run yet
-        warn!("No PEN cache found, triggering initial download");
+        log_warn!("No PEN cache found, triggering initial download");
         self.force_update().await?;
 
         Ok(())
@@ -289,7 +288,7 @@ impl PenService {
             {
                 // We have file cache but no parsed entries, re-parse
                 if let Ok(Some(content)) = self.storage.get(file_cache_key) {
-                    debug!("Re-parsing PEN data from cached file");
+                    log_debug!("Re-parsing PEN data from cached file");
                     self.parse_pen_data_batched(&content).await?;
                 }
             }
@@ -300,7 +299,7 @@ impl PenService {
 
     /// Download PEN data from IANA with custom User-Agent
     async fn download_pen_data(&self) -> Result<String> {
-        info!(
+        log_info!(
             "Downloading IANA Private Enterprise Numbers from {}",
             self.data_url
         );
@@ -319,7 +318,7 @@ impl PenService {
         }
 
         let content = response.text().await?;
-        info!("Downloaded {} bytes of PEN data", content.len());
+        log_info!("Downloaded {} bytes of PEN data", content.len());
 
         Ok(content)
     }
@@ -386,7 +385,7 @@ impl PenService {
                         // Process batch when it reaches batch_size
                         if batch_entries.len() >= batch_size {
                             self.store_batch(&batch_entries).await?;
-                            info!("Cached {} PEN entries (batch processed)", count);
+                            log_info!("Cached {} PEN entries (batch processed)", count);
                             batch_entries.clear();
                         }
 
@@ -404,7 +403,7 @@ impl PenService {
             self.store_batch(&batch_entries).await?;
         }
 
-        info!("Successfully cached {} PEN entries (total)", count);
+        log_info!("Successfully cached {} PEN entries (total)", count);
         Ok(())
     }
 
@@ -412,7 +411,7 @@ impl PenService {
     async fn store_batch(&self, entries: &[(String, PenEntry)]) -> Result<()> {
         for (cache_key, entry) in entries {
             if let Err(e) = self.storage.put_json(cache_key, entry) {
-                warn!("Failed to cache PEN entry for key {}: {}", cache_key, e);
+                log_warn!("Failed to cache PEN entry for key {}: {}", cache_key, e);
             }
         }
         // Yield to allow other tasks to run
@@ -476,7 +475,7 @@ pub async fn pen_update_cache() -> Result<()> {
         )
         .is_err()
     {
-        info!("PEN cache update already in progress, skipping");
+        log_info!("PEN cache update already in progress, skipping");
         return Ok(());
     }
 
@@ -496,24 +495,24 @@ pub async fn pen_update_cache() -> Result<()> {
 pub async fn start_pen_periodic_update() {
     use tokio::time::{Duration, interval};
 
-    info!("Starting PEN periodic update task (checking every hour)");
+    log_info!("Starting PEN periodic update task (checking every hour)");
 
     // Immediately check and update on startup
-    info!("PEN: Performing initial cache check on startup");
+    log_info!("PEN: Performing initial cache check on startup");
     match pen_needs_update().await {
         Ok(true) => {
-            info!("PEN cache needs initial update, starting download...");
+            log_info!("PEN cache needs initial update, starting download...");
             if let Err(e) = pen_update_cache().await {
-                warn!("Failed to perform initial PEN cache update: {}", e);
+                log_warn!("Failed to perform initial PEN cache update: {}", e);
             } else {
-                info!("PEN cache initial update completed successfully");
+                log_info!("PEN cache initial update completed successfully");
             }
         }
         Ok(false) => {
-            info!("PEN cache is up to date on startup");
+            log_info!("PEN cache is up to date on startup");
         }
         Err(e) => {
-            warn!("Failed to check PEN update status on startup: {}", e);
+            log_warn!("Failed to check PEN update status on startup: {}", e);
         }
     }
 
@@ -525,18 +524,18 @@ pub async fn start_pen_periodic_update() {
 
         match pen_needs_update().await {
             Ok(true) => {
-                info!("PEN cache needs update, starting update...");
+                log_info!("PEN cache needs update, starting update...");
                 if let Err(e) = pen_update_cache().await {
-                    warn!("Failed to update PEN cache: {}", e);
+                    log_warn!("Failed to update PEN cache: {}", e);
                 } else {
-                    info!("PEN cache updated successfully");
+                    log_info!("PEN cache updated successfully");
                 }
             }
             Ok(false) => {
-                debug!("PEN cache is up to date");
+                log_debug!("PEN cache is up to date");
             }
             Err(e) => {
-                warn!("Failed to check PEN update status: {}", e);
+                log_warn!("Failed to check PEN update status: {}", e);
             }
         }
     }

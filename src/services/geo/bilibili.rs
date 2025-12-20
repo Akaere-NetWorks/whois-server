@@ -1,12 +1,11 @@
 use anyhow::Result;
 use reqwest::Client;
-use tracing::{debug, warn};
-
 use super::types::BilibiliIpResponse;
 
+use crate::{log_debug, log_warn};
 /// Query BiliBili API for geo-location information (async version)
 pub async fn query_bilibili(client: &Client, ip: &str) -> Result<BilibiliIpResponse> {
-    debug!("Querying BiliBili API for: {}", ip);
+    log_debug!("Querying BiliBili API for: {}", ip);
 
     let url = format!(
         "https://api.live.bilibili.com/client/v1/Ip/getInfoNew?ip={}",
@@ -21,7 +20,7 @@ pub async fn query_bilibili(client: &Client, ip: &str) -> Result<BilibiliIpRespo
         .await?;
 
     if !response.status().is_success() {
-        warn!(
+        log_warn!(
             "BiliBili API returned non-success status: {}",
             response.status()
         );
@@ -32,13 +31,13 @@ pub async fn query_bilibili(client: &Client, ip: &str) -> Result<BilibiliIpRespo
     }
 
     let body = response.text().await?;
-    debug!("BiliBili API response body: {}", body);
+    log_debug!("BiliBili API response body: {}", body);
 
     let api_response: BilibiliIpResponse = serde_json::from_str(&body)
         .map_err(|e| anyhow::anyhow!("Failed to parse BiliBili API response: {}", e))?;
 
     if api_response.code != 0 {
-        warn!("BiliBili API returned error code: {}", api_response.code);
+        log_warn!("BiliBili API returned error code: {}", api_response.code);
         return Err(anyhow::anyhow!(
             "BiliBili API returned error: {} - {}",
             api_response.code,

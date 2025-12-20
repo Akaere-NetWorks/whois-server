@@ -1,8 +1,7 @@
 use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
-use tracing::debug;
-
+use crate::{log_debug};
 // RPKI API
 const RPKI_API_BASE: &str = "https://rpki.akae.re/api/v1/validity";
 
@@ -50,10 +49,10 @@ pub struct Vrp {
 
 /// Process RPKI queries in format prefix-asn-RPKI (async version)
 pub async fn process_rpki_query(prefix: &str, asn: &str) -> Result<String> {
-    debug!("Processing RPKI query for prefix: {}, ASN: {}", prefix, asn);
+    log_debug!("Processing RPKI query for prefix: {}, ASN: {}", prefix, asn);
 
     let url = format!("{}/{}/{}", RPKI_API_BASE, asn, prefix);
-    debug!("Requesting RPKI API URL: {}", url);
+    log_debug!("Requesting RPKI API URL: {}", url);
 
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(10))

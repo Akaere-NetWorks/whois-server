@@ -1,7 +1,5 @@
 use anyhow::Result;
 use std::time::Duration;
-use tracing::debug;
-
 use super::bilibili::query_bilibili;
 use super::formatters::{
     format_prefixes_response, format_rir_geo_response, format_ultimate_geo_response,
@@ -11,9 +9,10 @@ use super::ipinfo_api::query_ipinfo_api;
 use super::meituan::query_meituan;
 use super::ripe_api::{query_prefixes_api, query_ripe_api, query_rir_geo_api};
 
+use crate::{log_debug};
 /// Process geo location queries ending with -GEO
 pub async fn process_geo_query(resource: &str) -> Result<String> {
-    debug!("Processing ultimate geo query for: {}", resource);
+    log_debug!("Processing ultimate geo query for: {}", resource);
 
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(10))
@@ -46,7 +45,7 @@ pub async fn process_geo_query(resource: &str) -> Result<String> {
 
 /// Process RIR geo location queries ending with -RIRGEO
 pub async fn process_rir_geo_query(resource: &str) -> Result<String> {
-    debug!("Processing RIR geo query for: {}", resource);
+    log_debug!("Processing RIR geo query for: {}", resource);
 
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(10))
@@ -58,7 +57,7 @@ pub async fn process_rir_geo_query(resource: &str) -> Result<String> {
 
 /// Process ASN prefixes queries ending with -PREFIXES
 pub async fn process_prefixes_query(asn: &str) -> Result<String> {
-    debug!("Processing prefixes query for ASN: {}", asn);
+    log_debug!("Processing prefixes query for ASN: {}", asn);
 
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(10))

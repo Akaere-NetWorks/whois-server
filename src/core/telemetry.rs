@@ -6,7 +6,7 @@
 
 use serde::{ Deserialize, Serialize };
 use std::sync::OnceLock;
-use tracing::{ debug, warn };
+use crate::{log_debug, log_warn};
 
 /// HTTP request timeout in seconds
 const REQUEST_TIMEOUT_SECS: u64 = 5;
@@ -42,10 +42,10 @@ impl TelemetryConfig {
         // Warn if enabled but missing required config
         if enabled {
             if endpoint.is_none() {
-                warn!("TELEMETRY_ENABLED is true but TELEMETRY_ENDPOINT is not set");
+                log_warn!("TELEMETRY_ENABLED is true but TELEMETRY_ENDPOINT is not set");
             }
             if bearer_token.is_none() {
-                warn!("TELEMETRY_ENABLED is true but TELEMETRY_BEARER_TOKEN is not set");
+                log_warn!("TELEMETRY_ENABLED is true but TELEMETRY_BEARER_TOKEN is not set");
             }
         }
 
@@ -97,14 +97,14 @@ pub async fn send_telemetry(data: TelemetryData) {
 
     // Check if telemetry is enabled and properly configured
     if !config.is_valid() {
-        debug!("Telemetry is disabled or not configured, skipping");
+        log_debug!("Telemetry is disabled or not configured, skipping");
         return;
     }
 
     // Run telemetry in background with timeout to avoid blocking
     let handle = tokio::spawn(async move {
         if let Err(e) = send_telemetry_internal(data).await {
-            warn!("Failed to send telemetry data: {}", e);
+            log_warn!("Failed to send telemetry data: {}", e);
         }
     });
 
@@ -120,7 +120,7 @@ pub async fn send_telemetry(data: TelemetryData) {
                 // Task completed within timeout
             }
             Err(_) => {
-                warn!("Telemetry task timed out after {}s, discarding", TELEMETRY_TASK_TIMEOUT_SECS);
+                log_warn!("Telemetry task timed out after {}s, discarding", TELEMETRY_TASK_TIMEOUT_SECS);
             }
         }
     });
@@ -134,7 +134,7 @@ async fn send_telemetry_internal(data: TelemetryData) -> Result<(), anyhow::Erro
     let endpoint = config.endpoint.as_ref().unwrap();
     let bearer_token = config.bearer_token.as_ref().unwrap();
 
-    debug!(
+    log_debug!(
         "Sending telemetry: query={}, type={}, ip={}, time={}ms",
         data.query_object,
         data.query_type,
@@ -156,9 +156,9 @@ async fn send_telemetry_internal(data: TelemetryData) -> Result<(), anyhow::Erro
         .send().await?;
 
     if !response.status().is_success() {
-        warn!("Telemetry endpoint returned error status: {}", response.status());
+        log_warn!("Telemetry endpoint returned error status: {}", response.status());
     } else {
-        debug!("Telemetry data sent successfully");
+        log_debug!("Telemetry data sent successfully");
     }
 
     Ok(())

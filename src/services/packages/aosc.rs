@@ -20,8 +20,7 @@ use anyhow::{Context, Result};
 use regex::Regex;
 use reqwest;
 use serde::{Deserialize, Serialize};
-use tracing::{debug, error};
-
+use crate::{log_debug, log_error};
 const AOSC_PACKAGES_URL: &str = "https://packages.aosc.io/packages/";
 const AOSC_SEARCH_URL: &str = "https://packages.aosc.io/search?q=";
 
@@ -55,7 +54,7 @@ struct AOSCSearchResponse {
 }
 
 pub async fn process_aosc_query(package_name: &str) -> Result<String> {
-    debug!("Processing AOSC query for package: {}", package_name);
+    log_debug!("Processing AOSC query for package: {}", package_name);
 
     if package_name.is_empty() {
         return Err(anyhow::anyhow!("Package name cannot be empty"));
@@ -80,7 +79,7 @@ pub async fn process_aosc_query(package_name: &str) -> Result<String> {
             }
         }
         Err(e) => {
-            error!("AOSC packages query failed for {}: {}", package_name, e);
+            log_error!("AOSC packages query failed for {}: {}", package_name, e);
             Ok(format_aosc_not_found(package_name))
         }
     }
@@ -99,7 +98,7 @@ async fn query_aosc_packages(package_name: &str) -> Result<AOSCSearchResponse> {
     // Use AOSC packages web page
     let package_url = format!("{}{}", AOSC_PACKAGES_URL, urlencoding::encode(package_name));
 
-    debug!("Querying AOSC packages page: {}", package_url);
+    log_debug!("Querying AOSC packages page: {}", package_url);
 
     let response = client
         .get(&package_url)

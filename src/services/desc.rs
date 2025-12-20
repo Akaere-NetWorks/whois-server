@@ -1,13 +1,12 @@
 use anyhow::Result;
-use tracing::debug;
-
 use crate::core::{QueryType, analyze_query};
 use crate::dn42::process_dn42_query_managed;
 use crate::services::query_with_iana_referral;
 
+use crate::{log_debug};
 /// Process description-only queries ending with -DESC
 pub async fn process_desc_query(base_query: &str) -> Result<String> {
-    debug!("Processing description query for: {}", base_query);
+    log_debug!("Processing description query for: {}", base_query);
 
     // Determine what type of query this is without the -DESC suffix
     let query_type = analyze_query(base_query);
@@ -26,7 +25,7 @@ pub async fn process_desc_query(base_query: &str) -> Result<String> {
                 }
                 _ => {
                     // Fall back to DN42 if public query fails
-                    debug!(
+                    log_debug!(
                         "Public query failed or returned no results, trying DN42 for: {}",
                         base_query
                     );
@@ -46,7 +45,7 @@ pub async fn process_desc_query(base_query: &str) -> Result<String> {
                 }
                 _ => {
                     // Fall back to DN42
-                    debug!("Public query failed, trying DN42 for: {}", base_query);
+                    log_debug!("Public query failed, trying DN42 for: {}", base_query);
                     process_dn42_query_managed(base_query).await?
                 }
             }
@@ -57,7 +56,7 @@ pub async fn process_desc_query(base_query: &str) -> Result<String> {
         }
     };
 
-    debug!("Raw response length: {} chars", raw_response.len());
+    log_debug!("Raw response length: {} chars", raw_response.len());
 
     // Extract descr and remarks fields from the response while preserving order
     let desc_remarks = extract_desc_and_remarks(&raw_response);
@@ -82,7 +81,7 @@ fn extract_desc_and_remarks(response: &str) -> Vec<DescField> {
 
         // Look for descr field (case-insensitive)
         if let Some(desc) = extract_field_value(line, "descr") {
-            debug!("Found descr: {}", desc);
+            log_debug!("Found descr: {}", desc);
             fields.push(DescField {
                 field_type: "descr".to_string(),
                 value: desc,
@@ -90,7 +89,7 @@ fn extract_desc_and_remarks(response: &str) -> Vec<DescField> {
         }
         // Look for remarks field (case-insensitive)
         else if let Some(remark) = extract_field_value(line, "remarks") {
-            debug!("Found remarks: {}", remark);
+            log_debug!("Found remarks: {}", remark);
             fields.push(DescField {
                 field_type: "remarks".to_string(),
                 value: remark,
@@ -98,7 +97,7 @@ fn extract_desc_and_remarks(response: &str) -> Vec<DescField> {
         }
         // Also check for "description" field (some registries use this)
         else if let Some(desc) = extract_field_value(line, "description") {
-            debug!("Found description: {}", desc);
+            log_debug!("Found description: {}", desc);
             fields.push(DescField {
                 field_type: "description".to_string(),
                 value: desc,

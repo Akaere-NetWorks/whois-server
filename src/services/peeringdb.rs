@@ -1,12 +1,11 @@
 use crate::config::{PEERINGDB_CACHE_TTL, PEERINGDB_LMDB_PATH};
 use crate::storage::lmdb::LmdbStorage;
+use crate::{log_debug};
 use anyhow::Result;
 use reqwest;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::time::{SystemTime, UNIX_EPOCH};
-use tracing::debug;
-
 #[derive(Debug, Deserialize, Serialize)]
 pub struct PeeringDBResponse<T> {
     pub data: Vec<T>,
@@ -55,15 +54,15 @@ impl PeeringDBCache {
         if let Some(cached_data) = self.storage.get(key)? {
             let cache_entry: PeeringDBCacheEntry = serde_json::from_str(&cached_data)?;
             if !cache_entry.is_expired() {
-                debug!("PeeringDB cache hit for key: {}", key);
+                log_debug!("PeeringDB cache hit for key: {}", key);
                 return Ok(Some(cache_entry.response));
             } else {
-                debug!("PeeringDB cache expired for key: {}", key);
+                log_debug!("PeeringDB cache expired for key: {}", key);
                 // Remove expired entry
                 self.storage.delete(key).ok(); // Ignore errors
             }
         }
-        debug!("PeeringDB cache miss for key: {}", key);
+        log_debug!("PeeringDB cache miss for key: {}", key);
         Ok(None)
     }
 
@@ -71,7 +70,7 @@ impl PeeringDBCache {
         let cache_entry = PeeringDBCacheEntry::new(response.to_string());
         let cache_data = serde_json::to_string(&cache_entry)?;
         self.storage.put(key, &cache_data)?;
-        debug!("PeeringDB cached response for key: {}", key);
+        log_debug!("PeeringDB cached response for key: {}", key);
         Ok(())
     }
 }
@@ -192,21 +191,21 @@ pub async fn query_peeringdb_asn(asn: &str) -> Result<String> {
         .parse()
         .map_err(|_| anyhow::anyhow!("Invalid ASN format: {}", asn))?;
 
-    debug!("Querying PeeringDB for ASN: {}", asn_num);
+    log_debug!("Querying PeeringDB for ASN: {}", asn_num);
 
     // Check cache first
     let cache_key = format!("asn:{}", asn_num);
     let cache = PeeringDBCache::new()?;
 
     if let Some(cached_response) = cache.get(&cache_key)? {
-        debug!("Returning cached PeeringDB response for ASN: {}", asn_num);
+        log_debug!("Returning cached PeeringDB response for ASN: {}", asn_num);
         return Ok(cached_response);
     }
 
     let client = reqwest::Client::new();
     let url = format!("https://www.peeringdb.com/api/net?asn={}&depth=2", asn_num);
 
-    debug!("PeeringDB API URL: {}", url);
+    log_debug!("PeeringDB API URL: {}", url);
 
     let response = client
         .get(&url)
@@ -214,7 +213,7 @@ pub async fn query_peeringdb_asn(asn: &str) -> Result<String> {
         .send()
         .await?;
 
-    debug!("PeeringDB API response status: {}", response.status());
+    log_debug!("PeeringDB API response status: {}", response.status());
 
     if !response.status().is_success() {
         let status = response.status();
@@ -222,7 +221,7 @@ pub async fn query_peeringdb_asn(asn: &str) -> Result<String> {
             .text()
             .await
             .unwrap_or_else(|_| "Failed to read error response".to_string());
-        debug!("PeeringDB API error response: {}", error_body);
+        log_debug!("PeeringDB API error response: {}", error_body);
         return Err(anyhow::anyhow!(
             "PeeringDB API request failed: {} - {}",
             status,
@@ -276,21 +275,21 @@ pub async fn query_peeringdb_ix(ix_id: &str) -> Result<String> {
         .parse()
         .map_err(|_| anyhow::anyhow!("Invalid IX ID format: {}", ix_id))?;
 
-    debug!("Querying PeeringDB for IX ID: {}", ix_num);
+    log_debug!("Querying PeeringDB for IX ID: {}", ix_num);
 
     // Check cache first
     let cache_key = format!("ix:{}", ix_num);
     let cache = PeeringDBCache::new()?;
 
     if let Some(cached_response) = cache.get(&cache_key)? {
-        debug!("Returning cached PeeringDB response for IX: {}", ix_num);
+        log_debug!("Returning cached PeeringDB response for IX: {}", ix_num);
         return Ok(cached_response);
     }
 
     let client = reqwest::Client::new();
     let url = format!("https://www.peeringdb.com/api/ix?id={}&depth=2", ix_num);
 
-    debug!("PeeringDB API URL: {}", url);
+    log_debug!("PeeringDB API URL: {}", url);
 
     let response = client
         .get(&url)
@@ -298,7 +297,7 @@ pub async fn query_peeringdb_ix(ix_id: &str) -> Result<String> {
         .send()
         .await?;
 
-    debug!("PeeringDB API response status: {}", response.status());
+    log_debug!("PeeringDB API response status: {}", response.status());
 
     if !response.status().is_success() {
         let status = response.status();
@@ -306,7 +305,7 @@ pub async fn query_peeringdb_ix(ix_id: &str) -> Result<String> {
             .text()
             .await
             .unwrap_or_else(|_| "Failed to read error response".to_string());
-        debug!("PeeringDB API error response: {}", error_body);
+        log_debug!("PeeringDB API error response: {}", error_body);
         return Err(anyhow::anyhow!(
             "PeeringDB API request failed: {} - {}",
             status,
@@ -666,7 +665,7 @@ fn format_ix_info(ix: &InternetExchangeInfo) -> String {
 
 /// Process PeeringDB queries based on query type
 pub async fn process_peeringdb_query(query: &str) -> Result<String> {
-    debug!("Processing PeeringDB query: {}", query);
+    log_debug!("Processing PeeringDB query: {}", query);
 
     // Check if query looks like an ASN (starts with AS)
     if query.to_uppercase().starts_with("AS") {

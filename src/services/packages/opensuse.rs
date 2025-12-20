@@ -19,8 +19,7 @@
 use anyhow::{Context, Result};
 use reqwest;
 use serde::{Deserialize, Serialize};
-use tracing::{debug, error};
-
+use crate::{log_debug, log_error};
 const OPENSUSE_SEARCH_URL: &str = "https://software.opensuse.org/search";
 const OPENSUSE_PACKAGES_URL: &str = "https://software.opensuse.org/package/";
 
@@ -54,7 +53,7 @@ struct OpenSUSECollection {
 }
 
 pub async fn process_opensuse_query(package_name: &str) -> Result<String> {
-    debug!("Processing OpenSUSE query for package: {}", package_name);
+    log_debug!("Processing OpenSUSE query for package: {}", package_name);
 
     if package_name.is_empty() {
         return Err(anyhow::anyhow!("Package name cannot be empty"));
@@ -82,7 +81,7 @@ pub async fn process_opensuse_query(package_name: &str) -> Result<String> {
             }
         }
         Err(e) => {
-            error!("OpenSUSE packages query failed for {}: {}", package_name, e);
+            log_error!("OpenSUSE packages query failed for {}: {}", package_name, e);
             Ok(format_opensuse_not_found(package_name))
         }
     }
@@ -105,7 +104,7 @@ async fn query_opensuse_packages(package_name: &str) -> Result<OpenSUSESearchRes
         urlencoding::encode(package_name)
     );
 
-    debug!("Querying OpenSUSE search web page: {}", search_url);
+    log_debug!("Querying OpenSUSE search web page: {}", search_url);
 
     let response = client
         .get(&search_url)

@@ -10,8 +10,7 @@
 use anyhow::Result;
 use std::net::{ToSocketAddrs, UdpSocket};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use tracing::{debug, warn};
-
+use crate::{log_debug, log_warn};
 /// NTP packet structure (48 bytes)
 #[repr(C)]
 struct NtpPacket {
@@ -116,7 +115,7 @@ fn format_timestamp(unix_timestamp: i64) -> String {
 
 /// Query NTP server and return time information
 pub fn query_ntp_server(server: &str) -> Result<String> {
-    debug!("Querying NTP server: {}", server);
+    log_debug!("Querying NTP server: {}", server);
 
     // Resolve server address (default to port 123)
     let addr = if server.contains(':') {
@@ -144,7 +143,7 @@ pub fn query_ntp_server(server: &str) -> Result<String> {
     let request_bytes = request.to_bytes();
     socket.send_to(&request_bytes, addr)?;
 
-    debug!("Sent NTP request to {}", addr);
+    log_debug!("Sent NTP request to {}", addr);
 
     // Receive response
     let mut response_bytes = [0u8; 48];
@@ -157,7 +156,7 @@ pub fn query_ntp_server(server: &str) -> Result<String> {
         return Err(anyhow::anyhow!("Invalid NTP response size"));
     }
 
-    debug!("Received NTP response from {}", from);
+    log_debug!("Received NTP response from {}", from);
 
     // Parse response
     let response = NtpPacket::from_bytes(&response_bytes)
@@ -279,7 +278,7 @@ pub async fn handle_ntp_query(server: &str) -> Result<String> {
     match query_ntp_server(server) {
         Ok(result) => Ok(result),
         Err(e) => {
-            warn!("NTP query failed for {}: {}", server, e);
+            log_warn!("NTP query failed for {}: {}", server, e);
             Ok(format!(
                 "% NTP Time Synchronization Test\n\
                  % Server: {}\n\

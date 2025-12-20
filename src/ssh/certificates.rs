@@ -6,8 +6,7 @@ use anyhow::{Context, Result};
 use russh_keys::{encode_pkcs8_pem, key, load_secret_key};
 use std::fs;
 use std::path::{Path, PathBuf};
-use tracing::info;
-
+use crate::{log_info};
 /// Manages SSH server certificates and keys
 pub struct SshCertificateManager {
     cache_dir: PathBuf,
@@ -30,7 +29,7 @@ impl SshCertificateManager {
     pub async fn initialize(&self) -> Result<()> {
         // Create cache directory if it doesn't exist
         if !self.cache_dir.exists() {
-            info!("Creating SSH cache directory: {:?}", self.cache_dir);
+            log_info!("Creating SSH cache directory: {:?}", self.cache_dir);
             fs::create_dir_all(&self.cache_dir).with_context(|| {
                 format!("Failed to create SSH cache directory: {:?}", self.cache_dir)
             })?;
@@ -38,12 +37,12 @@ impl SshCertificateManager {
 
         // Generate host key if it doesn't exist
         if !self.host_key_path.exists() {
-            info!("Generating new SSH host key: {:?}", self.host_key_path);
+            log_info!("Generating new SSH host key: {:?}", self.host_key_path);
             self.generate_host_key()
                 .await
                 .with_context(|| "Failed to generate SSH host key")?;
         } else {
-            info!("Using existing SSH host key: {:?}", self.host_key_path);
+            log_info!("Using existing SSH host key: {:?}", self.host_key_path);
         }
 
         Ok(())
@@ -72,7 +71,7 @@ impl SshCertificateManager {
             fs::set_permissions(&self.host_key_path, perms)?;
         }
 
-        info!("Successfully generated and saved SSH host key");
+        log_info!("Successfully generated and saved SSH host key");
         Ok(())
     }
 

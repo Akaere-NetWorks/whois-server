@@ -21,6 +21,7 @@ use reqwest::Client;
 use serde::Deserialize;
 use std::env;
 
+use crate::{log_debug, log_error};
 #[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 struct CurseForgeProject {
@@ -169,8 +170,8 @@ pub async fn query_curseforge(query: &str) -> Result<String> {
 async fn get_project_by_id(client: &Client, api_key: &str, project_id: u64) -> Result<String> {
     let url = format!("https://api.curseforge.com/v1/mods/{}", project_id);
 
-    tracing::debug!("CurseForge request URL: {}", url);
-    tracing::debug!(
+    log_debug!("CurseForge request URL: {}", url);
+    log_debug!(
         "CurseForge API key (first 10 chars): {}",
         &api_key[..10.min(api_key.len())]
     );
@@ -188,7 +189,7 @@ async fn get_project_by_id(client: &Client, api_key: &str, project_id: u64) -> R
             .text()
             .await
             .unwrap_or_else(|_| "Unable to read error body".to_string());
-        tracing::error!(
+        log_error!(
             "CurseForge API error - Status: {}, Body: {}",
             status,
             error_body
@@ -209,8 +210,8 @@ async fn search_curseforge(client: &Client, api_key: &str, query: &str) -> Resul
         urlencoding::encode(query)
     );
 
-    tracing::debug!("CurseForge search URL: {}", url);
-    tracing::debug!(
+    log_debug!("CurseForge search URL: {}", url);
+    log_debug!(
         "CurseForge API key (first 10 chars): {}",
         &api_key[..10.min(api_key.len())]
     );
@@ -228,7 +229,7 @@ async fn search_curseforge(client: &Client, api_key: &str, query: &str) -> Resul
             .text()
             .await
             .unwrap_or_else(|_| "Unable to read error body".to_string());
-        tracing::error!(
+        log_error!(
             "CurseForge search API error - Status: {}, Body: {}",
             status,
             error_body

@@ -19,8 +19,7 @@
 use anyhow::{Context, Result};
 use reqwest;
 use serde::{Deserialize, Serialize};
-use tracing::{debug, error};
-
+use crate::{log_debug, log_error};
 #[allow(dead_code)]
 const OPENWRT_PACKAGES_API: &str = "https://downloads.openwrt.org/releases";
 const OPENWRT_PACKAGES_SEARCH: &str = "https://openwrt.org/packages";
@@ -52,7 +51,7 @@ struct OpenWrtPackageIndex {
 }
 
 pub async fn process_openwrt_query(package_name: &str) -> Result<String> {
-    debug!("Processing OpenWrt query for package: {}", package_name);
+    log_debug!("Processing OpenWrt query for package: {}", package_name);
 
     if package_name.is_empty() {
         return Err(anyhow::anyhow!("Package name cannot be empty"));
@@ -77,7 +76,7 @@ pub async fn process_openwrt_query(package_name: &str) -> Result<String> {
             }
         }
         Err(e) => {
-            error!("OpenWrt packages query failed for {}: {}", package_name, e);
+            log_error!("OpenWrt packages query failed for {}: {}", package_name, e);
             Ok(format_openwrt_not_found(package_name))
         }
     }
@@ -91,7 +90,7 @@ async fn query_openwrt_packages(package_name: &str) -> Result<Vec<OpenWrtPackage
         .context("Failed to create HTTP client")?;
 
     // Since OpenWrt doesn't have a direct JSON API, try to check package feeds
-    debug!("Querying OpenWrt packages for: {}", package_name);
+    log_debug!("Querying OpenWrt packages for: {}", package_name);
 
     // Try to check if the package exists in online feeds
     match check_openwrt_package_feeds(package_name, &client).await {
@@ -114,7 +113,7 @@ async fn check_openwrt_package_feeds(
 
             // In a real implementation, we would download and parse the Packages.gz file
             // For now, we'll provide informational response
-            debug!("Would check: {}", url);
+            log_debug!("Would check: {}", url);
         }
     }
 

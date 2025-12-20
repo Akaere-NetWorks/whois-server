@@ -8,8 +8,7 @@ use std::sync::Arc;
 use tokio::fs;
 use tokio::process::Command;
 use tokio::sync::Mutex;
-use tracing::{debug, error, warn};
-
+use crate::{log_debug, log_error, log_warn};
 /// NextTrace binary URLs for different platforms
 const NEXTTRACE_WINDOWS_URL: &str =
     "https://github.com/nxtrace/NTrace-core/releases/download/v1.4.0/nexttrace_windows_amd64.exe";
@@ -57,7 +56,7 @@ impl NextTraceManager {
         }
 
         // Try to set CAP_NET_RAW capability using setcap
-        debug!("Attempting to set CAP_NET_RAW capability for nexttrace");
+        log_debug!("Attempting to set CAP_NET_RAW capability for nexttrace");
 
         let output = Command::new("setcap")
             .arg("cap_net_raw+ep")
@@ -70,20 +69,20 @@ impl NextTraceManager {
         match output {
             Ok(result) => {
                 if result.status.success() {
-                    debug!("Successfully set CAP_NET_RAW capability for nexttrace");
+                    log_debug!("Successfully set CAP_NET_RAW capability for nexttrace");
                 } else {
                     let stderr = String::from_utf8_lossy(&result.stderr);
-                    warn!(
+                    log_warn!(
                         "Failed to set capabilities (this is normal for non-root users): {}",
                         stderr
                     );
-                    debug!(
+                    log_debug!(
                         "nexttrace will run without special capabilities - some features may be limited"
                     );
                 }
             }
             Err(e) => {
-                debug!(
+                log_debug!(
                     "setcap command not available or failed: {} - this is normal on many systems",
                     e
                 );
@@ -136,7 +135,7 @@ impl NextTraceManager {
             return Ok(());
         }
 
-        debug!("Initializing NextTrace binary");
+        log_debug!("Initializing NextTrace binary");
 
         // Create cache directory
         fs::create_dir_all(CACHE_DIR)
@@ -154,13 +153,13 @@ impl NextTraceManager {
 
         // Check if binary already exists
         if Path::new(&self.binary_path).exists() {
-            debug!("NextTrace binary already exists at {}", self.binary_path);
+            log_debug!("NextTrace binary already exists at {}", self.binary_path);
             self.initialized = true;
             return Ok(());
         }
 
         // Download the binary
-        debug!("Downloading NextTrace binary from {}", download_url);
+        log_debug!("Downloading NextTrace binary from {}", download_url);
         let client = reqwest::Client::new();
         let response = client
             .get(download_url)
@@ -197,7 +196,7 @@ impl NextTraceManager {
             self.setup_linux_capabilities().await?;
         }
 
-        debug!(
+        log_debug!(
             "NextTrace binary downloaded and installed at {}",
             self.binary_path
         );
@@ -211,7 +210,7 @@ impl NextTraceManager {
             return Err(anyhow::anyhow!("NextTrace not initialized"));
         }
 
-        debug!("Running NextTrace for target: {}", target_ip);
+        log_debug!("Running NextTrace for target: {}", target_ip);
 
         // Check privileges and provide guidance if needed
         #[cfg(unix)]
@@ -227,7 +226,7 @@ impl NextTraceManager {
         if !has_privileges {
             // Try UDP mode first as fallback for unprivileged users
             cmd.arg("--udp");
-            debug!("Using UDP mode for unprivileged execution");
+            log_debug!("Using UDP mode for unprivileged execution");
         }
 
         cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
@@ -239,7 +238,7 @@ impl NextTraceManager {
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            warn!("NextTrace execution failed: {}", stderr);
+            log_warn!("NextTrace execution failed: {}", stderr);
 
             // Provide helpful error message with privilege guidance
             let error_msg = if !has_privileges && stderr.contains("permission") {
@@ -255,7 +254,7 @@ impl NextTraceManager {
         }
 
         let stdout = String::from_utf8_lossy(&output.stdout);
-        debug!("NextTrace completed for {}", target_ip);
+        log_debug!("NextTrace completed for {}", target_ip);
 
         // Strip ANSI color codes from output
         let clean_output = strip_ansi_codes(&stdout);
@@ -286,7 +285,7 @@ async fn get_nexttrace_manager() -> Result<Arc<Mutex<NextTraceManager>>> {
 
 /// Process traceroute query with -TRACE suffix
 pub async fn process_traceroute_query(query: &str) -> Result<String> {
-    debug!("Processing traceroute query: {}", query);
+    log_debug!("Processing traceroute query: {}", query);
 
     // Remove -TRACE suffix if present
     let clean_query = if query.to_uppercase().ends_with("-TRACE") {
@@ -303,7 +302,7 @@ pub async fn process_traceroute_query(query: &str) -> Result<String> {
         clean_query.to_string()
     };
 
-    debug!("Starting NextTrace traceroute to {}", target);
+    log_debug!("Starting NextTrace traceroute to {}", target);
 
     // Get NextTrace manager and execute
     match get_nexttrace_manager().await {
@@ -314,7 +313,7 @@ pub async fn process_traceroute_query(query: &str) -> Result<String> {
             if !manager.initialized
                 && let Err(e) = manager.initialize().await
             {
-                error!("Failed to initialize NextTrace: {}", e);
+                log_error!("Failed to initialize NextTrace: {}", e);
                 return Ok(format!(
                     "Traceroute service initialization failed: {}\n\nPlease ensure internet connectivity for initial setup.\n",
                     e
@@ -323,14 +322,14 @@ pub async fn process_traceroute_query(query: &str) -> Result<String> {
 
             match manager.trace_route(&target).await {
                 Ok(output) => {
-                    debug!("NextTrace traceroute completed successfully");
+                    log_debug!("NextTrace traceroute completed successfully");
                     let final_output =
                         format!("Traceroute to {} using NextTrace:\n\n{}", target, output);
                     // Strip any remaining ANSI codes from the final output
                     Ok(strip_ansi_codes(&final_output))
                 }
                 Err(e) => {
-                    error!("NextTrace execution failed: {}", e);
+                    log_error!("NextTrace execution failed: {}", e);
                     Ok(format!(
                         "Traceroute failed: {}\n\nNote: NextTrace requires network access and may need administrator privileges on some systems.\n",
                         e
@@ -339,7 +338,7 @@ pub async fn process_traceroute_query(query: &str) -> Result<String> {
             }
         }
         Err(e) => {
-            error!("Failed to get NextTrace manager: {}", e);
+            log_error!("Failed to get NextTrace manager: {}", e);
             Ok(format!("Traceroute service error: {}\n", e))
         }
     }

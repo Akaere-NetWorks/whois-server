@@ -9,8 +9,7 @@
 
 use anyhow::{ Context, Result, anyhow };
 use serde::{ Deserialize, Serialize };
-use tracing::debug;
-
+use crate::log_debug;
 const CLOUDFLARE_STATUS_API: &str = "https://www.cloudflarestatus.com/api/v2";
 const REQUEST_TIMEOUT_SECS: u64 = 10;
 
@@ -94,7 +93,7 @@ struct IncidentUpdate {
 
 /// Process a Cloudflare Status query
 pub async fn process_cfstatus_query(query: &str) -> Result<String> {
-    debug!("Processing Cloudflare Status query: {}", query);
+    log_debug!("Processing Cloudflare Status query: {}", query);
 
     // Extract the base query without the -CFSTATUS suffix
     let base_query = query
@@ -117,7 +116,7 @@ pub async fn process_cfstatus_query(query: &str) -> Result<String> {
 
 /// Query the overall Cloudflare status
 async fn query_status() -> Result<String> {
-    debug!("Querying Cloudflare overall status");
+    log_debug!("Querying Cloudflare overall status");
 
     let url = format!("{}/status.json", CLOUDFLARE_STATUS_API);
     let client = reqwest::Client
@@ -144,7 +143,7 @@ async fn query_status() -> Result<String> {
 
 /// Query Cloudflare component statuses
 async fn query_components() -> Result<String> {
-    debug!("Querying Cloudflare components");
+    log_debug!("Querying Cloudflare components");
 
     let url = format!("{}/components.json", CLOUDFLARE_STATUS_API);
     let client = reqwest::Client
@@ -171,7 +170,7 @@ async fn query_components() -> Result<String> {
 
 /// Query Cloudflare unresolved incidents
 async fn query_incidents() -> Result<String> {
-    debug!("Querying Cloudflare unresolved incidents");
+    log_debug!("Querying Cloudflare unresolved incidents");
 
     let url = format!("{}/incidents/unresolved.json", CLOUDFLARE_STATUS_API);
     let client = reqwest::Client

@@ -11,8 +11,7 @@
 use anyhow::{Context, Result};
 use reqwest;
 use serde::{Deserialize, Serialize};
-use tracing::{debug, error};
-
+use crate::{log_debug, log_error};
 const AUR_API_BASE: &str = "https://aur.archlinux.org/rpc/v5/info";
 const AUR_PACKAGE_BASE: &str = "https://aur.archlinux.org/packages";
 
@@ -78,7 +77,7 @@ struct AurPackage {
 }
 
 pub async fn process_aur_query(package_name: &str) -> Result<String> {
-    debug!("Processing AUR query for package: {}", package_name);
+    log_debug!("Processing AUR query for package: {}", package_name);
 
     if package_name.is_empty() {
         return Err(anyhow::anyhow!("Package name cannot be empty"));
@@ -92,7 +91,7 @@ pub async fn process_aur_query(package_name: &str) -> Result<String> {
     match query_aur_api(package_name).await {
         Ok(package) => Ok(format_aur_response(&package, package_name)),
         Err(e) => {
-            error!("AUR API query failed for {}: {}", package_name, e);
+            log_error!("AUR API query failed for {}: {}", package_name, e);
             Ok(format_aur_not_found(package_name))
         }
     }
@@ -106,7 +105,7 @@ async fn query_aur_api(package_name: &str) -> Result<AurPackage> {
         .context("Failed to create HTTP client")?;
 
     let url = format!("{}?arg={}", AUR_API_BASE, package_name);
-    debug!("Querying AUR API: {}", url);
+    log_debug!("Querying AUR API: {}", url);
 
     let response = client
         .get(&url)
@@ -126,7 +125,7 @@ async fn query_aur_api(package_name: &str) -> Result<AurPackage> {
         .await
         .context("Failed to parse AUR API response")?;
 
-    debug!(
+    log_debug!(
         "AUR API response: {} results for {}",
         aur_response.resultcount, package_name
     );

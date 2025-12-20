@@ -19,8 +19,7 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
-use tracing::{debug, error, warn};
-
+use crate::{log_debug, log_error, log_warn};
 /// IMDb API response structures for movie/TV show information
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ImdbResponse {
@@ -149,7 +148,7 @@ impl ImdbService {
         // Try to get API key from environment variable (including from .env file)
         let api_key = std::env::var("OMDB_API_KEY").ok();
         if api_key.is_none() {
-            warn!(
+            log_warn!(
                 "OMDB_API_KEY not found in environment variables or .env file - IMDb queries will be limited"
             );
         }
@@ -160,7 +159,7 @@ impl ImdbService {
     /// Query IMDb information by title or IMDb ID
     /// If the query is not an IMDb ID and title search fails, attempts a search
     pub async fn query_imdb_info(&self, query: &str) -> Result<String> {
-        debug!("Querying IMDb info for: {}", query);
+        log_debug!("Querying IMDb info for: {}", query);
 
         if let Some(api_key) = &self.api_key {
             // First, try direct lookup (by IMDb ID or exact title)
@@ -192,17 +191,17 @@ impl ImdbService {
             } else {
                 // If direct lookup failed and it's not an IMDb ID, try search
                 if !query.starts_with("tt") {
-                    debug!(
+                    log_debug!(
                         "Direct lookup failed for '{}', attempting fuzzy search",
                         query
                     );
                     match self.search_and_get_first_result(query).await {
                         Ok(result) => {
-                            debug!("Search successful for '{}'", query);
+                            log_debug!("Search successful for '{}'", query);
                             Ok(result)
                         }
                         Err(search_err) => {
-                            debug!("Search also failed for '{}': {}", query, search_err);
+                            log_debug!("Search also failed for '{}': {}", query, search_err);
                             // Try alternative search approaches for non-English titles
                             Ok(format!(
                                 "IMDb Information Not Found for: {}\n{}\n\
@@ -238,7 +237,7 @@ impl ImdbService {
 
     /// Search IMDb and get detailed info for the first result
     async fn search_and_get_first_result(&self, query: &str) -> Result<String> {
-        debug!("Searching IMDb for first result: {}", query);
+        log_debug!("Searching IMDb for first result: {}", query);
 
         if let Some(api_key) = &self.api_key {
             let url = format!(
@@ -263,7 +262,7 @@ impl ImdbService {
                 && let Some(first_result) = results.first()
             {
                 // Get detailed info for the first search result using direct API call
-                debug!(
+                log_debug!(
                     "Found search result, getting details for: {}",
                     first_result.imdb_id
                 );
@@ -278,7 +277,7 @@ impl ImdbService {
 
     /// Get detailed movie information by IMDb ID (direct API call)
     async fn get_movie_details_by_id(&self, imdb_id: &str) -> Result<String> {
-        debug!("Getting movie details for ID: {}", imdb_id);
+        log_debug!("Getting movie details for ID: {}", imdb_id);
 
         if let Some(api_key) = &self.api_key {
             let url = format!(
@@ -311,7 +310,7 @@ impl ImdbService {
 
     /// Search IMDb for movies/TV shows by title
     pub async fn search_imdb(&self, query: &str, limit: usize) -> Result<String> {
-        debug!("Searching IMDb for: {}", query);
+        log_debug!("Searching IMDb for: {}", query);
 
         if let Some(api_key) = &self.api_key {
             let url = format!(
@@ -561,10 +560,10 @@ pub async fn process_imdb_query(query: &str) -> Result<String> {
     let imdb_service = ImdbService::new();
 
     if let Some(imdb_query) = ImdbService::parse_imdb_query(query) {
-        debug!("Processing IMDb query for: {}", imdb_query);
+        log_debug!("Processing IMDb query for: {}", imdb_query);
         imdb_service.query_imdb_info(&imdb_query).await
     } else {
-        error!("Invalid IMDb query format: {}", query);
+        log_error!("Invalid IMDb query format: {}", query);
         Ok(format!(
             "Invalid IMDb query format. Use: <title_or_imdb_id>-IMDB\nExample: Inception-IMDB or tt1375666-IMDB\nQuery: {}\n",
             query
@@ -577,7 +576,7 @@ pub async fn process_imdb_search_query(query: &str) -> Result<String> {
     let imdb_service = ImdbService::new();
 
     if let Some(search_query) = ImdbService::parse_imdb_search_query(query) {
-        debug!("Processing IMDb search query for: {}", search_query);
+        log_debug!("Processing IMDb search query for: {}", search_query);
 
         if search_query.is_empty() {
             return Ok(
@@ -588,7 +587,7 @@ pub async fn process_imdb_search_query(query: &str) -> Result<String> {
         // Search for titles with a limit of 10 results
         imdb_service.search_imdb(&search_query, 10).await
     } else {
-        error!("Invalid IMDb search query format: {}", query);
+        log_error!("Invalid IMDb search query format: {}", query);
         Ok(format!(
             "Invalid IMDb search query format. Use: <search_term>-IMDBSEARCH\nExample: Batman-IMDBSEARCH\nQuery: {}\n",
             query

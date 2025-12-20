@@ -19,8 +19,7 @@
 use anyhow::Result;
 use serde::{ Deserialize, Serialize };
 use std::time::Duration;
-use tracing::{ debug, error };
-
+use crate::{log_debug, log_error};
 /// Luotianyi lyric API response structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LyricResponse {
@@ -61,25 +60,25 @@ impl LyricService {
 
     /// Get random Luotianyi lyric
     pub async fn get_random_lyric(&self) -> Result<String> {
-        debug!("Fetching random Luotianyi lyric from API");
+        log_debug!("Fetching random Luotianyi lyric from API");
 
         let params = [("format", "json")];
 
         let response = self.client.get(&self.base_url).query(&params).send().await?;
 
         let status = response.status();
-        debug!("Lyric API response status: {}", status);
+        log_debug!("Lyric API response status: {}", status);
 
         if !status.is_success() {
             let error_text = response
                 .text().await
                 .unwrap_or_else(|_| "Unable to read error response".to_string());
-            debug!("Lyric API error response: {}", error_text);
+            log_debug!("Lyric API error response: {}", error_text);
             return Err(anyhow::anyhow!("Lyric request failed: {} - {}", status, error_text));
         }
 
         let response_text = response.text().await?;
-        debug!(
+        log_debug!(
             "Lyric API response body: {}",
             &response_text[..std::cmp::min(200, response_text.len())]
         );
@@ -150,10 +149,10 @@ pub async fn process_lyric_query(query: &str) -> Result<String> {
     let lyric_service = LyricService::new();
 
     if LyricService::parse_lyric_query(query).is_some() {
-        debug!("Processing Luotianyi lyric query");
+        log_debug!("Processing Luotianyi lyric query");
         lyric_service.get_random_lyric().await
     } else {
-        error!("Invalid lyric query format: {}", query);
+        log_error!("Invalid lyric query format: {}", query);
         Ok(
             format!("Invalid lyric query format. Use: <any_text>-LYRIC or just -LYRIC\nExample: random-LYRIC\nQuery: {}\n", query)
         )

@@ -19,8 +19,7 @@
 use anyhow::{Context, Result};
 use reqwest;
 use serde::{Deserialize, Serialize};
-use tracing::{debug, error};
-
+use crate::{log_debug, log_error};
 // EPEL repository URLs for different versions
 const EPEL_10_REPO: &str = "https://dl.fedoraproject.org/pub/epel/10/Everything/x86_64";
 const EPEL_9_REPO: &str = "https://dl.fedoraproject.org/pub/epel/9/Everything/x86_64";
@@ -45,7 +44,7 @@ struct EpelPackage {
 }
 
 pub async fn process_epel_query(package_name: &str) -> Result<String> {
-    debug!("Processing EPEL query for package: {}", package_name);
+    log_debug!("Processing EPEL query for package: {}", package_name);
 
     if package_name.is_empty() {
         return Err(anyhow::anyhow!("Package name cannot be empty"));
@@ -70,7 +69,7 @@ pub async fn process_epel_query(package_name: &str) -> Result<String> {
             }
         }
         Err(e) => {
-            error!("EPEL packages query failed for {}: {}", package_name, e);
+            log_error!("EPEL packages query failed for {}: {}", package_name, e);
             Ok(format_epel_not_found(package_name))
         }
     }
@@ -91,14 +90,14 @@ async fn query_epel_repositories(package_name: &str) -> Result<Vec<EpelPackage>>
     ];
 
     for (repo_name, repo_base) in &repositories {
-        debug!("Checking {} repository for: {}", repo_name, package_name);
+        log_debug!("Checking {} repository for: {}", repo_name, package_name);
 
         // Try to access the repodata/repomd.xml file which contains package metadata
         let repodata_url = format!("{}/repodata/repomd.xml", repo_base);
 
         match client.get(&repodata_url).send().await {
             Ok(response) if response.status().is_success() => {
-                debug!("Found repodata for {} repository", repo_name);
+                log_debug!("Found repodata for {} repository", repo_name);
                 // Create a package entry indicating the repository exists and is accessible
                 let package = EpelPackage {
                     name: package_name.to_string(),
@@ -127,16 +126,16 @@ async fn query_epel_repositories(package_name: &str) -> Result<Vec<EpelPackage>>
                 return Ok(vec![package]);
             }
             Ok(_) => {
-                debug!("{} repository returned non-success status", repo_name);
+                log_debug!("{} repository returned non-success status", repo_name);
             }
             Err(e) => {
-                debug!("Failed to access {} repository: {}", repo_name, e);
+                log_debug!("Failed to access {} repository: {}", repo_name, e);
             }
         }
     }
 
     // If repository access fails, return empty result
-    debug!("Repository access failed for: {}", package_name);
+    log_debug!("Repository access failed for: {}", package_name);
     Ok(vec![])
 }
 

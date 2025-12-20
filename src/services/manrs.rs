@@ -10,14 +10,13 @@
 #![allow(non_snake_case)]
 
 use crate::storage::{SharedLmdbStorage, create_shared_storage};
+use crate::{log_debug, log_error, log_info, log_warn};
 use anyhow::Result;
 use chrono::DateTime;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use tracing::{debug, error, info, warn};
-
 const MANRS_API_URL: &str = "https://api.manrs.org/asns";
 const MANRS_LMDB_PATH: &str = "./cache/manrs_lmdb";
 const CACHE_KEY: &str = "manrs_asns";
@@ -83,12 +82,12 @@ impl ManrsChecker {
         self.storage.put(CACHE_KEY, &asns_json)?;
         self.storage.put(CACHE_TIMESTAMP_KEY, &now.to_string())?;
 
-        info!("Saved {} MANRS ASNs to LMDB cache", asns.len());
+        log_info!("Saved {} MANRS ASNs to LMDB cache", asns.len());
         Ok(())
     }
 
     async fn refresh_cache(&self) -> Result<HashSet<u64>> {
-        info!("Refreshing MANRS ASN cache from API...");
+        log_info!("Refreshing MANRS ASN cache from API...");
 
         let response = self
             .client
@@ -107,7 +106,7 @@ impl ManrsChecker {
 
         let api_response: ManrsApiResponse = response.json().await?;
 
-        info!(
+        log_info!(
             "Retrieved {} MANRS member ASNs from API",
             api_response.asns.len()
         );
@@ -119,15 +118,15 @@ impl ManrsChecker {
 
     pub async fn check_asn(&self, asn: u64) -> Result<ManrsStatus> {
         let asns = if self.is_cache_expired()? {
-            debug!("MANRS cache is expired, refreshing...");
+            log_debug!("MANRS cache is expired, refreshing...");
             match self.refresh_cache().await {
                 Ok(asns) => asns,
                 Err(e) => {
-                    error!("Failed to refresh MANRS cache: {}", e);
+                    log_error!("Failed to refresh MANRS cache: {}", e);
                     // Try to use expired cache if available
                     match self.get_cached_asns()? {
                         Some(cached_asns) => {
-                            warn!("Using expired MANRS cache due to API failure");
+                            log_warn!("Using expired MANRS cache due to API failure");
                             cached_asns
                         }
                         None => {
@@ -139,15 +138,15 @@ impl ManrsChecker {
         } else {
             match self.get_cached_asns()? {
                 Some(cached_asns) => {
-                    debug!("Using cached MANRS data");
+                    log_debug!("Using cached MANRS data");
                     cached_asns
                 }
                 None => {
-                    debug!("No MANRS cache found, refreshing...");
+                    log_debug!("No MANRS cache found, refreshing...");
                     match self.refresh_cache().await {
                         Ok(asns) => asns,
                         Err(e) => {
-                            error!("Failed to refresh MANRS cache: {}", e);
+                            log_error!("Failed to refresh MANRS cache: {}", e);
                             return Ok(ManrsStatus::Unknown);
                         }
                     }

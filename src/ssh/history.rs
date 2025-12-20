@@ -9,8 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::net::IpAddr;
 use std::path::Path;
 use std::sync::Arc;
-use tracing::{debug, info, warn};
-
+use crate::{log_debug, log_info, log_warn};
 /// Maximum number of history records to keep per IP address
 const MAX_RECORDS_PER_IP: usize = 100;
 
@@ -60,7 +59,7 @@ impl SshConnectionHistory {
                 .with_context(|| format!("Failed to create LMDB directory {lmdb_dir:?}"))?;
         }
 
-        debug!("Opening LMDB environment at: {:?}", lmdb_dir);
+        log_debug!("Opening LMDB environment at: {:?}", lmdb_dir);
 
         let env = Environment::new()
             .set_max_dbs(1)
@@ -93,7 +92,7 @@ impl SshConnectionHistory {
 
         // Clean up old records on initialization
         if let Err(e) = history.cleanup_old_records() {
-            warn!("Failed to cleanup old SSH history records: {}", e);
+            log_warn!("Failed to cleanup old SSH history records: {}", e);
         }
 
         Ok(history)
@@ -124,11 +123,11 @@ impl SshConnectionHistory {
         txn.commit()
             .with_context(|| "Failed to commit SSH connection record")?;
 
-        debug!("Added SSH connection record for {}", record.ip_address);
+        log_debug!("Added SSH connection record for {}", record.ip_address);
 
         // Clean up old records for this IP (keep only MAX_RECORDS_PER_IP)
         if let Err(e) = self.cleanup_ip_records(&record.ip_address) {
-            warn!(
+            log_warn!(
                 "Failed to cleanup records for IP {}: {}",
                 record.ip_address, e
             );
@@ -190,7 +189,7 @@ impl SshConnectionHistory {
                 let record: SshConnectionRecord = match serde_json::from_slice(value) {
                     Ok(r) => r,
                     Err(e) => {
-                        warn!("Failed to parse record during cleanup: {}", e);
+                        log_warn!("Failed to parse record during cleanup: {}", e);
                         continue;
                     }
                 };
@@ -212,7 +211,7 @@ impl SshConnectionHistory {
             .with_context(|| "Failed to commit cleanup transaction")?;
 
         if deleted_count > 0 {
-            info!("Cleaned up {} old SSH connection records", deleted_count);
+            log_info!("Cleaned up {} old SSH connection records", deleted_count);
         }
 
         Ok(())
@@ -246,7 +245,7 @@ impl SshConnectionHistory {
                 Ok(_) => {
                     deleted_count += 1;
                 }
-                Err(e) => warn!("Failed to delete excess record for IP {}: {}", ip, e),
+                Err(e) => log_warn!("Failed to delete excess record for IP {}: {}", ip, e),
             }
         }
 
@@ -254,7 +253,7 @@ impl SshConnectionHistory {
             .with_context(|| "Failed to commit IP cleanup transaction")?;
 
         if deleted_count > 0 {
-            debug!("Cleaned up {} excess records for IP {}", deleted_count, ip);
+            log_debug!("Cleaned up {} excess records for IP {}", deleted_count, ip);
         }
 
         Ok(())

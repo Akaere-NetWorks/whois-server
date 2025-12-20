@@ -4,8 +4,7 @@ use std::net::{SocketAddr, ToSocketAddrs};
 use std::time::{Duration, Instant};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
-use tracing::{debug, error};
-
+use crate::{log_debug, log_error};
 /// Minecraft server status response structure
 #[derive(Debug, Deserialize, Serialize)]
 struct MinecraftStatus {
@@ -82,21 +81,21 @@ impl MinecraftService {
 
     /// Query Minecraft server status
     pub async fn query_minecraft(&self, target: &str) -> Result<String> {
-        debug!("Querying Minecraft server: {}", target);
+        log_debug!("Querying Minecraft server: {}", target);
 
         let (host, port) = self.parse_minecraft_target(target)?;
 
         match self.get_server_status(&host, port).await {
             Ok(server_info) => {
                 let output = self.format_server_info(&server_info);
-                debug!(
+                log_debug!(
                     "Minecraft query completed for {}:{}, latency: {}ms",
                     host, port, server_info.latency
                 );
                 Ok(output)
             }
             Err(e) => {
-                error!("Failed to query Minecraft server {}:{}: {}", host, port, e);
+                log_error!("Failed to query Minecraft server {}:{}: {}", host, port, e);
                 Ok(format!(
                     "Minecraft Server Query Failed for {}:{}\nError: {}\n\nPossible causes:\n- Server is offline or unreachable\n- Server is not running Minecraft\n- Firewall blocking connection\n- Invalid hostname or port\n",
                     host, port, e
@@ -132,7 +131,7 @@ impl MinecraftService {
 
         // Resolve hostname to IP address
         let socket_addr = self.resolve_address(host, port).await?;
-        debug!("Resolved {}:{} to {}", host, port, socket_addr);
+        log_debug!("Resolved {}:{} to {}", host, port, socket_addr);
 
         // Connect to server with timeout
         let mut stream = tokio::time::timeout(self.timeout, TcpStream::connect(socket_addr))
@@ -541,11 +540,11 @@ pub async fn process_minecraft_query(query: &str) -> Result<String> {
     let minecraft_service = MinecraftService::new();
 
     if let Some(target) = MinecraftService::parse_minecraft_query(query) {
-        debug!("Processing Minecraft query for target: {}", target);
+        log_debug!("Processing Minecraft query for target: {}", target);
         return minecraft_service.query_minecraft(&target).await;
     }
 
-    error!("Invalid Minecraft query format: {}", query);
+    log_error!("Invalid Minecraft query format: {}", query);
     Ok(format!(
         "Invalid Minecraft query format. Use: target-MINECRAFT or target-MC\nTarget format: hostname:port or hostname (default port 25565)\nQuery: {}\nExamples:\n  - mc.hypixel.net-MC\n  - play.cubecraft.net:25565-MINECRAFT\n  - 192.168.1.100-MC\n",
         query
@@ -601,7 +600,7 @@ impl MinecraftUserService {
 
     /// Query Minecraft user information by username
     pub async fn query_user_info(&self, username: &str) -> Result<String> {
-        debug!("Querying Minecraft user info for: {}", username);
+        log_debug!("Querying Minecraft user info for: {}", username);
 
         // First, get UUID from username
         let uuid = match self.get_uuid_from_username(username).await {
@@ -785,7 +784,7 @@ pub async fn process_minecraft_user_query(query: &str) -> Result<String> {
     let user_service = MinecraftUserService::new();
 
     if let Some(username) = MinecraftUserService::parse_minecraft_user_query(query) {
-        debug!("Processing Minecraft user query for: {}", username);
+        log_debug!("Processing Minecraft user query for: {}", username);
 
         if username.is_empty() {
             return Ok(
@@ -807,7 +806,7 @@ pub async fn process_minecraft_user_query(query: &str) -> Result<String> {
 
         user_service.query_user_info(&username).await
     } else {
-        error!("Invalid Minecraft user query format: {}", query);
+        log_error!("Invalid Minecraft user query format: {}", query);
         Ok(format!(
             "Invalid Minecraft user query format. Use: <username>-MCU\nExample: Notch-MCU\nQuery: {}\n",
             query

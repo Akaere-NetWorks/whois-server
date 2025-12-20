@@ -6,8 +6,6 @@ use std::fs;
 use std::path::Path;
 use std::time::SystemTime;
 use sysinfo::System;
-use tracing::{debug, info, warn};
-
 /// Global lazy-initialized LMDB map size (calculated once on first use)
 static LMDB_MAP_SIZE: Lazy<usize> = Lazy::new(|| {
     let mut sys = System::new_all();
@@ -19,7 +17,7 @@ static LMDB_MAP_SIZE: Lazy<usize> = Lazy::new(|| {
     
     let map_size = ten_percent.max(min_size);
     
-    info!(
+    log_info!(
         "LMDB map size calculated: {} MB (system memory: {} MB, 10% = {} MB)",
         map_size / 1024 / 1024,
         total_memory / 1024 / 1024,
@@ -67,7 +65,7 @@ impl LmdbStorage {
             fs::create_dir_all(db_dir).map_err(|e| {
                 anyhow::anyhow!("Failed to create LMDB directory {}: {}", db_path, e)
             })?;
-            info!("Created LMDB directory: {}", db_path);
+            log_info!("Created LMDB directory: {}", db_path);
         }
 
         // Use the globally calculated map size
@@ -87,7 +85,7 @@ impl LmdbStorage {
         // Open database
         let db = env.open_db(None)?;
 
-        info!("LMDB storage initialized at: {}", db_path);
+        log_info!("LMDB storage initialized at: {}", db_path);
 
         Ok(LmdbStorage { env, db })
     }
@@ -121,12 +119,12 @@ impl LmdbStorage {
 
     /// Retrieve a value by key from the database
     pub fn get(&self, key: &str) -> Result<Option<String>> {
-        debug!("LMDB: Attempting to read key: {}", key);
+        log_debug!("LMDB: Attempting to read key: {}", key);
         let txn = self.env.begin_ro_txn()?;
         match txn.get(self.db, &key) {
             Ok(bytes) => {
                 let value = std::str::from_utf8(bytes)?.to_string();
-                debug!(
+                log_debug!(
                     "LMDB: Successfully read key '{}', content length: {} bytes",
                     key,
                     value.len()
@@ -134,11 +132,11 @@ impl LmdbStorage {
                 Ok(Some(value))
             }
             Err(lmdb::Error::NotFound) => {
-                debug!("LMDB: Key not found: {}", key);
+                log_debug!("LMDB: Key not found: {}", key);
                 Ok(None)
             }
             Err(e) => {
-                warn!("LMDB: Error reading key '{}': {}", key, e);
+                log_warn!("LMDB: Error reading key '{}': {}", key, e);
                 Err(e.into())
             }
         }
@@ -146,19 +144,19 @@ impl LmdbStorage {
 
     /// Check if a key exists in the database
     pub fn exists(&self, key: &str) -> Result<bool> {
-        debug!("LMDB: Checking if key exists: {}", key);
+        log_debug!("LMDB: Checking if key exists: {}", key);
         let txn = self.env.begin_ro_txn()?;
         match txn.get(self.db, &key) {
             Ok(_) => {
-                debug!("LMDB: Key exists: {}", key);
+                log_debug!("LMDB: Key exists: {}", key);
                 Ok(true)
             }
             Err(lmdb::Error::NotFound) => {
-                debug!("LMDB: Key does not exist: {}", key);
+                log_debug!("LMDB: Key does not exist: {}", key);
                 Ok(false)
             }
             Err(e) => {
-                warn!("LMDB: Error checking key '{}': {}", key, e);
+                log_warn!("LMDB: Error checking key '{}': {}", key, e);
                 Err(e.into())
             }
         }
@@ -191,7 +189,7 @@ impl LmdbStorage {
         let mut txn = self.env.begin_rw_txn()?;
         txn.clear_db(self.db)?;
         txn.commit()?;
-        info!("LMDB database cleared");
+        log_info!("LMDB database cleared");
         Ok(())
     }
 
@@ -199,13 +197,13 @@ impl LmdbStorage {
     #[allow(dead_code)]
     pub fn stats(&self) -> Result<()> {
         let _txn = self.env.begin_ro_txn()?;
-        info!("LMDB database connection verified");
+        log_info!("LMDB database connection verified");
         Ok(())
     }
 
     /// Populate database with DN42 registry data from a directory (with incremental update)
     pub fn populate_from_registry(&self, registry_path: &str) -> Result<()> {
-        info!(
+        log_info!(
             "Starting incremental LMDB update from registry: {}",
             registry_path
         );
@@ -234,7 +232,7 @@ impl LmdbStorage {
                     .and_then(|n| n.to_str())
                     .ok_or_else(|| anyhow::anyhow!("Invalid directory name"))?;
 
-                debug!("Processing subdirectory: {}", subdir_name);
+                log_debug!("Processing subdirectory: {}", subdir_name);
 
                 // Process files in this subdirectory
                 for file_entry in fs::read_dir(&path)? {
@@ -257,7 +255,7 @@ impl LmdbStorage {
                         let current_metadata = match FileMetadata::from_file(&file_path) {
                             Ok(metadata) => metadata,
                             Err(e) => {
-                                warn!("Failed to get metadata for {:?}: {}", file_path, e);
+                                log_warn!("Failed to get metadata for {:?}: {}", file_path, e);
                                 continue;
                             }
                         };
@@ -266,7 +264,7 @@ impl LmdbStorage {
                         let needs_update = match self.get_metadata(&key) {
                             Ok(Some(stored_metadata)) => {
                                 if stored_metadata != current_metadata {
-                                    debug!(
+                                    log_debug!(
                                         "File changed: {} (size: {} -> {}, modified: {} -> {})",
                                         key,
                                         stored_metadata.size,
@@ -276,16 +274,16 @@ impl LmdbStorage {
                                     );
                                     true
                                 } else {
-                                    debug!("File unchanged, skipping: {}", key);
+                                    log_debug!("File unchanged, skipping: {}", key);
                                     false
                                 }
                             }
                             Ok(None) => {
-                                debug!("New file detected: {}", key);
+                                log_debug!("New file detected: {}", key);
                                 true
                             }
                             Err(e) => {
-                                warn!(
+                                log_warn!(
                                     "Failed to get stored metadata for {}: {}, treating as new file",
                                     key, e
                                 );
@@ -299,20 +297,20 @@ impl LmdbStorage {
                                 Ok(content) => {
                                     // Store content and metadata
                                     if let Err(e) = self.put(&key, &content) {
-                                        warn!("Failed to store content for {}: {}", key, e);
+                                        log_warn!("Failed to store content for {}: {}", key, e);
                                     } else if let Err(e) =
                                         self.put_metadata(&key, &current_metadata)
                                     {
-                                        warn!("Failed to store metadata for {}: {}", key, e);
+                                        log_warn!("Failed to store metadata for {}: {}", key, e);
                                     } else {
                                         updated_files += 1;
                                         if updated_files % 1000 == 0 {
-                                            debug!("Updated {} files...", updated_files);
+                                            log_debug!("Updated {} files...", updated_files);
                                         }
                                     }
                                 }
                                 Err(e) => {
-                                    warn!("Failed to read file {:?}: {}", file_path, e);
+                                    log_warn!("Failed to read file {:?}: {}", file_path, e);
                                 }
                             }
                         } else {
@@ -326,7 +324,7 @@ impl LmdbStorage {
         // Clean up deleted files from LMDB
         let deleted_count = self.cleanup_deleted_files(&current_keys)?;
 
-        info!(
+        log_info!(
             "LMDB incremental update completed: {}/{} files processed, {} updated, {} skipped, {} deleted",
             total_files, total_files, updated_files, skipped_files, deleted_count
         );
@@ -363,14 +361,14 @@ impl LmdbStorage {
         // Delete the keys
         let deleted_count = keys_to_delete.len();
         for key in keys_to_delete {
-            debug!("Deleting removed file from LMDB: {}", key);
+            log_debug!("Deleting removed file from LMDB: {}", key);
             if let Err(e) = self.delete_with_metadata(&key) {
-                warn!("Failed to delete key {}: {}", key, e);
+                log_warn!("Failed to delete key {}: {}", key, e);
             }
         }
 
         if deleted_count > 0 {
-            info!("Cleaned up {} deleted files from LMDB", deleted_count);
+            log_info!("Cleaned up {} deleted files from LMDB", deleted_count);
         }
 
         Ok(deleted_count)
@@ -466,7 +464,7 @@ impl LmdbStorage {
     /// Force full refresh (clear and repopulate)
     #[allow(dead_code)]
     pub fn force_full_refresh(&self, registry_path: &str) -> Result<()> {
-        info!("Performing full LMDB refresh");
+        log_info!("Performing full LMDB refresh");
         self.clear()?;
         self.populate_from_registry(registry_path)
     }
@@ -485,6 +483,7 @@ impl LmdbStorage {
 /// Thread-safe wrapper for LmdbStorage
 use std::sync::Arc;
 
+use crate::{log_debug, log_info, log_warn};
 pub type SharedLmdbStorage = Arc<LmdbStorage>;
 
 pub fn create_shared_storage(db_path: &str) -> Result<SharedLmdbStorage> {

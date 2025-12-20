@@ -1,9 +1,8 @@
 use anyhow::{Result, anyhow};
-use tracing::debug;
-
 use super::constants::{RIPE_PREFIXES_API_BASE, RIPE_RIR_GEO_API_BASE, RIPE_STAT_API_BASE};
 use super::types::{PrefixesResponse, RipeStatResponse, RirGeoResponse};
 
+use crate::{log_debug};
 /// Query RIPE NCC STAT API
 pub async fn query_ripe_api(client: &reqwest::Client, resource: &str) -> Result<RipeStatResponse> {
     let url = format!(
@@ -11,7 +10,7 @@ pub async fn query_ripe_api(client: &reqwest::Client, resource: &str) -> Result<
         RIPE_STAT_API_BASE,
         urlencoding::encode(resource)
     );
-    debug!("RIPE STAT API URL: {}", url);
+    log_debug!("RIPE STAT API URL: {}", url);
 
     let response = client
         .get(&url)
@@ -39,7 +38,7 @@ pub async fn query_rir_geo_api(client: &reqwest::Client, resource: &str) -> Resu
         RIPE_RIR_GEO_API_BASE,
         urlencoding::encode(resource)
     );
-    debug!("RIPE RIR Geo API URL: {}", url);
+    log_debug!("RIPE RIR Geo API URL: {}", url);
 
     let response = client
         .get(&url)
@@ -73,7 +72,7 @@ pub async fn query_prefixes_api(client: &reqwest::Client, asn: &str) -> Result<P
         RIPE_PREFIXES_API_BASE,
         urlencoding::encode(asn)
     );
-    debug!("RIPE Prefixes API URL: {}", url);
+    log_debug!("RIPE Prefixes API URL: {}", url);
 
     let response = client
         .get(&url)

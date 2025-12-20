@@ -19,8 +19,7 @@
 use anyhow::{Context, Result};
 use reqwest;
 use serde::{Deserialize, Serialize};
-use tracing::{debug, error};
-
+use crate::{log_debug, log_error};
 const UBUNTU_PACKAGES_API: &str = "https://api.launchpad.net/1.0/ubuntu/+archive/primary";
 const UBUNTU_PACKAGES_SEARCH: &str = "https://packages.ubuntu.com";
 
@@ -45,7 +44,7 @@ struct UbuntuSearchResult {
 }
 
 pub async fn process_ubuntu_query(package_name: &str) -> Result<String> {
-    debug!("Processing Ubuntu query for package: {}", package_name);
+    log_debug!("Processing Ubuntu query for package: {}", package_name);
 
     if package_name.is_empty() {
         return Err(anyhow::anyhow!("Package name cannot be empty"));
@@ -74,7 +73,7 @@ pub async fn process_ubuntu_query(package_name: &str) -> Result<String> {
             }
         }
         Err(e) => {
-            error!("Ubuntu packages query failed for {}: {}", package_name, e);
+            log_error!("Ubuntu packages query failed for {}: {}", package_name, e);
             Ok(format_ubuntu_not_found(package_name))
         }
     }
@@ -96,7 +95,7 @@ async fn query_ubuntu_packages(package_name: &str) -> Result<UbuntuSearchResult>
         UBUNTU_PACKAGES_API, package_name
     );
 
-    debug!("Querying Ubuntu packages API: {}", search_url);
+    log_debug!("Querying Ubuntu packages API: {}", search_url);
 
     let response = client
         .get(&search_url)

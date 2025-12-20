@@ -11,8 +11,7 @@
 use anyhow::{Context, Result};
 use reqwest;
 use serde::{Deserialize, Serialize};
-use tracing::{debug, error};
-
+use crate::{log_debug, log_error};
 const DEBIAN_API_BASE: &str = "https://sources.debian.org/api/src";
 const DEBIAN_PACKAGES_BASE: &str = "https://packages.debian.org";
 const UBUNTU_PACKAGES_BASE: &str = "https://packages.ubuntu.com";
@@ -53,7 +52,7 @@ struct DebianPackageInfo {
 }
 
 pub async fn process_debian_query(package_name: &str) -> Result<String> {
-    debug!("Processing Debian query for package: {}", package_name);
+    log_debug!("Processing Debian query for package: {}", package_name);
 
     if package_name.is_empty() {
         return Err(anyhow::anyhow!("Package name cannot be empty"));
@@ -72,7 +71,7 @@ pub async fn process_debian_query(package_name: &str) -> Result<String> {
     match query_debian_api(package_name).await {
         Ok(package_info) => Ok(format_debian_response(&package_info, package_name)),
         Err(e) => {
-            error!("Debian API query failed for {}: {}", package_name, e);
+            log_error!("Debian API query failed for {}: {}", package_name, e);
             Ok(format_debian_not_found(package_name))
         }
     }
@@ -86,7 +85,7 @@ async fn query_debian_api(package_name: &str) -> Result<DebianPackageResponse> {
         .context("Failed to create HTTP client")?;
 
     let url = format!("{}/{}/", DEBIAN_API_BASE, package_name);
-    debug!("Querying Debian API: {}", url);
+    log_debug!("Querying Debian API: {}", url);
 
     let response = client
         .get(&url)
@@ -109,7 +108,7 @@ async fn query_debian_api(package_name: &str) -> Result<DebianPackageResponse> {
         .await
         .context("Failed to parse Debian API response")?;
 
-    debug!(
+    log_debug!(
         "Debian API response: {} versions for {}",
         package_response.versions.len(),
         package_name

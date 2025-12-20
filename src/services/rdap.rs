@@ -1,10 +1,9 @@
 use anyhow::Result;
 use rdap::{RdapClient, RdapRequest};
-use tracing::{debug, warn};
-
+use crate::{log_debug, log_warn};
 /// Process RDAP query
 pub async fn process_rdap_query(query: &str) -> Result<String> {
-    debug!("Processing RDAP query: {}", query);
+    log_debug!("Processing RDAP query: {}", query);
 
     // Create RDAP client
     let client = match RdapClient::new() {
@@ -36,7 +35,7 @@ pub async fn process_rdap_query(query: &str) -> Result<String> {
         }
     };
 
-    debug!("Detected RDAP query type: {:?}", query_type);
+    log_debug!("Detected RDAP query type: {:?}", query_type);
 
     // Create request
     let request = RdapRequest::new(query_type, query);
@@ -57,7 +56,7 @@ pub async fn process_rdap_query(query: &str) -> Result<String> {
             Ok(output + &format_rdap_output(&result))
         }
         Err(e) => {
-            warn!("RDAP query failed for {}: {}", query, e);
+            log_warn!("RDAP query failed for {}: {}", query, e);
             Ok(format!(
                 "% RDAP Query Failed\n\
                  % Query: {}\n\

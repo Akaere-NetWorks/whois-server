@@ -10,9 +10,8 @@ use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tracing::{ debug, error, info };
-
 use super::history::{ SshConnectionHistory, SshConnectionRecord };
+use crate::{log_debug, log_error, log_info};
 use crate::core::process_query;
 
 /// ANSI escape sequence parsing state
@@ -81,7 +80,7 @@ impl WhoisSshHandler {
 
         // Detect query type and process
         let query_type = crate::core::analyze_query(query);
-        debug!("Processing SSH WHOIS query: {} (type: {:?})", query, query_type);
+        log_debug!("Processing SSH WHOIS query: {} (type: {:?})", query, query_type);
 
         // Use the existing query handling logic from the main server
         // Note: SSH connections don't provide client IP in the same way, so we pass None
@@ -91,7 +90,7 @@ impl WhoisSshHandler {
                 response.replace('\n', "\r\n") + "\r\n"
             }
             Err(e) => {
-                error!("Error processing SSH WHOIS query '{}': {}", query, e);
+                log_error!("Error processing SSH WHOIS query '{}': {}", query, e);
                 format!("Error: {}\r\n", e)
             }
         }
@@ -135,7 +134,7 @@ impl WhoisSshHandler {
                 }
             }
             Err(e) => {
-                error!("Failed to retrieve connection history: {}", e);
+                log_error!("Failed to retrieve connection history: {}", e);
                 "Error: Failed to retrieve connection history\r\n".to_string()
             }
         }
@@ -151,7 +150,7 @@ impl server::Handler for WhoisSshHandler {
         channel: Channel<server::Msg>,
         _session: &mut server::Session
     ) -> Result<bool, Self::Error> {
-        debug!("SSH channel opened: {:?}", channel.id());
+        log_debug!("SSH channel opened: {:?}", channel.id());
 
         // Initialize session data
         let mut sessions = self.sessions.lock().await;
@@ -177,13 +176,13 @@ impl server::Handler for WhoisSshHandler {
     ) -> Result<server::Auth, Self::Error> {
         // Accept only "whois" username for SSH connections
         if user != "whois" {
-            info!("SSH authentication failed: invalid username '{}'", user);
+            log_info!("SSH authentication failed: invalid username '{}'", user);
             return Ok(server::Auth::Reject {
                 proceed_with_methods: None,
             });
         }
 
-        info!("SSH authentication successful: user={}", user);
+        log_info!("SSH authentication successful: user={}", user);
 
         // Store username for session tracking
         let mut sessions = self.sessions.lock().await;
@@ -201,13 +200,13 @@ impl server::Handler for WhoisSshHandler {
     ) -> Result<server::Auth, Self::Error> {
         // Accept only "whois" username for SSH connections
         if user != "whois" {
-            info!("SSH public key authentication failed: invalid username '{}'", user);
+            log_info!("SSH public key authentication failed: invalid username '{}'", user);
             return Ok(server::Auth::Reject {
                 proceed_with_methods: None,
             });
         }
 
-        info!("SSH public key authentication successful: user={}", user);
+        log_info!("SSH public key authentication successful: user={}", user);
 
         // Store username for session tracking
         let mut sessions = self.sessions.lock().await;
@@ -235,7 +234,7 @@ impl server::Handler for WhoisSshHandler {
         channel: ChannelId,
         _session: &mut server::Session
     ) -> Result<(), Self::Error> {
-        debug!("SSH channel closed: {:?}", channel);
+        log_debug!("SSH channel closed: {:?}", channel);
 
         // Record session in history
         if let Some(client_addr) = self.client_addr {
@@ -253,7 +252,7 @@ impl server::Handler for WhoisSshHandler {
                 };
 
                 if let Err(e) = self.history.add_record(record) {
-                    error!("Failed to record SSH session history: {}", e);
+                    log_error!("Failed to record SSH session history: {}", e);
                 }
             }
         }
@@ -266,7 +265,7 @@ impl server::Handler for WhoisSshHandler {
         channel: ChannelId,
         _session: &mut server::Session
     ) -> Result<(), Self::Error> {
-        debug!("SSH channel EOF: {:?}", channel);
+        log_debug!("SSH channel EOF: {:?}", channel);
         Ok(())
     }
 
@@ -281,7 +280,7 @@ impl server::Handler for WhoisSshHandler {
         _modes: &[(russh::Pty, u32)],
         session: &mut server::Session
     ) -> Result<(), Self::Error> {
-        debug!("SSH PTY request for channel: {:?}", channel);
+        log_debug!("SSH PTY request for channel: {:?}", channel);
         // Accept PTY request
         session.request_success();
         Ok(())
@@ -292,7 +291,7 @@ impl server::Handler for WhoisSshHandler {
         channel: ChannelId,
         session: &mut server::Session
     ) -> Result<(), Self::Error> {
-        debug!("SSH shell request for channel: {:?}", channel);
+        log_debug!("SSH shell request for channel: {:?}", channel);
         // Accept shell request and send welcome message
         session.request_success();
 

@@ -19,11 +19,10 @@
 use anyhow::Result;
 use serde_json::Value;
 use tokio::sync::Mutex;
-use tracing::{debug, error};
-
 // Import our new Rust pixiv client from current module
 use super::PixivClient;
 
+use crate::{log_debug, log_error};
 lazy_static::lazy_static! {
     static ref PIXIV_CLIENT: Mutex<PixivClient> = Mutex::new(PixivClient::default());
 }
@@ -47,7 +46,7 @@ pub async fn query_pixiv_artwork_json_rust(artwork_id: &str) -> Result<String> {
 
 /// Internal function to query Pixiv artwork using Rust implementation
 async fn query_pixiv_artwork_internal_rust(artwork_id: &str, json_output: bool) -> Result<String> {
-    debug!("Querying Pixiv artwork (Rust): {}", artwork_id);
+    log_debug!("Querying Pixiv artwork (Rust): {}", artwork_id);
 
     // Parse artwork ID
     let id: i64 = artwork_id
@@ -67,7 +66,7 @@ async fn query_pixiv_artwork_internal_rust(artwork_id: &str, json_output: bool) 
             }
         }
         Err(e) => {
-            error!("Pixiv API error: {:?}", e);
+            log_error!("Pixiv API error: {:?}", e);
             Ok(format!("% Error querying Pixiv artwork: {}\n", e))
         }
     }
@@ -85,7 +84,7 @@ pub async fn query_pixiv_user_json_rust(user_id: &str) -> Result<String> {
 
 /// Internal function to query Pixiv user using Rust implementation
 async fn query_pixiv_user_internal_rust(user_id: &str, json_output: bool) -> Result<String> {
-    debug!("Querying Pixiv user (Rust): {}", user_id);
+    log_debug!("Querying Pixiv user (Rust): {}", user_id);
 
     // Parse user ID
     let id: i64 = user_id
@@ -105,7 +104,7 @@ async fn query_pixiv_user_internal_rust(user_id: &str, json_output: bool) -> Res
             }
         }
         Err(e) => {
-            error!("Pixiv API error: {:?}", e);
+            log_error!("Pixiv API error: {:?}", e);
             Ok(format!("% Error querying Pixiv user: {}\n", e))
         }
     }
@@ -123,7 +122,7 @@ pub async fn search_pixiv_artworks_json_rust(keyword: &str, limit: Option<i32>) 
 
 /// Internal function to search Pixiv artworks using Rust implementation
 async fn search_pixiv_artworks_internal_rust(keyword: &str, limit: Option<i32>, json_output: bool) -> Result<String> {
-    debug!("Searching Pixiv artworks (Rust): {}", keyword);
+    log_debug!("Searching Pixiv artworks (Rust): {}", keyword);
 
     let limit = limit.unwrap_or(10);
 
@@ -145,7 +144,7 @@ async fn search_pixiv_artworks_internal_rust(keyword: &str, limit: Option<i32>, 
             }
         }
         Err(e) => {
-            error!("Pixiv API error: {:?}", e);
+            log_error!("Pixiv API error: {:?}", e);
             Ok(format!("% Error searching Pixiv: {}\n", e))
         }
     }
@@ -166,7 +165,7 @@ async fn query_pixiv_ranking_internal_rust(mode: Option<&str>, limit: Option<i32
     let mode = mode.unwrap_or("day");
     let limit = limit.unwrap_or(10);
 
-    debug!("Querying Pixiv ranking (Rust): mode={}, limit={}", mode, limit);
+    log_debug!("Querying Pixiv ranking (Rust): mode={}, limit={}", mode, limit);
 
     // Use Rust client
     let mut client = get_client().await?;
@@ -186,7 +185,7 @@ async fn query_pixiv_ranking_internal_rust(mode: Option<&str>, limit: Option<i32
             }
         }
         Err(e) => {
-            error!("Pixiv API error: {:?}", e);
+            log_error!("Pixiv API error: {:?}", e);
             Ok(format!("% Error querying Pixiv ranking: {}\n", e))
         }
     }
@@ -204,7 +203,7 @@ pub async fn query_pixiv_user_illusts_json_rust(user_id: &str, limit: Option<i32
 
 /// Internal function to get user's artworks using Rust implementation
 async fn query_pixiv_user_illusts_internal_rust(user_id: &str, limit: Option<i32>, json_output: bool) -> Result<String> {
-    debug!("Querying Pixiv user illusts (Rust): {}", user_id);
+    log_debug!("Querying Pixiv user illusts (Rust): {}", user_id);
 
     let id: i64 = user_id
         .parse()
@@ -230,7 +229,7 @@ async fn query_pixiv_user_illusts_internal_rust(user_id: &str, limit: Option<i32
             }
         }
         Err(e) => {
-            error!("Pixiv API error: {:?}", e);
+            log_error!("Pixiv API error: {:?}", e);
             Ok(format!("% Error querying user illusts: {}\n", e))
         }
     }
@@ -563,7 +562,7 @@ pub async fn process_pixiv_query_json_rust(query: &str) -> Result<String> {
 }
 
 async fn process_pixiv_query_internal_rust(query: &str, json_output: bool) -> Result<String> {
-    debug!("Processing Pixiv query (Rust): {}", query);
+    log_debug!("Processing Pixiv query (Rust): {}", query);
 
     // Remove -PIXIV suffix if present
     let base_query = if query.to_uppercase().ends_with("-PIXIV") {

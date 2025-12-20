@@ -2,8 +2,7 @@ use anyhow::Result;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
-use tracing::{debug, error, warn};
-
+use crate::{log_debug, log_error, log_warn};
 /// Certificate entry from crt.sh API
 #[derive(Debug, Deserialize, Serialize)]
 struct CrtEntry {
@@ -76,7 +75,7 @@ impl CrtService {
 
     /// Query crt.sh for certificate transparency logs
     pub async fn query_crt(&self, domain: &str) -> Result<String> {
-        debug!(
+        log_debug!(
             "Querying Certificate Transparency logs for domain: {}",
             domain
         );
@@ -85,7 +84,7 @@ impl CrtService {
             Ok(certificates) => {
                 let valid_certs = self.filter_valid_certificates(certificates);
                 let output = self.format_certificates(&valid_certs, domain);
-                debug!(
+                log_debug!(
                     "CRT query completed for {}, found {} valid certificates",
                     domain,
                     valid_certs.len()
@@ -93,7 +92,7 @@ impl CrtService {
                 Ok(output)
             }
             Err(e) => {
-                error!("Failed to fetch certificates for {}: {}", domain, e);
+                log_error!("Failed to fetch certificates for {}: {}", domain, e);
                 Ok(format!(
                     "Certificate Transparency Query Failed for {}\nError: {}\n\nNote: crt.sh API is known to be unstable and may timeout frequently.\nPlease try again or use alternative certificate lookup methods.\n",
                     domain, e
@@ -105,7 +104,7 @@ impl CrtService {
     /// Fetch certificates from crt.sh API
     async fn fetch_certificates(&self, domain: &str) -> Result<Vec<CrtEntry>> {
         let url = format!("https://crt.sh/json?q={}", urlencoding::encode(domain));
-        debug!("Fetching certificates from URL: {}", url);
+        log_debug!("Fetching certificates from URL: {}", url);
 
         // Set a strict timeout to prevent hanging
         let response = tokio::time::timeout(self.timeout, self.client.get(&url).send())
@@ -146,7 +145,7 @@ impl CrtService {
         let certificates: Vec<CrtEntry> = serde_json::from_str(&json_text)
             .map_err(|e| anyhow::anyhow!("Failed to parse JSON response: {}", e))?;
 
-        debug!(
+        log_debug!(
             "Successfully fetched {} certificate entries",
             certificates.len()
         );
@@ -163,7 +162,7 @@ impl CrtService {
             let not_before = match self.parse_crt_date(&cert.not_before) {
                 Ok(date) => date,
                 Err(e) => {
-                    warn!(
+                    log_warn!(
                         "Failed to parse not_before date '{}': {}",
                         cert.not_before, e
                     );
@@ -174,7 +173,7 @@ impl CrtService {
             let not_after = match self.parse_crt_date(&cert.not_after) {
                 Ok(date) => date,
                 Err(e) => {
-                    warn!("Failed to parse not_after date '{}': {}", cert.not_after, e);
+                    log_warn!("Failed to parse not_after date '{}': {}", cert.not_after, e);
                     continue;
                 }
             };
@@ -342,11 +341,11 @@ pub async fn process_crt_query(query: &str) -> Result<String> {
     let crt_service = CrtService::new();
 
     if let Some(domain) = CrtService::parse_crt_query(query) {
-        debug!("Processing CRT query for domain: {}", domain);
+        log_debug!("Processing CRT query for domain: {}", domain);
         return crt_service.query_crt(&domain).await;
     }
 
-    error!("Invalid CRT query format: {}", query);
+    log_error!("Invalid CRT query format: {}", query);
     Ok(format!(
         "Invalid Certificate Transparency query format. Use: domain-CRT\nQuery: {}\nExample: example.com-CRT\n",
         query

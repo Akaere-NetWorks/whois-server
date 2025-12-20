@@ -8,6 +8,7 @@ use reqwest::{Method, StatusCode};
 use std::collections::HashMap;
 use std::env;
 
+use crate::{log_info};
 /// Main Pixiv API client
 pub struct PixivClient {
     auth: AuthManager,
@@ -36,7 +37,7 @@ impl PixivClient {
     fn initialize_with_refresh_token(&mut self, _refresh_token: &str) {
         // In a real implementation, you might want to handle this asynchronously
         // For now, we'll just note that refresh token is available
-        tracing::info!("Pixiv client initialized with refresh token");
+        log_info!("Pixiv client initialized with refresh token");
     }
 
     /// Ensure we're authenticated, refreshing if needed

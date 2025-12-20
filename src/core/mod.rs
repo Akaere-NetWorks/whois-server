@@ -1,4 +1,5 @@
 pub mod color;
+pub mod logger;
 pub mod patch;
 pub mod query;
 pub mod query_processor;

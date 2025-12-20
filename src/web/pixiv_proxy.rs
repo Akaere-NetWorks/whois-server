@@ -22,16 +22,15 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use reqwest::Client;
-use tracing::{debug, error, warn};
-
+use crate::{log_debug, log_error, log_warn};
 /// Pixiv image reverse proxy handler
 /// Proxies requests to i.pximg.net with proper headers to bypass restrictions
 pub async fn proxy_pixiv_image(Path(path): Path<String>) -> Response {
-    debug!("Pixiv proxy request for path: {}", path);
+    log_debug!("Pixiv proxy request for path: {}", path);
 
     // Construct the original Pixiv URL
     let pixiv_url = format!("https://i.pximg.net/{}", path);
-    debug!("Proxying to: {}", pixiv_url);
+    log_debug!("Proxying to: {}", pixiv_url);
 
     // Create HTTP client
     let client = match Client::builder()
@@ -40,7 +39,7 @@ pub async fn proxy_pixiv_image(Path(path): Path<String>) -> Response {
     {
         Ok(c) => c,
         Err(e) => {
-            error!("Failed to create HTTP client: {}", e);
+            log_error!("Failed to create HTTP client: {}", e);
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Failed to create HTTP client",
@@ -62,18 +61,18 @@ pub async fn proxy_pixiv_image(Path(path): Path<String>) -> Response {
     {
         Ok(resp) => resp,
         Err(e) => {
-            warn!("Failed to fetch image from Pixiv: {}", e);
+            log_warn!("Failed to fetch image from Pixiv: {}", e);
             return (StatusCode::BAD_GATEWAY, "Failed to fetch image from Pixiv")
                 .into_response();
         }
     };
 
     let status = response.status();
-    debug!("Pixiv response status: {}", status);
+    log_debug!("Pixiv response status: {}", status);
 
     // Check if the request was successful
     if !status.is_success() {
-        warn!("Pixiv returned non-success status: {}", status);
+        log_warn!("Pixiv returned non-success status: {}", status);
         return (
             StatusCode::from_u16(status.as_u16()).unwrap_or(StatusCode::BAD_GATEWAY),
             format!("Pixiv returned status: {}", status),
@@ -89,13 +88,13 @@ pub async fn proxy_pixiv_image(Path(path): Path<String>) -> Response {
         .unwrap_or("application/octet-stream")
         .to_string();
 
-    debug!("Content-Type: {}", content_type);
+    log_debug!("Content-Type: {}", content_type);
 
     // Get the image bytes
     let bytes = match response.bytes().await {
         Ok(b) => b,
         Err(e) => {
-            error!("Failed to read response body: {}", e);
+            log_error!("Failed to read response body: {}", e);
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Failed to read response body",
@@ -104,7 +103,7 @@ pub async fn proxy_pixiv_image(Path(path): Path<String>) -> Response {
         }
     };
 
-    debug!("Successfully proxied {} bytes", bytes.len());
+    log_debug!("Successfully proxied {} bytes", bytes.len());
 
     // Build response headers
     let mut headers = HeaderMap::new();

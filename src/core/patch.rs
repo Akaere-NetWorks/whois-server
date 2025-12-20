@@ -16,8 +16,7 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::sync::RwLock;
-use tracing::{debug, error, info, warn};
-
+use crate::{log_debug, log_error, log_info, log_warn};
 /// Strip ANSI color codes from a string
 fn strip_ansi_codes(s: &str) -> String {
     // ANSI escape code pattern: \x1b[...m
@@ -195,7 +194,7 @@ impl PatchManager {
             "https://raw.githubusercontent.com/Akaere-NetWorks/whois-server/refs/heads/main/patches/patches.json"
         );
 
-        info!("Fetching patch metadata from: {}", url);
+        log_info!("Fetching patch metadata from: {}", url);
 
         // Download patches.json (async) with cache-busting
         let client = reqwest::Client::new();
@@ -224,7 +223,7 @@ impl PatchManager {
 
         for patch_info in &metadata.patches {
             if !patch_info.enabled {
-                debug!("Skipping disabled patch: {}", patch_info.name);
+                log_debug!("Skipping disabled patch: {}", patch_info.name);
                 continue;
             }
 
@@ -271,18 +270,18 @@ impl PatchManager {
         // Reload patches from LMDB into memory
         // Reload patches from LMDB into memory if any patches were processed
         if success_count > 0 || skipped_count > 0 {
-            info!("Reloading patches from LMDB storage...");
+            log_info!("Reloading patches from LMDB storage...");
             match self.load_patches_from_storage() {
                 Ok(count) => {
                     output.push_str(&format!(
                         "% Patches reloaded: {} patch files loaded into memory\n",
                         count
                     ));
-                    info!("Successfully reloaded {} patch files", count);
+                    log_info!("Successfully reloaded {} patch files", count);
                 }
                 Err(e) => {
                     output.push_str(&format!("% Warning: Failed to reload patches: {}\n", e));
-                    warn!("Failed to reload patches after update: {}", e);
+                    log_warn!("Failed to reload patches after update: {}", e);
                 }
             }
         }
@@ -305,13 +304,13 @@ impl PatchManager {
                 && let Ok(existing_info) = serde_json::from_str::<PatchInfo>(&existing_meta_json)
             {
                 if existing_info.sha1 == patch_info.sha1 {
-                    debug!(
+                    log_debug!(
                         "Patch {} already exists with same SHA1, skipping download",
                         patch_info.name
                     );
                     return Ok((patch_info.sha1.clone(), false));
                 } else {
-                    debug!(
+                    log_debug!(
                         "Patch {} exists but SHA1 changed: {} -> {}",
                         patch_info.name, existing_info.sha1, patch_info.sha1
                     );
@@ -319,7 +318,7 @@ impl PatchManager {
             }
         }
 
-        debug!("Downloading patch: {}", patch_info.name);
+        log_debug!("Downloading patch: {}", patch_info.name);
 
         // Download patch content (async) with cache-busting
         let client = reqwest::Client::new();
@@ -346,7 +345,7 @@ impl PatchManager {
                 let meta_json = serde_json::to_string(&patch_info)?;
                 storage.put(&meta_key, &meta_json)?;
 
-                debug!("Stored patch {} in LMDB", patch_info.name);
+                log_debug!("Stored patch {} in LMDB", patch_info.name);
             }
             Ok((actual_sha1, true))
         } else {
@@ -382,17 +381,17 @@ impl PatchManager {
                         // Extract patch name from "meta:001-ruinetwork.patch" -> "001-ruinetwork.patch"
                         let patch_name = key.strip_prefix("meta:").unwrap_or(&key);
                         patch_names.push(patch_name.to_string());
-                        debug!("Found patch in storage: {}", patch_name);
+                        log_debug!("Found patch in storage: {}", patch_name);
                     }
                 }
 
                 // Sort by name (numeric prefix ensures correct order)
                 patch_names.sort();
 
-                debug!("Found {} patches in storage", patch_names.len());
+                log_debug!("Found {} patches in storage", patch_names.len());
             }
             Err(e) => {
-                warn!("Failed to list keys from LMDB: {}", e);
+                log_warn!("Failed to list keys from LMDB: {}", e);
             }
         }
 
@@ -401,7 +400,7 @@ impl PatchManager {
             match storage.get(&key) {
                 Ok(Some(content)) => match self.parse_patch_content(&name, &content) {
                     Ok(patch_file) => {
-                        debug!(
+                        log_debug!(
                             "Loaded patch from storage: {} ({} patches)",
                             patch_file.filename,
                             patch_file.patches.len()
@@ -410,21 +409,21 @@ impl PatchManager {
                         self.patch_files.push(patch_file);
                     }
                     Err(e) => {
-                        error!("Failed to parse patch {}: {}", name, e);
+                        log_error!("Failed to parse patch {}: {}", name, e);
                     }
                 },
                 #[allow(non_snake_case)]
                 Ok(None) => {
-                    debug!("Patch {} not found in storage", name);
+                    log_debug!("Patch {} not found in storage", name);
                 }
                 Err(e) => {
-                    debug!("Could not read patch {}: {}", name, e);
+                    log_debug!("Could not read patch {}: {}", name, e);
                 }
             }
         }
 
         self.loaded = true;
-        info!("Loaded {} patches from LMDB storage", total_patches);
+        log_info!("Loaded {} patches from LMDB storage", total_patches);
         Ok(total_patches)
     }
 
@@ -724,22 +723,22 @@ impl PatchManager {
     /// Apply all patches to a response
     pub fn apply_patches(&self, query: &str, mut response: String) -> String {
         if !self.loaded || self.patch_files.is_empty() {
-            debug!("No patches loaded or patch system not initialized");
+            log_debug!("No patches loaded or patch system not initialized");
             return response;
         }
 
-        debug!("Processing {} patch files", self.patch_files.len());
+        log_debug!("Processing {} patch files", self.patch_files.len());
         for patch_file in &self.patch_files {
-            debug!("Checking {} patches from file", patch_file.patches.len());
+            log_debug!("Checking {} patches from file", patch_file.patches.len());
             for patch in &patch_file.patches {
                 if self.check_conditions(query, &response, &patch.conditions) {
-                    debug!(
+                    log_debug!(
                         "Conditions matched, applying patch with {} hunks",
                         patch.hunks.len()
                     );
                     response = self.apply_patch(response, patch);
                 } else {
-                    debug!(
+                    log_debug!(
                         "Conditions not matched for patch with {} conditions",
                         patch.conditions.len()
                     );
@@ -753,28 +752,28 @@ impl PatchManager {
     /// Check if all conditions are met (OR logic - any condition matches)
     fn check_conditions(&self, query: &str, response: &str, conditions: &[PatchCondition]) -> bool {
         if conditions.is_empty() {
-            debug!("No conditions - patch will always apply");
+            log_debug!("No conditions - patch will always apply");
             return true; // No conditions means always apply
         }
 
-        debug!("Checking {} conditions (OR logic)", conditions.len());
+        log_debug!("Checking {} conditions (OR logic)", conditions.len());
         // OR logic: if any condition is true, apply the patch
         for condition in conditions {
             let result = match condition.condition_type {
                 ConditionType::QueryContains => {
                     let matches = query.contains(&condition.value);
-                    debug!("QUERY_CONTAINS '{}': {}", condition.value, matches);
+                    log_debug!("QUERY_CONTAINS '{}': {}", condition.value, matches);
                     matches
                 }
                 ConditionType::ResponseContains => {
                     let matches = response.contains(&condition.value);
-                    debug!("RESPONSE_CONTAINS '{}': {}", condition.value, matches);
+                    log_debug!("RESPONSE_CONTAINS '{}': {}", condition.value, matches);
                     matches
                 }
                 ConditionType::QueryMatches => {
                     if let Some(regex) = &condition.regex {
                         let matches = regex.is_match(query);
-                        debug!("QUERY_MATCHES '{}': {}", condition.value, matches);
+                        log_debug!("QUERY_MATCHES '{}': {}", condition.value, matches);
                         matches
                     } else {
                         false
@@ -783,7 +782,7 @@ impl PatchManager {
                 ConditionType::ResponseMatches => {
                     if let Some(regex) = &condition.regex {
                         let matches = regex.is_match(response);
-                        debug!("RESPONSE_MATCHES '{}': {}", condition.value, matches);
+                        log_debug!("RESPONSE_MATCHES '{}': {}", condition.value, matches);
                         matches
                     } else {
                         false
@@ -792,7 +791,7 @@ impl PatchManager {
             };
 
             if result {
-                debug!("Condition matched! Patch will be applied");
+                log_debug!("Condition matched! Patch will be applied");
                 return true; // Any condition being true is enough
             }
         }
@@ -848,7 +847,7 @@ impl PatchManager {
             match rule.action {
                 ContextAction::Skip => {
                     if pattern_found {
-                        debug!(
+                        log_debug!(
                             "Context rule SKIP matched: pattern '{}' found {} lines {}",
                             rule.pattern,
                             rule.lines,
@@ -865,7 +864,7 @@ impl PatchManager {
                     has_only_rule = true;
                     if pattern_found {
                         only_rule_satisfied = true;
-                        debug!(
+                        log_debug!(
                             "Context rule ONLY matched: pattern '{}' found {} lines {}",
                             rule.pattern,
                             rule.lines,
@@ -967,7 +966,7 @@ impl PatchManager {
                 let mut should_skip = false;
                 for exclude_pattern in excludes {
                     if line.contains(exclude_pattern) {
-                        debug!(
+                        log_debug!(
                             "Skipping replacement for excluded line: {}",
                             line.chars().take(60).collect::<String>()
                         );
@@ -984,11 +983,11 @@ impl PatchManager {
                 // Check context rules
                 let context_check = Self::check_context_rules(&lines, idx, context_rules);
                 if context_check == ContextCheckResult::Skip {
-                    debug!("Skipping replacement due to context rule");
+                    log_debug!("Skipping replacement due to context rule");
                     result_lines.push(line.to_string());
                     continue;
                 } else if context_check == ContextCheckResult::OnlyButNotFound {
-                    debug!("Skipping replacement - ONLY rule not satisfied");
+                    log_debug!("Skipping replacement - ONLY rule not satisfied");
                     result_lines.push(line.to_string());
                     continue;
                 }
@@ -998,7 +997,7 @@ impl PatchManager {
                     // Look backwards (up to 50 lines) to check the block type
                     let should_replace = Self::should_replace_source_in_block(&lines, idx);
                     if !should_replace {
-                        debug!(
+                        log_debug!(
                             "Skipping source: replacement - not in user object block (aut-num/organisation/person)"
                         );
                         result_lines.push(line.to_string());
@@ -1012,7 +1011,7 @@ impl PatchManager {
                     // Strip ANSI color codes for matching
                     let stripped_line = strip_ansi_codes(line);
                     if stripped_line.trim_start().starts_with(match_prefix) {
-                        debug!(
+                        log_debug!(
                             "Line-start match: replacing entire line starting with '{}'",
                             match_prefix
                         );
@@ -1040,7 +1039,7 @@ impl PatchManager {
         // Check if any line in the match contains an excluded pattern
         for exclude_pattern in excludes {
             if old_text.contains(exclude_pattern) {
-                debug!(
+                log_debug!(
                     "Skipping multi-line replacement due to excluded pattern: {}",
                     exclude_pattern
                 );
@@ -1101,10 +1100,10 @@ pub async fn process_update_patch_query() -> Result<String, Box<dyn std::error::
 
 /// Apply patches to a WHOIS response
 pub fn apply_response_patches(query: &str, response: String) -> String {
-    debug!("Applying patches for query: {}", query);
+    log_debug!("Applying patches for query: {}", query);
     let manager = PATCH_MANAGER.read().expect("Patch manager mutex poisoned in apply_response_patches");
     let result = manager.apply_patches(query, response);
-    debug!("Patch application completed");
+    log_debug!("Patch application completed");
     result
 }
 

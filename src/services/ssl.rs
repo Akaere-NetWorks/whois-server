@@ -7,9 +7,9 @@ use std::io::{BufRead, BufReader, Write};
 use std::net::{TcpStream, ToSocketAddrs};
 use std::sync::Arc;
 use std::time::Duration;
-use tracing::{debug, error};
 use x509_parser::prelude::*;
 
+use crate::{log_debug, log_error};
 /// SSL certificate information structure
 #[derive(Debug, Clone)]
 pub struct CertificateInfo {
@@ -60,16 +60,16 @@ impl SslService {
     /// Query SSL certificate information for a domain
     pub async fn query_ssl_certificate(&self, domain: &str, port: Option<u16>) -> Result<String> {
         let port = port.unwrap_or(443);
-        debug!("Querying SSL certificate for {}:{}", domain, port);
+        log_debug!("Querying SSL certificate for {}:{}", domain, port);
 
         match self.get_certificate_info(domain, port).await {
             Ok(cert_info) => {
                 let output = self.format_certificate_info(&cert_info, domain, port);
-                debug!("SSL certificate query completed for {}", domain);
+                log_debug!("SSL certificate query completed for {}", domain);
                 Ok(output)
             }
             Err(e) => {
-                error!("Failed to retrieve SSL certificate for {}: {}", domain, e);
+                log_error!("Failed to retrieve SSL certificate for {}: {}", domain, e);
                 Ok(format!(
                     "SSL Certificate Query Failed for {}:{}\nError: {}\n",
                     domain, port, e
@@ -417,14 +417,14 @@ pub async fn process_ssl_query(query: &str) -> Result<String> {
     let ssl_service = SslService::new();
 
     if let Some((domain, port)) = SslService::parse_ssl_query(query) {
-        debug!(
+        log_debug!(
             "Processing SSL query for domain: {}, port: {:?}",
             domain, port
         );
         return ssl_service.query_ssl_certificate(&domain, port).await;
     }
 
-    error!("Invalid SSL query format: {}", query);
+    log_error!("Invalid SSL query format: {}", query);
     Ok(format!(
         "Invalid SSL query format. Use: domain-SSL or domain:port-SSL\nQuery: {}\n",
         query
