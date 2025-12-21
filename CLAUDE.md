@@ -9,11 +9,34 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `cargo run --release` - Run server with default settings (WHOIS port 43, Web dashboard port 9999)
 - `cargo run --release -- --help` - Show all command-line options
 
-### Common Development Tasks
-- `cargo test` - Run tests
-- `cargo clippy` - Lint the code
-- `cargo fmt` - Format code
+### Code Quality
+- `cargo clippy` - Lint the code (required for CI/CD)
+- `cargo fmt` - Format code (required for CI/CD)
 - `cargo doc --open` - Generate and open documentation
+
+### Testing
+- `cargo test` - Run tests (minimal coverage - only color scheme tests)
+- Note: The project has minimal test coverage. Manual testing via WHOIS client is recommended
+
+### Docker Development
+- `docker build -t whois-server .` - Build Docker image
+- `docker run -p 43:43 -p 9999:9999 whois-server` - Run with ports exposed
+- Images are automatically built and published to GitHub Container Registry for main branch pushes
+
+### CI/CD Workflows
+- **Build Workflow**: Runs on Ubuntu 22.04 and 24.04 with Rust toolchain setup
+  - Includes clippy and rustfmt checks
+  - Caches Cargo dependencies for faster builds
+  - Creates artifacts for each Ubuntu version
+- **Docker Workflow**: Multi-architecture Docker builds with automatic publishing
+  - Builds and publishes to GitHub Container Registry (ghcr.io)
+  - Triggers on pushes to main branch and version tags
+
+### Development Dependencies
+- **Rust**: 1.88.0+ (stable toolchain)
+- **Python**: 3.11.2+ (required for Pixiv integration via pixivpy3)
+- **Git**: Required for DN42 registry synchronization
+- **Standard Cargo toolchain**: build, test, clippy, fmt
 
 ### Testing the Server
 - Standard WHOIS client: `whois -h localhost -p 43 example.com`
