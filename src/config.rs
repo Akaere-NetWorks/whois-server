@@ -12,6 +12,10 @@ pub const DN42_LMDB_PATH: &str = "./cache/dn42-lmdb";
 pub const PEERINGDB_LMDB_PATH: &str = "./cache/peeringdb-lmdb";
 pub const PEERINGDB_CACHE_TTL: u64 = 86400; // 1 day in seconds
 
+// ICP filing cache configuration
+pub const ICP_LMDB_PATH: &str = "./cache/icp-lmdb";
+pub const ICP_CACHE_TTL: u64 = 86400; // 1 day in seconds
+
 // Statistics LMDB configuration
 pub const STATS_LMDB_PATH: &str = "./cache/stats-lmdb";
 

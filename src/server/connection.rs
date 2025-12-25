@@ -482,6 +482,10 @@ pub async fn handle_connection(
             log_debug!("Processing Pixiv query: {}", base_query);
             crate::services::pixiv::process_pixiv_query(base_query).await
         }
+        QueryType::Icp(base_query) => {
+            log_debug!("Processing ICP query: {}", base_query);
+            Ok(crate::services::process_icp_query(base_query).await)
+        }
         QueryType::Unknown(q) => {
             log_debug!("Unknown query type: {}", q);
             let q_upper = q.to_uppercase();

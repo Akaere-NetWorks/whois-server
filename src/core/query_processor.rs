@@ -60,6 +60,7 @@ use crate::services::{
     process_epel_query,
     process_geo_query,
     process_github_query,
+    process_icp_query,
     process_imdb_query,
     process_imdb_search_query,
     process_irr_query,
@@ -370,6 +371,10 @@ pub async fn process_query(
         QueryType::Pixiv(base_query) => {
             log_debug!("Processing Pixiv query: {}", base_query);
             crate::services::pixiv::process_pixiv_query(base_query).await
+        }
+        QueryType::Icp(base_query) => {
+            log_debug!("Processing ICP query: {}", base_query);
+            Ok(process_icp_query(base_query).await)
         }
         QueryType::Meal => {
             log_debug!("Processing meal suggestion query");

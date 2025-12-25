@@ -67,6 +67,7 @@ pub enum QueryType {
     Pen(String), // For queries ending with -PEN (IANA Private Enterprise Numbers)
     Rdap(String), // For queries ending with -RDAP (RDAP protocol queries)
     Pixiv(String), // For queries ending with -PIXIV (Pixiv artworks/users)
+    Icp(String), // For queries ending with -ICP (ICP filing for Chinese domains)
     Meal, // For meal suggestions (今天吃什么 or -MEAL)
     MealCN, // For Chinese meal suggestions (今天吃什么中国 or -MEAL-CN)
     Ntp(String), // For NTP time synchronization test (-NTP)
@@ -454,6 +455,12 @@ pub fn analyze_query(query: &str) -> QueryType {
     if query.to_uppercase().ends_with("-PIXIV") {
         let base_query = &query[..query.len() - 6]; // Remove "-PIXIV" suffix
         return QueryType::Pixiv(base_query.to_string());
+    }
+
+    // Check if it's an ICP filing query
+    if query.to_uppercase().ends_with("-ICP") {
+        let base_query = &query[..query.len() - 4]; // Remove "-ICP" suffix
+        return QueryType::Icp(base_query.to_string());
     }
 
     // Check if it's a BGP Tools query

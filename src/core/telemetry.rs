@@ -227,6 +227,7 @@ pub fn query_type_to_string(query_type: &crate::core::QueryType) -> String {
         crate::core::QueryType::Pen(_) => "pen".to_string(),
         crate::core::QueryType::Rdap(_) => "rdap".to_string(),
         crate::core::QueryType::Pixiv(_) => "pixiv".to_string(),
+        crate::core::QueryType::Icp(_) => "icp".to_string(),
         crate::core::QueryType::Meal => "meal".to_string(),
         crate::core::QueryType::MealCN => "meal_cn".to_string(),
         crate::core::QueryType::Ntp(_) => "ntp".to_string(),
