@@ -19,6 +19,7 @@
 mod config;
 mod core;
 mod dn42;
+mod plugins;
 mod server;
 mod services;
 mod ssh;
@@ -105,6 +106,25 @@ async fn main() -> Result<()> {
         }
     });
 
+    // Load plugins
+    log_init_start!("Plugin System");
+    let plugin_registry = match plugins::load_all_plugins().await {
+        Ok(registry) => {
+            let plugin_count = registry.len();
+            log_init_ok_with_details!("Plugin System", &format!("{} plugin(s) loaded", plugin_count));
+
+            // Store plugin registry for query detection (Arc for thread-safe sharing)
+            let shared_registry = std::sync::Arc::new(registry);
+            core::query::set_plugin_registry(shared_registry.clone());
+
+            Some(shared_registry)
+        }
+        Err(e) => {
+            log_init_warn!("Plugin System", &format!("continuing without plugins: {}", e));
+            None
+        }
+    };
+
     // Start PEN (Private Enterprise Numbers) periodic update task
     tokio::spawn(async move {
         log_task_start!("PEN Periodic Update Service");
@@ -169,6 +189,16 @@ async fn main() -> Result<()> {
     // Save stats on shutdown
     log_info!("Saving statistics before shutdown...");
     save_stats_on_shutdown(&stats).await;
+
+    // Cleanup plugins
+    if let Some(registry) = plugin_registry {
+        log_info!("Cleaning up plugins...");
+        for suffix in registry.get_all_suffixes() {
+            if let Some(plugin) = registry.get_plugin(&suffix) {
+                plugin.call_cleanup();
+            }
+        }
+    }
 
     result
 }

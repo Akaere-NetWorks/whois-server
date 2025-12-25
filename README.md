@@ -3,7 +3,7 @@
 # 🌐 WHOIS Server
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
-[![Rust](https://img.shields.io/badge/Rust-1.88.0+-orange.svg)](https://www.rust-lang.org/)
+[![Rust](https://img.shields.io/badge/Rust-1.92.0+-orange.svg)](https://www.rust-lang.org/)
 [![RFC 3912](https://img.shields.io/badge/RFC-3912-green.svg)](https://datatracker.ietf.org/doc/html/rfc3912)
 [![DN42](https://img.shields.io/badge/DN42-Compatible-blueviolet)](https://dn42.eu/)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/Akaere-NetWorks/whois-server)

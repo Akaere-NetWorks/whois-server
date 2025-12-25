@@ -64,6 +64,7 @@
 pub mod config;
 pub mod core;
 pub mod dn42;
+pub mod plugins;
 pub mod server;
 pub mod services;
 pub mod ssh;

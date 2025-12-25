@@ -233,6 +233,7 @@ pub fn query_type_to_string(query_type: &crate::core::QueryType) -> String {
         crate::core::QueryType::Ntp(_) => "ntp".to_string(),
         crate::core::QueryType::Help => "help".to_string(),
         crate::core::QueryType::UpdatePatch => "update_patch".to_string(),
+        crate::core::QueryType::Plugin(_, _) => "plugin".to_string(),
         crate::core::QueryType::Unknown(_) => "unknown".to_string(),
     }
 }

@@ -1213,6 +1213,14 @@ impl Colorizer {
                     line.to_string()
                 }
             }
+            QueryType::UpdatePatch | QueryType::Plugin(_, _) => {
+                // Use general formatting for update patch and plugins
+                if line.starts_with("%") {
+                    format!("{}{}\x1b[0m", comment_color, line)
+                } else {
+                    line.to_string()
+                }
+            }
             _ => {
                 // General network highlighting for all other query types
                 let asn_regex = Regex::new(r"(AS\d+)").expect("Invalid regex pattern");

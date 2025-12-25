@@ -486,6 +486,12 @@ pub async fn handle_connection(
             log_debug!("Processing ICP query: {}", base_query);
             Ok(crate::services::process_icp_query(base_query).await)
         }
+        QueryType::Plugin(_, _) => {
+            // Plugins should be handled by process_query, not here
+            // This is a fallback path
+            log_debug!("Plugin query routed to connection handler, using standard query processor");
+            crate::core::query_processor::process_query(&query, &query_type, None, None).await
+        }
         QueryType::Unknown(q) => {
             log_debug!("Unknown query type: {}", q);
             let q_upper = q.to_uppercase();

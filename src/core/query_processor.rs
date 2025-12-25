@@ -396,6 +396,10 @@ pub async fn process_query(
                 Err(e) => Ok(format!("% Error: {}\n", e)),
             }
         }
+        QueryType::Plugin(suffix, base_query) => {
+            log_debug!("Processing plugin query: suffix={}, query={}", suffix, base_query);
+            process_plugin_query(suffix, base_query, client_ip.clone()).await
+        }
         QueryType::Unknown(q) => {
             log_debug!("Unknown query type: {}", q);
             if q.to_uppercase().ends_with("-DN42") || q.to_uppercase().ends_with("-MNT") {
@@ -457,4 +461,53 @@ pub async fn process_query(
         }
         Err(e) => Err(e),
     }
+}
+
+/// Process a plugin query
+///
+/// This function executes the plugin's handle_query function with the provided input.
+async fn process_plugin_query(
+    suffix: &str,
+    base_query: &str,
+    _client_ip: Option<String>,
+) -> Result<String> {
+    use crate::core::query::get_plugin_registry;
+
+    // Get the plugin registry
+    let plugin_registry = get_plugin_registry()
+        .ok_or_else(|| anyhow::anyhow!("Plugin registry not initialized"))?;
+
+    // Find the plugin by suffix
+    let plugin = plugin_registry.get_plugin(suffix)
+        .ok_or_else(|| anyhow::anyhow!("Plugin not found for suffix: {}", suffix))?;
+
+    // Execute the plugin with timeout
+    let result = tokio::time::timeout(
+        std::time::Duration::from_secs(5),
+        execute_plugin(&plugin, base_query)
+    )
+    .await
+    .map_err(|_| anyhow::anyhow!("Plugin execution timeout (5s)"))??;
+
+    Ok(result)
+}
+
+/// Execute a plugin's handle_query function
+async fn execute_plugin(
+    plugin: &std::sync::Arc<crate::plugins::LoadedPlugin>,
+    query: &str,
+) -> Result<String> {
+    use mlua::Function;
+
+    let lua = &plugin.lua;
+
+    // Get the handle_query function
+    let handle: Function = lua.globals().get("handle_query")
+        .map_err(|e| anyhow::anyhow!("Plugin missing handle_query function: {}", e))?;
+
+    // Call the function asynchronously
+    let result: String = handle.call_async(query).await
+        .map_err(|e| anyhow::anyhow!("Plugin execution error: {}", e))?;
+
+    Ok(result)
 }

@@ -1,0 +1,14 @@
+[plugin]
+name = "weather"
+version = "1.0.0"
+suffix = "-WEATHER"
+author = "Akaere Networks"
+description = "Example plugin that demonstrates the plugin API by showing weather information using wttr.in"
+enabled = true
+
+[permissions]
+network = true
+allowed_domains = ["wttr.in"]
+
+cache_read = true
+cache_write = true

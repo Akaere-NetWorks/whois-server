@@ -2,6 +2,7 @@ use crate::config::{ PRIVATE_IPV4_RANGES, PRIVATE_IPV6_RANGES };
 use cidr::{ Ipv4Cidr, Ipv6Cidr };
 use regex::Regex;
 use std::net::{ IpAddr, Ipv4Addr, Ipv6Addr };
+use std::sync::RwLock;
 
 // WHOIS query types
 #[derive(Debug, Clone)]
@@ -73,6 +74,7 @@ pub enum QueryType {
     Ntp(String), // For NTP time synchronization test (-NTP)
     Help, // For HELP queries (show available query types)
     UpdatePatch, // For UPDATE-PATCH queries (update patches from remote repository)
+    Plugin(String, String), // For plugin-handled queries (suffix, base_query)
     Unknown(String),
 }
 
@@ -537,6 +539,17 @@ pub fn analyze_query(query: &str) -> QueryType {
         return QueryType::Domain(query.to_string());
     }
 
+    // Check for plugin-registered suffixes (before Unknown)
+    if let Some(plugin_registry) = get_plugin_registry() {
+        let query_upper = query.to_uppercase();
+        for suffix in plugin_registry.get_all_suffixes() {
+            if query_upper.ends_with(suffix.as_str()) {
+                let base_query = &query[..query.len() - suffix.len()];
+                return QueryType::Plugin(suffix, base_query.to_string());
+            }
+        }
+    }
+
     // Default to unknown type
     QueryType::Unknown(query.to_string())
 }
@@ -557,4 +570,22 @@ pub fn is_private_ipv6(ip: Ipv6Addr) -> bool {
         }
     }
     false
+}
+
+// Global plugin registry (shared across all threads)
+use crate::plugins::PluginRegistry;
+use std::sync::Arc;
+
+static PLUGIN_REGISTRY: RwLock<Option<Arc<PluginRegistry>>> = RwLock::new(None);
+
+/// Set the global plugin registry
+pub fn set_plugin_registry(registry: Arc<PluginRegistry>) {
+    let mut guard = PLUGIN_REGISTRY.write().unwrap();
+    *guard = Some(registry);
+}
+
+/// Get the global plugin registry
+pub fn get_plugin_registry() -> Option<Arc<PluginRegistry>> {
+    let guard = PLUGIN_REGISTRY.read().unwrap();
+    guard.clone()
 }
