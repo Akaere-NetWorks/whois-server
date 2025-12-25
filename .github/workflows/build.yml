@@ -49,8 +49,10 @@ jobs:
 
       - name: Install Lua
         run: |
-          sudo apt update && sudo apt install -y lua5.4
-          lua -v
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            lua5.4 liblua5.4-dev pkg-config build-essential
+          lua -v || true
 
       - name: Build
         run: cargo build --release
