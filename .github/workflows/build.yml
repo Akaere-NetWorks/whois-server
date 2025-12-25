@@ -49,7 +49,7 @@ jobs:
 
       - name: Install Lua
         run: |
-          apt update && apt install -y lua5.3
+          sudo apt update && sudo apt install -y lua5.3
           lua -v
 
       - name: Build
