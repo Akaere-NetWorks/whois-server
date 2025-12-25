@@ -2,9 +2,9 @@ name: Build WHOIS Server
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master]
   # Allow manual triggering of the workflow
   workflow_dispatch:
 
@@ -23,60 +23,51 @@ jobs:
             artifact-name: whois-server-ubuntu-24.04
 
     steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-    - name: Setup Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        override: true
-        components: rustfmt, clippy
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          components: rustfmt, clippy
 
-    - name: Cache Rust dependencies
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.cargo/bin/
-          ~/.cargo/registry/index/
-          ~/.cargo/registry/cache/
-          ~/.cargo/git/db/
-          target/
-        key: ${{ matrix.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: |
-          ${{ matrix.os }}-cargo-
+      - name: Cache Rust dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ matrix.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ matrix.os }}-cargo-
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11.2'
+      - name: Install Lua
+        run: |
+          apt update && apt install -y lua5.3
+          lua -v
 
-    - name: Install Python dependencies
-      run: |
-        python -m pip install --upgrade pip
-        if [ -f requirements.txt ]; then
-          pip install -r requirements.txt
-        else
-          echo "No requirements.txt found at repo root, skipping Python dependency installation."
-        fi
+      - name: Build
+        run: cargo build --release
 
-    - name: Build
-      run: cargo build --release
+      - name: Create artifacts directory
+        run: |
+          mkdir -p artifacts
+          cp target/release/whois-server artifacts/
+          cp README.md LICENSE.txt artifacts/
+          # Include Python source code for Pixiv integration
+          cp -r src/services/pixiv artifacts/pixiv
+          cp requirements.txt artifacts/ || echo "No requirements.txt found"
+          tar -czf ${{ matrix.artifact-name }}.tar.gz -C artifacts .
 
-    - name: Create artifacts directory
-      run: |
-        mkdir -p artifacts
-        cp target/release/whois-server artifacts/
-        cp README.md LICENSE.txt artifacts/
-        # Include Python source code for Pixiv integration
-        cp -r src/services/pixiv artifacts/pixiv
-        cp requirements.txt artifacts/ || echo "No requirements.txt found"
-        tar -czf ${{ matrix.artifact-name }}.tar.gz -C artifacts .
-
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ matrix.artifact-name }}
-        path: ${{ matrix.artifact-name }}.tar.gz
-        retention-days: 7 
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: ${{ matrix.artifact-name }}.tar.gz
+          retention-days: 7
