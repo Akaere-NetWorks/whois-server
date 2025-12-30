@@ -45,6 +45,7 @@ use crate::log_debug;
 use crate::dn42::process_dn42_query_managed;
 use crate::services::{
     handle_ntp_query,
+    process_ping_query,
     process_acgc_query,
     process_alma_query,
     process_aosc_query,
@@ -239,6 +240,10 @@ pub async fn process_query(
         QueryType::Ntp(base_query) => {
             log_debug!("Processing NTP query: {}", base_query);
             handle_ntp_query(base_query).await
+        }
+        QueryType::Ping(base_query) => {
+            log_debug!("Processing ping query: {}", base_query);
+            process_ping_query(base_query).await
         }
         QueryType::Trace(base_query) => {
             log_debug!("Processing traceroute query: {}", base_query);

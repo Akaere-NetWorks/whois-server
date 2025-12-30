@@ -231,6 +231,7 @@ pub fn query_type_to_string(query_type: &crate::core::QueryType) -> String {
         crate::core::QueryType::Meal => "meal".to_string(),
         crate::core::QueryType::MealCN => "meal_cn".to_string(),
         crate::core::QueryType::Ntp(_) => "ntp".to_string(),
+        crate::core::QueryType::Ping(_) => "ping".to_string(),
         crate::core::QueryType::Help => "help".to_string(),
         crate::core::QueryType::UpdatePatch => "update_patch".to_string(),
         crate::core::QueryType::Plugin(_, _) => "plugin".to_string(),

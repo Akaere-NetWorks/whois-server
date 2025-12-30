@@ -1,5 +1,6 @@
 pub mod acgc;
 pub mod bgptool;
+pub mod utils;
 pub mod cfstatus;
 pub mod crt;
 pub mod desc;
@@ -19,6 +20,7 @@ pub mod meal;
 pub mod minecraft;
 pub mod ntp;
 pub mod packages;
+pub mod ping;
 pub mod peeringdb;
 pub mod pen;
 pub mod pixiv;
@@ -52,6 +54,7 @@ pub use meal::*;
 pub use minecraft::*;
 pub use ntp::*;
 pub use packages::*;
+pub use ping::*;
 pub use peeringdb::*;
 pub use pen::*;
 // pub use pixiv::*; // Pixiv implementation used via explicit imports

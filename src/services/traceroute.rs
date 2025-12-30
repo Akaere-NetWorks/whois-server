@@ -1,378 +1,247 @@
+//! Traceroute query handler using Globalping API
+//!
+//! This module provides traceroute functionality using the Globalping API with
+//! detailed information including ASN, geolocation, PTR records, and hop-by-hop analysis.
+//!
+//! Supports location-based queries: target-location-TRACE (e.g., 1.1.1.1-us-TRACE)
+
 use anyhow::Result;
-use regex::Regex;
-use reqwest;
-use std::net::IpAddr;
-use std::path::Path;
-use std::process::Stdio;
-use std::sync::Arc;
-use tokio::fs;
-use tokio::process::Command;
-use tokio::sync::Mutex;
+use crate::services::utils::{GlobalpingClient, GlobalpingRequest, IpInfoClient, DohClient, TracerouteOptions, MeasurementOptions, MeasurementLocation};
 use crate::{log_debug, log_error, log_warn};
-/// NextTrace binary URLs for different platforms
-const NEXTTRACE_WINDOWS_URL: &str =
-    "https://github.com/nxtrace/NTrace-core/releases/download/v1.4.0/nexttrace_windows_amd64.exe";
-const NEXTTRACE_LINUX_URL: &str =
-    "https://github.com/nxtrace/NTrace-core/releases/download/v1.4.0/nexttrace_linux_amd64";
 
-/// Cache directory for NextTrace binaries
-const CACHE_DIR: &str = "./cache";
+/// Parse a query with optional location code
+/// Returns (target, location) where location is None if not specified
+///
+/// The suffix has already been removed by query.rs, so we just need to parse
+/// the remaining string which may be in format "target" or "target-location"
+/// Examples:
+///   "1.1.1.1" -> ("1.1.1.1", None)
+///   "1.1.1.1-TW" -> ("1.1.1.1", Some("TW"))
+///   "example.com-us" -> ("example.com", Some("us"))
+fn parse_location_query<'a>(query: &'a str) -> Result<(&'a str, Option<String>)> {
+    // Check if there's a location code (format: target-location)
+    // Location code is typically 2-5 characters (country codes, region codes)
+    // We need to be careful: target can be IP (1.1.1.1) or domain (example.com)
+    if let Some(last_dash_pos) = query.rfind('-') {
+        let potential_location = &query[last_dash_pos + 1..];
+        let potential_target = &query[..last_dash_pos];
 
-/// Binary filenames
-const WINDOWS_BINARY: &str = "nexttrace_windows_amd64.exe";
-const LINUX_BINARY: &str = "nexttrace_linux_amd64";
+        // Validate: target must contain a dot (domain or IP) or be parseable as IP
+        // Location codes are short strings without dots
+        let is_valid_target = potential_target.contains('.') ||
+                             potential_target.parse::<std::net::Ipv4Addr>().is_ok() ||
+                             potential_target.parse::<std::net::Ipv6Addr>().is_ok();
 
-/// Strip ANSI color codes from text
-fn strip_ansi_codes(text: &str) -> String {
-    // Regex pattern to match ANSI escape sequences
-    // Matches sequences like \x1b[...m (color codes) and \x1b[...J (clear screen)
-    static ANSI_REGEX: std::sync::OnceLock<Regex> = std::sync::OnceLock::new();
-    let regex = ANSI_REGEX.get_or_init(|| Regex::new(r"\x1b\[[0-9;]*[mJKH]").expect("Invalid ANSI regex pattern"));
+        if is_valid_target && potential_location.len() <= 5 && !potential_location.contains('.') {
+            return Ok((potential_target, Some(potential_location.to_string())));
+        }
+    }
 
-    regex.replace_all(text, "").to_string()
+    // No location code found, return entire query as target
+    Ok((query, None))
 }
 
-/// NextTrace binary manager
-#[derive(Default)]
-pub struct NextTraceManager {
-    binary_path: String,
-    initialized: bool,
-}
-
-impl NextTraceManager {
-    /// Create a new NextTrace manager
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Setup Linux capabilities for nexttrace binary
-    #[cfg(unix)]
-    async fn setup_linux_capabilities(&self) -> Result<()> {
-        use std::process::Stdio;
-
-        // Check if we're on Linux and if setcap is available
-        if !cfg!(target_os = "linux") {
-            return Ok(());
-        }
-
-        // Try to set CAP_NET_RAW capability using setcap
-        log_debug!("Attempting to set CAP_NET_RAW capability for nexttrace");
-
-        let output = Command::new("setcap")
-            .arg("cap_net_raw+ep")
-            .arg(&self.binary_path)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .output()
-            .await;
-
-        match output {
-            Ok(result) => {
-                if result.status.success() {
-                    log_debug!("Successfully set CAP_NET_RAW capability for nexttrace");
-                } else {
-                    let stderr = String::from_utf8_lossy(&result.stderr);
-                    log_warn!(
-                        "Failed to set capabilities (this is normal for non-root users): {}",
-                        stderr
-                    );
-                    log_debug!(
-                        "nexttrace will run without special capabilities - some features may be limited"
-                    );
-                }
-            }
-            Err(e) => {
-                log_debug!(
-                    "setcap command not available or failed: {} - this is normal on many systems",
-                    e
-                );
-            }
-        }
-
-        Ok(())
-    }
-
-    /// Check if nexttrace has sufficient privileges
-    #[cfg(unix)]
-    async fn check_privileges(&self) -> bool {
-        use std::process::Stdio;
-
-        // Try a quick capability check
-        let output = Command::new("getcap")
-            .arg(&self.binary_path)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::null())
-            .output()
-            .await;
-
-        if let Ok(result) = output {
-            let stdout = String::from_utf8_lossy(&result.stdout);
-            return stdout.contains("cap_net_raw");
-        }
-
-        // Check if running as root
-        let uid_output = Command::new("id")
-            .arg("-u")
-            .stdout(Stdio::piped())
-            .stderr(Stdio::null())
-            .output()
-            .await;
-
-        if let Ok(result) = uid_output {
-            let uid = String::from_utf8_lossy(&result.stdout)
-                .trim()
-                .parse::<u32>()
-                .unwrap_or(1000);
-            return uid == 0;
-        }
-
-        false
-    }
-
-    /// Initialize NextTrace binary (download if needed)
-    pub async fn initialize(&mut self) -> Result<()> {
-        if self.initialized {
-            return Ok(());
-        }
-
-        log_debug!("Initializing NextTrace binary");
-
-        // Create cache directory
-        fs::create_dir_all(CACHE_DIR)
-            .await
-            .map_err(|e| anyhow::anyhow!("Failed to create cache directory: {}", e))?;
-
-        // Detect platform and set binary info
-        let (binary_name, download_url) = if cfg!(target_os = "windows") {
-            (WINDOWS_BINARY, NEXTTRACE_WINDOWS_URL)
-        } else {
-            (LINUX_BINARY, NEXTTRACE_LINUX_URL)
-        };
-
-        self.binary_path = format!("{}/{}", CACHE_DIR, binary_name);
-
-        // Check if binary already exists
-        if Path::new(&self.binary_path).exists() {
-            log_debug!("NextTrace binary already exists at {}", self.binary_path);
-            self.initialized = true;
-            return Ok(());
-        }
-
-        // Download the binary
-        log_debug!("Downloading NextTrace binary from {}", download_url);
-        let client = reqwest::Client::new();
-        let response = client
-            .get(download_url)
-            .send()
-            .await
-            .map_err(|e| anyhow::anyhow!("Failed to download NextTrace binary: {}", e))?;
-
-        if !response.status().is_success() {
-            return Err(anyhow::anyhow!(
-                "Failed to download NextTrace binary: HTTP {}",
-                response.status()
-            ));
-        }
-
-        let binary_data = response
-            .bytes()
-            .await
-            .map_err(|e| anyhow::anyhow!("Failed to read NextTrace binary data: {}", e))?;
-
-        // Write binary to file
-        fs::write(&self.binary_path, binary_data)
-            .await
-            .map_err(|e| anyhow::anyhow!("Failed to write NextTrace binary: {}", e))?;
-
-        // Make binary executable on Unix-like systems
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            let mut perms = fs::metadata(&self.binary_path).await?.permissions();
-            perms.set_mode(0o755);
-            fs::set_permissions(&self.binary_path, perms).await?;
-
-            // Try to set CAP_NET_RAW capability for ICMP on Linux
-            self.setup_linux_capabilities().await?;
-        }
-
-        log_debug!(
-            "NextTrace binary downloaded and installed at {}",
-            self.binary_path
-        );
-        self.initialized = true;
-        Ok(())
-    }
-
-    /// Execute NextTrace for the given target IP
-    pub async fn trace_route(&self, target_ip: &str) -> Result<String> {
-        if !self.initialized {
-            return Err(anyhow::anyhow!("NextTrace not initialized"));
-        }
-
-        log_debug!("Running NextTrace for target: {}", target_ip);
-
-        // Check privileges and provide guidance if needed
-        #[cfg(unix)]
-        let has_privileges = self.check_privileges().await;
-        #[cfg(not(unix))]
-        let has_privileges = true;
-
-        let mut cmd = Command::new(&self.binary_path);
-        cmd.arg(target_ip);
-
-        // Add fallback options for unprivileged execution
-        #[cfg(unix)]
-        if !has_privileges {
-            // Try UDP mode first as fallback for unprivileged users
-            cmd.arg("--udp");
-            log_debug!("Using UDP mode for unprivileged execution");
-        }
-
-        cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
-
-        let output = cmd
-            .output()
-            .await
-            .map_err(|e| anyhow::anyhow!("Failed to execute NextTrace: {}", e))?;
-
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            log_warn!("NextTrace execution failed: {}", stderr);
-
-            // Provide helpful error message with privilege guidance
-            let error_msg = if !has_privileges && stderr.contains("permission") {
-                format!(
-                    "NextTrace execution failed due to insufficient privileges.\n\n{}\n\nTo resolve this issue on Linux, try one of the following:\n1. Run as root: sudo whois-server\n2. Set capabilities: sudo setcap cap_net_raw+ep {}\n3. Use UDP mode: nexttrace --udp {}\n\nNote: ICMP traceroute requires elevated privileges for raw socket access.",
-                    stderr, self.binary_path, target_ip
-                )
-            } else {
-                format!("NextTrace execution failed: {}", stderr)
-            };
-
-            return Err(anyhow::anyhow!(error_msg));
-        }
-
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        log_debug!("NextTrace completed for {}", target_ip);
-
-        // Strip ANSI color codes from output
-        let clean_output = strip_ansi_codes(&stdout);
-
-        // Add privilege status to output for transparency
-        let privilege_note = if !has_privileges {
-            "\n\nNote: Running in UDP mode without CAP_NET_RAW capability.\nFor ICMP traceroute, consider running with elevated privileges or setting capabilities:\n  sudo setcap cap_net_raw+ep nexttrace\n"
-        } else {
-            ""
-        };
-
-        Ok(format!("{}{}", clean_output, privilege_note))
-    }
-}
-
-/// Global NextTrace manager instance
-static NEXTTRACE_MANAGER: tokio::sync::OnceCell<Arc<Mutex<NextTraceManager>>> =
-    tokio::sync::OnceCell::const_new();
-
-/// Get or initialize the global NextTrace manager
-async fn get_nexttrace_manager() -> Result<Arc<Mutex<NextTraceManager>>> {
-    let manager = NEXTTRACE_MANAGER
-        .get_or_init(|| async { Arc::new(Mutex::new(NextTraceManager::new())) })
-        .await;
-
-    Ok(manager.clone())
-}
-
-/// Process traceroute query with -TRACE suffix
+/// Process a traceroute query with -TRACE suffix
+/// Supports optional location code: target-location-TRACE (e.g., 1.1.1.1-us-TRACE)
 pub async fn process_traceroute_query(query: &str) -> Result<String> {
     log_debug!("Processing traceroute query: {}", query);
 
-    // Remove -TRACE suffix if present
-    let clean_query = if query.to_uppercase().ends_with("-TRACE") {
-        &query[..query.len() - 6]
-    } else {
-        query
-    };
+    // Parse target and location
+    // The suffix has already been removed by query.rs
+    // Format: target-location or target
+    let (target, location) = parse_location_query(query)?;
 
-    // Parse IP address or resolve hostname
-    let target = if let Ok(ip) = clean_query.parse::<IpAddr>() {
-        ip.to_string()
-    } else {
-        // For hostnames, pass directly to NextTrace which can handle them
-        clean_query.to_string()
-    };
+    log_debug!("Starting traceroute to {} (location: {:?})", target, location);
 
-    log_debug!("Starting NextTrace traceroute to {}", target);
-
-    // Get NextTrace manager and execute
-    match get_nexttrace_manager().await {
-        Ok(manager_arc) => {
-            let mut manager = manager_arc.lock().await;
-
-            // Initialize if needed
-            if !manager.initialized
-                && let Err(e) = manager.initialize().await
-            {
-                log_error!("Failed to initialize NextTrace: {}", e);
-                return Ok(format!(
-                    "Traceroute service initialization failed: {}\n\nPlease ensure internet connectivity for initial setup.\n",
-                    e
-                ));
-            }
-
-            match manager.trace_route(&target).await {
-                Ok(output) => {
-                    log_debug!("NextTrace traceroute completed successfully");
-                    let final_output =
-                        format!("Traceroute to {} using NextTrace:\n\n{}", target, output);
-                    // Strip any remaining ANSI codes from the final output
-                    Ok(strip_ansi_codes(&final_output))
-                }
-                Err(e) => {
-                    log_error!("NextTrace execution failed: {}", e);
-                    Ok(format!(
-                        "Traceroute failed: {}\n\nNote: NextTrace requires network access and may need administrator privileges on some systems.\n",
-                        e
-                    ))
-                }
-            }
-        }
+    // Initialize clients
+    let globalping = match GlobalpingClient::new() {
+        Ok(client) => client,
         Err(e) => {
-            log_error!("Failed to get NextTrace manager: {}", e);
-            Ok(format!("Traceroute service error: {}\n", e))
+            log_error!("Failed to initialize Globalping client: {}", e);
+            return Ok(format!("Traceroute service error: {}\n", e));
         }
+    };
+
+    let ip_info_client = IpInfoClient::new(); // May fail if token not set
+    let doh_client = DohClient::new();
+
+    // Submit traceroute measurement to Globalping
+    let measurement_opts: MeasurementOptions = MeasurementOptions::Traceroute(TracerouteOptions {
+        protocol: Some("ICMP".to_string()),
+        port: None,
+    });
+
+    log_debug!("Parsed target: '{}', location: {:?}", target, location);
+
+    let mut request: GlobalpingRequest = GlobalpingRequest {
+        measurement_type: "traceroute".to_string(),
+        target: target.to_string(),
+        limit: Some(1), // Use 1 probe
+        measurement_options: Some(measurement_opts),
+        locations: None,
+        in_progress_updates: Some(false),
+    };
+
+    // Add location if specified
+    if let Some(loc) = location {
+        request.locations = Some(vec![MeasurementLocation {
+            magic: Some(loc),
+            limit: None,
+            continent: None,
+            region: None,
+            country: None,
+            state: None,
+            city: None,
+            asn: None,
+            network: None,
+            tags: None,
+        }]);
     }
+
+    let measurement_id = match globalping.submit_measurement(&request).await {
+        Ok(id) => id,
+        Err(e) => {
+            log_error!("Failed to submit traceroute measurement: {}", e);
+            return Ok(format!("Traceroute failed: {}\n", e));
+        }
+    };
+
+    log_debug!("Traceroute measurement ID: {}", measurement_id);
+
+    // Wait for results (60 second timeout for traceroute)
+    let results = match globalping.wait_for_results(&measurement_id, 60).await {
+        Ok(results) => results,
+        Err(e) => {
+            log_error!("Failed to get traceroute results: {}", e);
+            return Ok(format!("Traceroute measurement timed out or failed: {}\n", e));
+        }
+    };
+
+    // Format and return output
+    format_traceroute_output(&results, &ip_info_client, &doh_client, target).await
+}
+
+/// Format traceroute results with detailed hop information
+async fn format_traceroute_output(
+    results: &crate::services::utils::GlobalpingResult,
+    ip_info_client: &Result<IpInfoClient>,
+    doh_client: &DohClient,
+    target: &str,
+) -> Result<String> {
+    let mut output = String::new();
+
+    if results.results.is_empty() {
+        output.push_str(&format!("No results received for traceroute to {}\n", target));
+        return Ok(output);
+    }
+
+    // Process results from each probe
+    for probe_result in &results.results {
+        let test_result = &probe_result.result;
+        let probe_info = &probe_result.probe;
+
+        // Get resolved address
+        let target_ip = test_result.resolved_address.as_deref().unwrap_or(target);
+
+        // Header line
+        output.push_str(&format!(
+            "traceroute to {}, 30 hops max, 52 bytes payload, ICMP mode\n",
+            target_ip
+        ));
+
+        output.push_str(&format!("Probe: {} - {}, {}\n\n",
+            probe_info.network,
+            probe_info.city.as_deref().unwrap_or("Unknown"),
+            probe_info.country
+        ));
+
+        // Process hops
+        // Globalping API returns hops with resolvedAddress, resolvedHostname, and timings
+        if let Some(hops) = &test_result.hops {
+            for (hop_num, hop) in hops.iter().enumerate() {
+                // Check if hop has resolved address
+                if let Some(resolved_address) = &hop.resolved_address {
+                    // Get IP info and PTR records
+                    let ip_info = if let Ok(client) = ip_info_client {
+                        client.get_ip_info(resolved_address).await.ok()
+                    } else {
+                        None
+                    };
+
+                    let ptr_records = doh_client.query_ptr(resolved_address).await.ok();
+
+                    // Format hop information - first line with IP
+                    output.push_str(&format!("{:3}   {:15}", hop_num + 1, resolved_address));
+
+                    // ASN and location info on same line
+                    if let Some(info) = &ip_info {
+                        output.push_str(&format!(
+                            "   {:15}  {:20}  {:6}  {:10}  {}\n",
+                            info.asn, info.as_name, info.country_code,
+                            info.continent_code, info.as_domain
+                        ));
+                    } else {
+                        // No IP info available
+                        output.push_str("   *             *                      *           *\n");
+                    }
+
+                    // PTR records on next line (indented)
+                    if let Some(ptrs) = &ptr_records {
+                        if !ptrs.is_empty() {
+                            // Take first PTR record
+                            output.push_str(&format!("      {:15}\n", ptrs[0]));
+                        }
+                    }
+
+                    // RTT times on next line (indented)
+                    if let Some(timings) = &hop.timings {
+                        let times: Vec<String> = timings.iter()
+                            .map(|t| format!("{:.2} ms", t.rtt))
+                            .collect();
+
+                        if !times.is_empty() {
+                            output.push_str(&format!(
+                                "                                                {}\n",
+                                times.join(" / ")
+                            ));
+                        } else {
+                            output.push_str("                                                *\n");
+                        }
+                    } else {
+                        output.push_str("                                                *\n");
+                    }
+                } else {
+                    // Hop timed out - no IP response
+                    output.push_str(&format!("{:3}   *\n", hop_num + 1));
+                }
+            }
+        } else {
+            output.push_str("No hops data available in traceroute results\n");
+        }
+
+        output.push('\n');
+    }
+
+    Ok(output)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_binary_selection() {
-        let (binary_name, _) = if cfg!(target_os = "windows") {
-            (WINDOWS_BINARY, NEXTTRACE_WINDOWS_URL)
-        } else {
-            (LINUX_BINARY, NEXTTRACE_LINUX_URL)
-        };
-
-        assert!(!binary_name.is_empty());
+    #[tokio::test]
+    #[ignore] // Requires network and API tokens
+    async fn test_traceroute_query_formatting() {
+        // This test requires actual API calls
+        let result = process_traceroute_query("1.1.1.1-TRACE").await;
+        assert!(result.is_ok());
     }
 
     #[tokio::test]
-    #[ignore] // This test requires network access and can hang
-    async fn test_traceroute_query_parsing() {
-        let result = process_traceroute_query("8.8.8.8-TRACE").await;
+    #[ignore] // Requires network and API tokens
+    async fn test_traceroute_long_form() {
+        // Test long form -TRACEROUTE
+        let result = process_traceroute_query("1.1.1.1-TRACEROUTE").await;
         assert!(result.is_ok());
-
-        let result = process_traceroute_query("google.com-TRACE").await;
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_nexttrace_manager_creation() {
-        let manager = NextTraceManager::new();
-        assert!(!manager.initialized);
-        assert!(manager.binary_path.is_empty());
     }
 }

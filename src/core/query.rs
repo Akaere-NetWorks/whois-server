@@ -72,6 +72,7 @@ pub enum QueryType {
     Meal, // For meal suggestions (今天吃什么 or -MEAL)
     MealCN, // For Chinese meal suggestions (今天吃什么中国 or -MEAL-CN)
     Ntp(String), // For NTP time synchronization test (-NTP)
+    Ping(String), // For ICMP ping test (-PING)
     Help, // For HELP queries (show available query types)
     UpdatePatch, // For UPDATE-PATCH queries (update patches from remote repository)
     Plugin(String, String), // For plugin-handled queries (suffix, base_query)
@@ -247,6 +248,12 @@ pub fn analyze_query(query: &str) -> QueryType {
     if query.to_uppercase().ends_with("-NTP") {
         let base_query = &query[..query.len() - 4]; // Remove "-NTP" suffix
         return QueryType::Ntp(base_query.to_string());
+    }
+
+    // Check if it's a ping query
+    if query.to_uppercase().ends_with("-PING") {
+        let base_query = &query[..query.len() - 5]; // Remove "-PING" suffix
+        return QueryType::Ping(base_query.to_string());
     }
 
     // Check if it's a traceroute query (long form)
