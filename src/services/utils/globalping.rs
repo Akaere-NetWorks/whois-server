@@ -122,6 +122,7 @@ pub struct GlobalpingResult {
 
 /// Individual measurement result from a probe
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct ProbeResult {
     pub probe: ProbeInfo,
     pub result: TestResult,
@@ -129,27 +130,37 @@ pub struct ProbeResult {
 
 /// Probe information
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct ProbeInfo {
+    #[allow(dead_code)]
     pub continent: Option<String>,
+    #[allow(dead_code)]
     pub region: Option<String>,
     pub country: String,
     pub state: Option<String>,
     pub city: Option<String>,
+    #[allow(dead_code)]
     pub asn: u32,
     pub network: String,
     #[serde(default)]
+    #[allow(dead_code)]
     pub tags: Vec<String>,
 }
 
 /// Test result from probe
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct TestResult {
+    #[allow(dead_code)]
     pub status: String,
     #[serde(default)]
+    #[allow(dead_code)]
     pub raw_output: Option<String>,
     #[serde(rename = "resolvedAddress")]
     pub resolved_address: Option<String>,
     #[serde(rename = "resolvedHostname")]
+    #[serde(default)]
+    #[allow(dead_code)]
     pub resolved_hostname: Option<String>,
     #[serde(default)]
     pub timings: Option<Vec<Timing>>,
@@ -175,22 +186,27 @@ pub struct Stats {
     pub loss: u32,
     pub rcv: u32,
     #[serde(default)]
+    #[allow(dead_code)]
     pub drop: u32,
 }
 
 /// Traceroute hop result (from Globalping API)
 /// The API returns an array of hops with resolved addresses and timings
 #[derive(Debug, Deserialize, Clone)]
+#[allow(dead_code)]
 pub struct HopResult {
     #[serde(default)]
+    #[allow(dead_code)]
     pub hop: Option<u32>,  // Not always present in API response
     #[serde(default)]
+    #[allow(dead_code)]
     pub result: Option<Vec<HopDetail>>,
     #[serde(rename = "resolvedAddress")]
     #[serde(default)]
     pub resolved_address: Option<String>,
     #[serde(rename = "resolvedHostname")]
     #[serde(default)]
+    #[allow(dead_code)]
     pub resolved_hostname: Option<String>,
     #[serde(default)]
     pub timings: Option<Vec<HopTiming>>,
@@ -198,10 +214,13 @@ pub struct HopResult {
 
 /// Individual hop detail (from old format - kept for compatibility)
 #[derive(Debug, Deserialize, Clone)]
+#[allow(dead_code)]
 pub struct HopDetail {
     #[serde(default)]
+    #[allow(dead_code)]
     pub ip: Option<String>,
     #[serde(default)]
+    #[allow(dead_code)]
     pub rtt: Option<f64>,
 }
 
@@ -213,29 +232,35 @@ pub struct HopTiming {
 
 /// Target information (for compatibility)
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct TargetInfo {
     pub address: String,
 }
 
 /// Hop information (for compatibility - old format)
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct Hop {
     pub hop: u32,
     #[serde(default)]
+    #[allow(dead_code)]
     pub ip: Option<String>,
     #[serde(default)]
+    #[allow(dead_code)]
     pub rtt: Vec<LatencyValue>,
 }
 
 /// Latency value (for compatibility - old format)
 #[derive(Debug, Deserialize, Clone, Copy)]
 #[serde(untagged)]
+#[allow(dead_code)]
 pub enum LatencyValue {
     Number(f64),
     Null,
 }
 
 impl LatencyValue {
+    #[allow(dead_code)]
     pub fn as_f64(&self) -> Option<f64> {
         match self {
             LatencyValue::Number(n) if *n >= 0.0 => Some(*n),
@@ -243,6 +268,7 @@ impl LatencyValue {
         }
     }
 
+    #[allow(dead_code)]
     pub fn is_null(&self) -> bool {
         matches!(self, LatencyValue::Null)
     }
@@ -250,6 +276,7 @@ impl LatencyValue {
 
 /// Measurement result (for compatibility - old format)
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct MeasurementResult {
     pub target: TargetInfo,
     #[serde(default)]

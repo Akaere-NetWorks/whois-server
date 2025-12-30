@@ -7,7 +7,7 @@
 
 use anyhow::Result;
 use crate::services::utils::{GlobalpingClient, GlobalpingRequest, IpInfoClient, DohClient, TracerouteOptions, MeasurementOptions, MeasurementLocation};
-use crate::{log_debug, log_error, log_warn};
+use crate::{log_debug, log_error};
 
 /// Parse a query with optional location code
 /// Returns (target, location) where location is None if not specified

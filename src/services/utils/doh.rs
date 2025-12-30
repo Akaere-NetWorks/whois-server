@@ -8,22 +8,25 @@ use reqwest::Client;
 use serde::Deserialize;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::time::Duration;
-use crate::{log_debug, log_error};
+use crate::log_debug;
 
 const CLOUDFLARE_DOH_URL: &str = "https://cloudflare-dns.com/dns-query";
 
 /// DOH response structure
 #[derive(Debug, Deserialize)]
+#[allow(non_snake_case)]
 pub struct DohResponse {
     pub Status: u32,
     #[serde(rename = "Answer", default)]
     pub Answer: Option<Vec<DohAnswer>>,
     #[serde(rename = "Comment", default)]
+    #[allow(dead_code)]
     pub Comment: Option<String>,
 }
 
 /// DNS answer record
 #[derive(Debug, Deserialize, Clone)]
+#[allow(dead_code)]
 pub struct DohAnswer {
     pub name: String,
     pub data: String,
@@ -146,6 +149,7 @@ impl DohClient {
     }
 
     /// Query PTR records with caching (returns empty Vec on error instead of Err)
+    #[allow(dead_code)]
     pub async fn query_ptr_cached(&self, ip: &str) -> Vec<String> {
         self.query_ptr(ip).await.unwrap_or_default()
     }

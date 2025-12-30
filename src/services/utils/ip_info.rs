@@ -14,6 +14,7 @@ const IPINFO_API_BASE: &str = "https://api.ipinfo.io/lite";
 /// IP information from ipinfo.io
 #[derive(Debug, Deserialize, Clone)]
 pub struct IpInfo {
+    #[allow(dead_code)]
     pub ip: String,
     pub asn: String,
     #[serde(rename = "as_name")]
@@ -30,11 +31,13 @@ pub struct IpInfo {
 
 impl IpInfo {
     /// Check if this is private/RFC1918 address space
+    #[allow(dead_code)]
     pub fn is_private(&self) -> bool {
         self.asn == "*" || self.asn.is_empty()
     }
 
     /// Get a formatted description string
+    #[allow(dead_code)]
     pub fn description(&self) -> String {
         if self.is_private() {
             "RFC1918".to_string()
@@ -95,6 +98,7 @@ impl IpInfoClient {
     }
 
     /// Get IP information with caching (returns None on error instead of Err)
+    #[allow(dead_code)]
     pub async fn get_ip_info_cached(&self, ip: &str) -> Option<IpInfo> {
         self.get_ip_info(ip).await.ok()
     }
