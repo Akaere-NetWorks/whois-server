@@ -33,8 +33,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - Triggers on pushes to main branch and version tags
 
 ### Development Dependencies
-- **Rust**: 1.88.0+ (stable toolchain)
-- **Python**: 3.11.2+ (required for Pixiv integration via pixivpy3)
+- **Rust**: 1.92.0+ (stable toolchain)
+- **Lua**: 5.4+ development headers (liblua5.4-dev, pkg-config) for plugin support
 - **Git**: Required for DN42 registry synchronization
 - **Standard Cargo toolchain**: build, test, clippy, fmt
 
@@ -72,6 +72,8 @@ This is a comprehensive WHOIS server built in Rust with extensive query capabili
    - Central processing pipeline for all query types
    - Handles statistics collection and response formatting
    - Manages color scheme support for terminal output
+   - Processes response patches for customization
+   - Integrates with Lua plugin system for extensibility
 
 3. **Server Layer** (`src/server/`)
    - Async TCP server using Tokio
@@ -82,6 +84,7 @@ This is a comprehensive WHOIS server built in Rust with extensive query capabili
    - Modular implementations for each query type
    - External API integrations (IRR Explorer, Looking Glass, package repos, etc.)
    - Geo-location services with multiple providers
+   - Pure Rust Pixiv client implementation (no Python dependency)
 
 ### Specialized Systems
 
@@ -103,6 +106,11 @@ This is a comprehensive WHOIS server built in Rust with extensive query capabili
 - LMDB-based caching for DN42 registry, statistics, and patches
 - Persistent data management with TTL support
 
+**Plugin System** (`src/plugins/`)
+- Lua-based plugin architecture for extensibility
+- Secure sandboxed execution environment
+- Plugin registry and loader for dynamic extension loading
+
 ### Query Types
 
 The server supports an extensive range of query types identified by suffixes:
@@ -119,6 +127,7 @@ The server supports an extensive range of query types identified by suffixes:
 - Environment variables via `.env` file (Pixiv integration, proxy settings)
 - CLI arguments for ports, debugging, connection limits
 - Constants in `src/config.rs` for WHOIS servers and paths
+- Plugin system: Lua scripts in `plugins/` directory for custom query handlers
 
 ### External Dependencies
 
@@ -126,6 +135,23 @@ The server supports an extensive range of query types identified by suffixes:
 - **Tokio** for async runtime
 - **Axum** for web server
 - **LMDB** for high-performance storage
+- **mlua** for Lua 5.4 plugin integration
 - **Various API clients** for external service integration
+
+### Architecture Patterns
+
+**Query Flow:**
+1. Query received → `src/core/query.rs` detects type (35+ patterns)
+2. Routed to `src/core/query_processor.rs` for processing
+3. Handler selected from `src/services/` based on query type
+4. Response formatted with optional colorization
+5. Statistics collected in `src/storage/lmdb.rs`
+6. Patches applied (if configured) before response
+
+**Extension Points:**
+- Add new query types: Create handler in `src/services/` and register in query.rs
+- Add package repositories: Add to `src/services/packages/`
+- Create plugins: Add Lua scripts to `plugins/` directory
+- Customize responses: Add patch rules via patch management system
 
 The architecture emphasizes modularity, performance, and extensibility, with clean separation between the protocol handling, query routing, and service implementations.
