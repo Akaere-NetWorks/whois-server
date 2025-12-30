@@ -3394,6 +3394,7 @@ dependencies = [
  "clap",
  "der-parser 9.0.0",
  "dotenv",
+ "futures",
  "hmac",
  "lazy_static",
  "lmdb",

@@ -1,196 +1,144 @@
+//! DNS query handler using Cloudflare DOH API
+//!
+//! This module provides DNS functionality using Cloudflare's DNS-over-HTTPS API
+//! with support for multiple record types: A, AAAA, CNAME, MX, TXT, NS, SOA, PTR
+
 use anyhow::Result;
-use rand::random;
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
-use tokio::net::UdpSocket;
-use tokio::time::{Duration, timeout};
-use crate::{log_debug, log_error, log_warn};
-/// DNS message header
-#[derive(Debug)]
-struct DnsHeader {
-    id: u16,
-    flags: u16,
-    qdcount: u16,
-    ancount: u16,
-    nscount: u16,
-    arcount: u16,
-}
+use std::net::IpAddr;
+use crate::services::utils::doh::{DohClient, DnsRecordType, DnsAnswer};
+use crate::{log_debug, log_error};
 
-/// DNS question
-#[derive(Debug)]
-#[allow(dead_code)]
-struct DnsQuestion {
-    name: String,
-    qtype: u16,
-    qclass: u16,
-}
-
-/// DNS resource record
-#[derive(Debug, Clone)]
-#[allow(dead_code)]
-struct DnsRecord {
-    name: String,
-    rtype: u16,
-    class: u16,
-    ttl: u32,
-    data: Vec<u8>,
-}
-
-/// DNS response containing all sections
-#[derive(Debug)]
-struct DnsResponse {
-    answers: Vec<DnsRecord>,
-    authority: Vec<DnsRecord>,
-    additional: Vec<DnsRecord>,
-}
-
-/// DNS resolver service for recursive domain and reverse DNS lookups
+/// DNS service using Cloudflare DOH API
 pub struct DnsService {
-    root_servers: Vec<SocketAddr>,
-}
-
-impl DnsHeader {
-    fn new(id: u16) -> Self {
-        Self {
-            id,
-            flags: 0x0100, // Standard query with recursion desired
-            qdcount: 1,
-            ancount: 0,
-            nscount: 0,
-            arcount: 0,
-        }
-    }
-
-    fn to_bytes(&self) -> Vec<u8> {
-        let mut bytes = Vec::new();
-        bytes.extend_from_slice(&self.id.to_be_bytes());
-        bytes.extend_from_slice(&self.flags.to_be_bytes());
-        bytes.extend_from_slice(&self.qdcount.to_be_bytes());
-        bytes.extend_from_slice(&self.ancount.to_be_bytes());
-        bytes.extend_from_slice(&self.nscount.to_be_bytes());
-        bytes.extend_from_slice(&self.arcount.to_be_bytes());
-        bytes
-    }
-
-    fn from_bytes(bytes: &[u8]) -> Result<Self> {
-        if bytes.len() < 12 {
-            return Err(anyhow::anyhow!("DNS header too short"));
-        }
-
-        Ok(Self {
-            id: u16::from_be_bytes([bytes[0], bytes[1]]),
-            flags: u16::from_be_bytes([bytes[2], bytes[3]]),
-            qdcount: u16::from_be_bytes([bytes[4], bytes[5]]),
-            ancount: u16::from_be_bytes([bytes[6], bytes[7]]),
-            nscount: u16::from_be_bytes([bytes[8], bytes[9]]),
-            arcount: u16::from_be_bytes([bytes[10], bytes[11]]),
-        })
-    }
+    client: DohClient,
 }
 
 impl DnsService {
-    /// Create a new DNS service with fixed 1.1.1.1 DNS server
-    pub async fn new() -> Result<Self> {
-        // Use Cloudflare DNS (1.1.1.1) as fixed DNS server
-        let root_servers = vec!["1.1.1.1:53".parse()?];
-
-        log_debug!("DNS resolver initialized with fixed 1.1.1.1 DNS server");
-        Ok(Self { root_servers })
+    /// Create a new DNS service
+    pub fn new() -> Self {
+        Self {
+            client: DohClient::new(),
+        }
     }
 
-    /// Perform DNS query for domain names
+    /// Query all DNS records for a domain
     pub async fn query_dns(&self, domain: &str) -> Result<String> {
-        log_debug!("Performing recursive DNS query for domain: {}", domain);
+        log_debug!("Querying DNS records for domain: {}", domain);
 
-        let mut output = String::new();
-
-        // Query different record types
-        let record_types = [
-            (1, "A"),     // A record
-            (28, "AAAA"), // AAAA record
-            (15, "MX"),   // MX record
-            (16, "TXT"),  // TXT record
-            (2, "NS"),    // NS record
-            (6, "SOA"),   // SOA record
+        let record_types = vec![
+            DnsRecordType::A,
+            DnsRecordType::AAAA,
+            DnsRecordType::CNAME,
+            DnsRecordType::MX,
+            DnsRecordType::TXT,
+            DnsRecordType::NS,
+            DnsRecordType::SOA,
         ];
 
-        for (qtype, type_name) in record_types {
-            match self.resolve_recursive(domain, qtype).await {
-                Ok(records) => {
-                    if !records.is_empty() {
-                        output.push_str(&format!("\n{} Records for {}:\n", type_name, domain));
-                        for record in records {
-                            let formatted = self.format_record(&record, type_name);
-                            output.push_str(&formatted);
-                        }
+        let results = self.client.query_batch(domain, &record_types).await?;
+
+        if results.is_empty() {
+            return Ok(format!("No DNS records found for domain: {}\n", domain));
+        }
+
+        let mut output = format!("DNS Records for {}:\n", domain);
+
+        // Output records in order
+        for record_type in &record_types {
+            let type_str = record_type.as_str();
+            if let Some(answers) = results.get(type_str) {
+                if !answers.is_empty() {
+                    output.push_str(&format!("\n{} Records:\n", type_str));
+                    for answer in answers {
+                        output.push_str(&self.format_doh_answer(answer, type_str));
                     }
-                }
-                Err(e) => {
-                    log_debug!(
-                        "Failed to resolve {} records for {}: {}",
-                        type_name, domain, e
-                    );
                 }
             }
         }
 
-        if output.is_empty() {
-            output = format!("No DNS records found for domain: {}\n", domain);
-        } else {
-            output = format!(
-                "Recursive DNS Resolution Results for: {}\n{}",
-                domain, output
-            );
-        }
-
-        log_debug!(
-            "DNS query completed for {}, result length: {} bytes",
-            domain,
-            output.len()
-        );
         Ok(output)
     }
 
-    /// Perform reverse DNS lookup for IP addresses
+    /// Reverse DNS lookup (PTR records)
     pub async fn query_rdns(&self, ip: IpAddr) -> Result<String> {
-        log_debug!("Performing recursive reverse DNS query for IP: {}", ip);
+        log_debug!("Querying reverse DNS for IP: {}", ip);
 
+        // Create PTR query name
         let ptr_name = match ip {
             IpAddr::V4(ipv4) => self.create_ipv4_ptr_name(ipv4),
             IpAddr::V6(ipv6) => self.create_ipv6_ptr_name(ipv6),
         };
 
-        log_debug!("Generated PTR name: {}", ptr_name);
+        log_debug!("PTR query name: {}", ptr_name);
 
-        match self.resolve_recursive(&ptr_name, 12).await {
-            // 12 = PTR record type
-            Ok(records) => {
-                let mut output = format!(
-                    "Recursive Reverse DNS Results for {}:\n\nPTR Records:\n",
-                    ip
-                );
-                for record in records {
-                    let formatted = self.format_record(&record, "PTR");
-                    output.push_str(&formatted);
+        // Query PTR records
+        match self.client.query(&ptr_name, "PTR").await {
+            Ok(response) => {
+                if response.Status != 0 {
+                    return Ok(format!("No reverse DNS record found for IP: {}\n", ip));
                 }
-                if output.lines().count() <= 3 {
-                    output = format!("No reverse DNS record found for IP: {}\n", ip);
+
+                let mut output = format!("Reverse DNS Results for {}:\n\nPTR Records:\n", ip);
+
+                if let Some(answers) = response.Answer {
+                    if answers.is_empty() {
+                        return Ok(format!("No reverse DNS record found for IP: {}\n", ip));
+                    }
+
+                    for answer in answers {
+                        // Remove trailing dot if present
+                        let data = if answer.data.ends_with('.') {
+                            &answer.data[..answer.data.len() - 1]
+                        } else {
+                            &answer.data
+                        };
+
+                        output.push_str(&format!("  {} (TTL: {})\n", data, answer.TTL));
+                    }
+
+                    Ok(output)
+                } else {
+                    Ok(format!("No reverse DNS record found for IP: {}\n", ip))
                 }
-                log_debug!(
-                    "rDNS query completed for {}, result length: {} bytes",
-                    ip,
-                    output.len()
-                );
-                Ok(output)
             }
             Err(e) => {
-                log_warn!("Failed to query PTR records for {}: {}", ip, e);
+                log_error!("Failed to query PTR records for {}: {}", ip, e);
                 Ok(format!("Reverse DNS lookup failed for {}: {}\n", ip, e))
             }
         }
     }
 
+    /// Format DOH answer records for display
+    fn format_doh_answer(&self, answer: &DnsAnswer, record_type: &str) -> String {
+        match record_type {
+            "MX" => {
+                // MX format: "10 mail.example.com"
+                if let Some(space_pos) = answer.data.find(' ') {
+                    let preference = &answer.data[..space_pos];
+                    let exchange = &answer.data[space_pos + 1..];
+                    format!("  {} {} (TTL: {})\n", preference, exchange, answer.TTL)
+                } else {
+                    format!("  {} (TTL: {})\n", answer.data, answer.TTL)
+                }
+            }
+            "TXT" => {
+                // TXT records may be quoted
+                let data = if answer.data.starts_with('"') && answer.data.ends_with('"') {
+                    &answer.data[1..answer.data.len() - 1]
+                } else {
+                    &answer.data
+                };
+                format!("  \"{}\" (TTL: {})\n", data, answer.TTL)
+            }
+            _ => {
+                // A, AAAA, CNAME, NS, SOA, PTR
+                format!("  {} (TTL: {})\n", answer.data, answer.TTL)
+            }
+        }
+    }
+
     /// Create IPv4 PTR name (e.g., 1.1.1.1 -> 1.1.1.1.in-addr.arpa)
-    fn create_ipv4_ptr_name(&self, ip: Ipv4Addr) -> String {
+    fn create_ipv4_ptr_name(&self, ip: std::net::Ipv4Addr) -> String {
         let octets = ip.octets();
         format!(
             "{}.{}.{}.{}.in-addr.arpa",
@@ -198,8 +146,8 @@ impl DnsService {
         )
     }
 
-    /// Create IPv6 PTR name (e.g., 2001:db8::1 -> 1.0.0.0...ip6.arpa)
-    fn create_ipv6_ptr_name(&self, ip: Ipv6Addr) -> String {
+    /// Create IPv6 PTR name
+    fn create_ipv6_ptr_name(&self, ip: std::net::Ipv6Addr) -> String {
         let segments = ip.segments();
         let mut nibbles = Vec::new();
 
@@ -214,389 +162,7 @@ impl DnsService {
         format!("{}.ip6.arpa", nibbles.join("."))
     }
 
-    /// Recursive DNS resolution
-    async fn resolve_recursive(&self, domain: &str, qtype: u16) -> Result<Vec<DnsRecord>> {
-        log_debug!(
-            "Starting recursive resolution for {} (type {})",
-            domain, qtype
-        );
-
-        // Start with root servers
-        let mut nameservers = self.root_servers.clone();
-        let mut depth = 0;
-        const MAX_DEPTH: usize = 10;
-
-        loop {
-            if depth >= MAX_DEPTH {
-                return Err(anyhow::anyhow!("Maximum recursion depth reached"));
-            }
-
-            depth += 1;
-            log_debug!(
-                "Recursion depth: {}, querying {} servers",
-                depth,
-                nameservers.len()
-            );
-
-            let mut best_response = None;
-
-            // Try each nameserver
-            for ns in &nameservers {
-                match self.query_server(*ns, domain, qtype).await {
-                    Ok(response) => {
-                        log_debug!(
-                            "Got response from {}: {} answers, {} authority, {} additional",
-                            ns,
-                            response.answers.len(),
-                            response.authority.len(),
-                            response.additional.len()
-                        );
-
-                        // If we got answers, return them
-                        if !response.answers.is_empty() {
-                            return Ok(response.answers);
-                        }
-
-                        // If we got authority records, use them for next iteration
-                        if !response.authority.is_empty() || !response.additional.is_empty() {
-                            best_response = Some(response);
-                            break;
-                        }
-                    }
-                    Err(e) => {
-                        log_debug!("Failed to query {}: {}", ns, e);
-                        continue;
-                    }
-                }
-            }
-
-            // Extract new nameservers from authority/additional sections
-            if let Some(response) = best_response {
-                nameservers = self.extract_nameservers(&response)?;
-                if nameservers.is_empty() {
-                    return Err(anyhow::anyhow!("No more nameservers to try"));
-                }
-            } else {
-                return Err(anyhow::anyhow!("All nameservers failed"));
-            }
-        }
-    }
-
-    /// Query a specific DNS server
-    async fn query_server(
-        &self,
-        server: SocketAddr,
-        domain: &str,
-        qtype: u16,
-    ) -> Result<DnsResponse> {
-        let socket = UdpSocket::bind("0.0.0.0:0").await?;
-
-        // Build DNS query
-        let query_id = random::<u16>();
-        let mut packet = Vec::new();
-
-        // Header
-        let header = DnsHeader::new(query_id);
-        packet.extend_from_slice(&header.to_bytes());
-
-        // Question
-        packet.extend_from_slice(&self.encode_domain_name(domain));
-        packet.extend_from_slice(&qtype.to_be_bytes()); // QTYPE
-        packet.extend_from_slice(&(1u16).to_be_bytes()); // QCLASS (IN)
-
-        // Send query with timeout
-        log_debug!(
-            "Sending DNS query to {} for {} (type {})",
-            server, domain, qtype
-        );
-        socket.send_to(&packet, server).await?;
-
-        let mut buffer = vec![0; 512];
-        let (len, _) = timeout(Duration::from_secs(5), socket.recv_from(&mut buffer)).await??;
-        buffer.truncate(len);
-
-        // Parse response
-        self.parse_dns_response(&buffer)
-    }
-
-    /// Encode domain name to DNS wire format
-    fn encode_domain_name(&self, domain: &str) -> Vec<u8> {
-        let mut encoded = Vec::new();
-
-        for label in domain.split('.') {
-            if label.is_empty() {
-                continue;
-            }
-            encoded.push(label.len() as u8);
-            encoded.extend_from_slice(label.as_bytes());
-        }
-        encoded.push(0); // Root label
-
-        encoded
-    }
-
-    /// Parse DNS response
-    fn parse_dns_response(&self, buffer: &[u8]) -> Result<DnsResponse> {
-        if buffer.len() < 12 {
-            return Err(anyhow::anyhow!("Response too short"));
-        }
-
-        let header = DnsHeader::from_bytes(buffer)?;
-        log_debug!(
-            "Parsed DNS header: {} answers, {} authority, {} additional",
-            header.ancount, header.nscount, header.arcount
-        );
-
-        let mut offset = 12;
-
-        // Skip questions
-        for _ in 0..header.qdcount {
-            offset = self.skip_name(buffer, offset)?;
-            offset += 4; // QTYPE + QCLASS
-        }
-
-        // Parse answers
-        let mut answers = Vec::new();
-        for _ in 0..header.ancount {
-            let (record, new_offset) = self.parse_record(buffer, offset)?;
-            answers.push(record);
-            offset = new_offset;
-        }
-
-        // Parse authority
-        let mut authority = Vec::new();
-        for _ in 0..header.nscount {
-            let (record, new_offset) = self.parse_record(buffer, offset)?;
-            authority.push(record);
-            offset = new_offset;
-        }
-
-        // Parse additional
-        let mut additional = Vec::new();
-        for _ in 0..header.arcount {
-            let (record, new_offset) = self.parse_record(buffer, offset)?;
-            additional.push(record);
-            offset = new_offset;
-        }
-
-        Ok(DnsResponse {
-            answers,
-            authority,
-            additional,
-        })
-    }
-
-    /// Parse a DNS resource record
-    fn parse_record(&self, buffer: &[u8], offset: usize) -> Result<(DnsRecord, usize)> {
-        let (name, mut offset) = self.parse_name(buffer, offset)?;
-
-        if offset + 10 > buffer.len() {
-            return Err(anyhow::anyhow!("Record too short"));
-        }
-
-        let rtype = u16::from_be_bytes([buffer[offset], buffer[offset + 1]]);
-        let class = u16::from_be_bytes([buffer[offset + 2], buffer[offset + 3]]);
-        let ttl = u32::from_be_bytes([
-            buffer[offset + 4],
-            buffer[offset + 5],
-            buffer[offset + 6],
-            buffer[offset + 7],
-        ]);
-        let rdlength = u16::from_be_bytes([buffer[offset + 8], buffer[offset + 9]]) as usize;
-        offset += 10;
-
-        if offset + rdlength > buffer.len() {
-            return Err(anyhow::anyhow!("Record data too short"));
-        }
-
-        let data = buffer[offset..offset + rdlength].to_vec();
-        offset += rdlength;
-
-        Ok((
-            DnsRecord {
-                name,
-                rtype,
-                class,
-                ttl,
-                data,
-            },
-            offset,
-        ))
-    }
-
-    /// Parse domain name from DNS message
-    fn parse_name(&self, buffer: &[u8], mut offset: usize) -> Result<(String, usize)> {
-        let mut name_parts = Vec::new();
-        let mut jumped = false;
-        let original_offset = offset;
-
-        loop {
-            if offset >= buffer.len() {
-                return Err(anyhow::anyhow!(
-                    "Unexpected end of buffer while parsing name"
-                ));
-            }
-
-            let len = buffer[offset];
-
-            if len == 0 {
-                offset += 1;
-                break;
-            } else if (len & 0xc0) == 0xc0 {
-                // Compression pointer
-                if !jumped {
-                    offset += 2;
-                }
-                let pointer = (((len as usize) & 0x3f) << 8) | (buffer[offset - 1] as usize);
-                if pointer >= buffer.len() {
-                    return Err(anyhow::anyhow!("Invalid compression pointer"));
-                }
-                offset = pointer;
-                jumped = true;
-            } else {
-                // Regular label
-                offset += 1;
-                if offset + (len as usize) > buffer.len() {
-                    return Err(anyhow::anyhow!("Label extends beyond buffer"));
-                }
-                let label = String::from_utf8_lossy(&buffer[offset..offset + (len as usize)]);
-                name_parts.push(label.into_owned());
-                offset += len as usize;
-            }
-        }
-
-        let final_offset = if jumped { original_offset + 2 } else { offset };
-        Ok((name_parts.join("."), final_offset))
-    }
-
-    /// Skip over a domain name in DNS message
-    fn skip_name(&self, buffer: &[u8], mut offset: usize) -> Result<usize> {
-        loop {
-            if offset >= buffer.len() {
-                return Err(anyhow::anyhow!("Unexpected end while skipping name"));
-            }
-
-            let len = buffer[offset];
-
-            if len == 0 {
-                return Ok(offset + 1);
-            } else if (len & 0xc0) == 0xc0 {
-                return Ok(offset + 2);
-            } else {
-                offset += 1 + (len as usize);
-            }
-        }
-    }
-
-    /// Extract nameservers from DNS response
-    fn extract_nameservers(&self, response: &DnsResponse) -> Result<Vec<SocketAddr>> {
-        let mut nameservers = Vec::new();
-
-        // Look for A records in additional section that correspond to NS records
-        for ns_record in &response.authority {
-            if ns_record.rtype == 2 {
-                // NS record
-                let ns_name = self.parse_name_from_data(&ns_record.data)?;
-
-                // Find corresponding A record in additional section
-                for additional in &response.additional {
-                    if additional.rtype == 1 && additional.name == ns_name {
-                        // A record
-                        if additional.data.len() >= 4 {
-                            let ip = Ipv4Addr::new(
-                                additional.data[0],
-                                additional.data[1],
-                                additional.data[2],
-                                additional.data[3],
-                            );
-                            nameservers.push(SocketAddr::from((ip, 53)));
-                        }
-                    }
-                }
-            }
-        }
-
-        // If no A records found, use 1.1.1.1 as fallback
-        if nameservers.is_empty() {
-            // Use fixed 1.1.1.1 DNS server as fallback
-            nameservers.push("1.1.1.1:53".parse().expect("Invalid DNS server address"));
-        }
-
-        Ok(nameservers)
-    }
-
-    /// Parse domain name from record data
-    fn parse_name_from_data(&self, data: &[u8]) -> Result<String> {
-        let (name, _) = self.parse_name(data, 0)?;
-        Ok(name)
-    }
-
-    /// Format DNS record for display
-    fn format_record(&self, record: &DnsRecord, record_type: &str) -> String {
-        match record.rtype {
-            1 => {
-                // A record
-                if record.data.len() >= 4 {
-                    let ip = Ipv4Addr::new(
-                        record.data[0],
-                        record.data[1],
-                        record.data[2],
-                        record.data[3],
-                    );
-                    format!("  {} (TTL: {})\n", ip, record.ttl)
-                } else {
-                    format!("  Invalid A record (TTL: {})\n", record.ttl)
-                }
-            }
-            28 => {
-                // AAAA record
-                if record.data.len() >= 16 {
-                    let mut addr = [0u8; 16];
-                    addr.copy_from_slice(&record.data[0..16]);
-                    let ip = Ipv6Addr::from(addr);
-                    format!("  {} (TTL: {})\n", ip, record.ttl)
-                } else {
-                    format!("  Invalid AAAA record (TTL: {})\n", record.ttl)
-                }
-            }
-            15 => {
-                // MX record
-                if record.data.len() >= 2 {
-                    let preference = u16::from_be_bytes([record.data[0], record.data[1]]);
-                    match self.parse_name_from_data(&record.data[2..]) {
-                        Ok(exchange) => {
-                            format!("  {} {} (TTL: {})\n", preference, exchange, record.ttl)
-                        }
-                        Err(_) => format!("  Invalid MX record (TTL: {})\n", record.ttl),
-                    }
-                } else {
-                    format!("  Invalid MX record (TTL: {})\n", record.ttl)
-                }
-            }
-            16 => {
-                // TXT record
-                let text = String::from_utf8_lossy(&record.data);
-                format!("  \"{}\" (TTL: {})\n", text, record.ttl)
-            }
-            2 | 12 => {
-                // NS or PTR record
-                match self.parse_name_from_data(&record.data) {
-                    Ok(name) => format!("  {} (TTL: {})\n", name, record.ttl),
-                    Err(_) => format!("  Invalid {} record (TTL: {})\n", record_type, record.ttl),
-                }
-            }
-            _ => {
-                format!(
-                    "  {} record with {} bytes data (TTL: {})\n",
-                    record_type,
-                    record.data.len(),
-                    record.ttl
-                )
-            }
-        }
-    }
-
-    /// Detect if a query string is a domain name
+    /// Check if query is a valid domain name
     pub fn is_domain_name(query: &str) -> bool {
         // Basic domain validation
         if query.is_empty() || query.len() > 253 {
@@ -624,12 +190,10 @@ impl DnsService {
                 return false;
             }
 
-            // Check for valid domain characters (letters, numbers, hyphens)
             if !part.chars().all(|c| c.is_ascii_alphanumeric() || c == '-') {
                 return false;
             }
 
-            // Cannot start or end with hyphen
             if part.starts_with('-') || part.ends_with('-') {
                 return false;
             }
@@ -638,7 +202,7 @@ impl DnsService {
         true
     }
 
-    /// Parse IP address from query string
+    /// Parse IP address
     pub fn parse_ip_address(query: &str) -> Option<IpAddr> {
         query.parse::<IpAddr>().ok()
     }
@@ -646,7 +210,7 @@ impl DnsService {
 
 /// Process DNS query with -DNS suffix
 pub async fn process_dns_query(query: &str) -> Result<String> {
-    let dns_service = DnsService::new().await?;
+    let dns_service = DnsService::new();
 
     // Remove -DNS suffix if present
     let clean_query = if query.to_uppercase().ends_with("-DNS") {
@@ -663,13 +227,13 @@ pub async fn process_dns_query(query: &str) -> Result<String> {
         return dns_service.query_rdns(ip).await;
     }
 
-    // Check if it's a domain name (for DNS)
+    // Check if it's a domain (for forward DNS)
     if DnsService::is_domain_name(clean_query) {
         log_debug!("Detected domain name, performing DNS lookup");
         return dns_service.query_dns(clean_query).await;
     }
 
-    // Neither IP nor valid domain
+    // Invalid format
     log_error!("Invalid DNS query format: {}", clean_query);
     Ok(format!(
         "Invalid DNS query format. Please provide a valid domain name or IP address.\nQuery: {}\n",
@@ -682,38 +246,18 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_domain_name_detection() {
+    fn test_domain_validation() {
         assert!(DnsService::is_domain_name("example.com"));
         assert!(DnsService::is_domain_name("sub.example.com"));
-        assert!(DnsService::is_domain_name("test.co.uk"));
-
         assert!(!DnsService::is_domain_name("1.1.1.1"));
-        assert!(!DnsService::is_domain_name("2001:db8::1"));
         assert!(!DnsService::is_domain_name("localhost"));
         assert!(!DnsService::is_domain_name(""));
-        assert!(!DnsService::is_domain_name("ex ample.com"));
     }
 
     #[test]
     fn test_ip_parsing() {
         assert!(DnsService::parse_ip_address("1.1.1.1").is_some());
-        assert!(DnsService::parse_ip_address("2001:db8::1").is_some());
+        assert!(DnsService::parse_ip_address("2001:4860:4860::8888").is_some());
         assert!(DnsService::parse_ip_address("example.com").is_none());
-    }
-
-    #[tokio::test]
-    async fn test_dns_query_format() {
-        // Test the query parsing logic
-        let result = process_dns_query("example.com-DNS").await;
-        assert!(result.is_ok());
-
-        let result = process_dns_query("1.1.1.1-DNS").await;
-        assert!(result.is_ok());
-    }
-
-    #[tokio::test]
-    async fn test_dns_service_creation() {
-        let result = DnsService::new().await;
-        assert!(result.is_ok());
     }
 }

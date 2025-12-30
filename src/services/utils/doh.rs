@@ -1,4 +1,4 @@
-//! Cloudflare DNS-over-HTTPS (DOH) client for PTR record lookups
+//! Cloudflare DNS-over-HTTPS (DOH) client for DNS queries
 //!
 //! This module provides an async client for Cloudflare's DOH service
 //! to perform DNS queries over HTTPS.
@@ -6,32 +6,115 @@
 use anyhow::Result;
 use reqwest::Client;
 use serde::Deserialize;
+use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::time::Duration;
 use crate::log_debug;
 
 const CLOUDFLARE_DOH_URL: &str = "https://cloudflare-dns.com/dns-query";
 
-/// DOH response structure
+/// DNS record types
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[allow(dead_code)]
+pub enum DnsRecordType {
+    A = 1,       // IPv4 address
+    NS = 2,      // Name server
+    CNAME = 5,   // Canonical name
+    SOA = 6,     // Start of authority
+    PTR = 12,    // Pointer record
+    MX = 15,     // Mail exchange
+    TXT = 16,    // Text record
+    AAAA = 28,   // IPv6 address
+}
+
+impl DnsRecordType {
+    /// Convert from numeric value
+    #[allow(dead_code)]
+    pub fn from_u16(value: u16) -> Option<Self> {
+        match value {
+            1 => Some(Self::A),
+            2 => Some(Self::NS),
+            5 => Some(Self::CNAME),
+            6 => Some(Self::SOA),
+            12 => Some(Self::PTR),
+            15 => Some(Self::MX),
+            16 => Some(Self::TXT),
+            28 => Some(Self::AAAA),
+            _ => None,
+        }
+    }
+
+    /// Get string representation
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::A => "A",
+            Self::NS => "NS",
+            Self::CNAME => "CNAME",
+            Self::SOA => "SOA",
+            Self::PTR => "PTR",
+            Self::MX => "MX",
+            Self::TXT => "TXT",
+            Self::AAAA => "AAAA",
+        }
+    }
+}
+
+/// DOH response structure (extended)
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
-pub struct DohResponse {
+pub struct DnsResponse {
     pub Status: u32,
+    #[serde(default)]
+    #[allow(dead_code)]
+    pub TC: bool,
+    #[serde(default)]
+    #[allow(dead_code)]
+    pub RD: bool,
+    #[serde(default)]
+    #[allow(dead_code)]
+    pub RA: bool,
+    #[serde(default)]
+    #[allow(dead_code)]
+    pub AD: bool,
+    #[serde(default)]
+    #[allow(dead_code)]
+    pub CD: bool,
+    #[serde(default)]
+    #[allow(dead_code)]
+    pub Question: Option<Vec<DnsQuestion>>,
     #[serde(rename = "Answer", default)]
-    pub Answer: Option<Vec<DohAnswer>>,
+    pub Answer: Option<Vec<DnsAnswer>>,
+    #[serde(rename = "Authority", default)]
+    #[allow(dead_code)]
+    pub Authority: Option<Vec<DnsAnswer>>,
     #[serde(rename = "Comment", default)]
     #[allow(dead_code)]
     pub Comment: Option<String>,
 }
 
-/// DNS answer record
-#[derive(Debug, Deserialize, Clone)]
+/// DNS question section
+#[derive(Debug, Deserialize)]
 #[allow(dead_code)]
-pub struct DohAnswer {
+pub struct DnsQuestion {
+    #[allow(dead_code)]
     pub name: String,
-    pub data: String,
+    #[serde(rename = "type")]
+    #[allow(dead_code)]
+    pub qtype: u32,
+}
+
+/// DNS answer record (extended)
+#[derive(Debug, Deserialize, Clone)]
+#[allow(non_snake_case)]
+pub struct DnsAnswer {
+    #[allow(dead_code)]
+    pub name: String,
     #[serde(rename = "type")]
     pub record_type: u32,
+    #[serde(default)]
+    pub data: String,
+    #[serde(default)]
+    pub TTL: u32,
 }
 
 /// Client for Cloudflare DOH
@@ -50,6 +133,114 @@ impl DohClient {
         Self {
             client: client.unwrap_or_else(|_| Client::new()),
         }
+    }
+
+    /// Generic DNS query method
+    ///
+    /// Queries any DNS record type for a given name
+    pub async fn query(&self, name: &str, record_type: &str) -> Result<DnsResponse> {
+        log_debug!("Querying DNS: {} type={}", name, record_type);
+
+        let url = format!(
+            "{}?name={}&type={}&do=false",
+            CLOUDFLARE_DOH_URL,
+            urlencoding::encode(name),
+            record_type
+        );
+
+        let response = self.client
+            .get(&url)
+            .header("Accept", "application/dns-json")
+            .send()
+            .await
+            .map_err(|e| anyhow::anyhow!("DOH request failed: {}", e))?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            return Err(anyhow::anyhow!("DOH request failed with HTTP status: {}", status));
+        }
+
+        let doh_response: DnsResponse = response.json().await
+            .map_err(|e| anyhow::anyhow!("Failed to parse DOH response: {}", e))?;
+
+        if doh_response.Status != 0 {
+            log_debug!("DNS query returned status: {}", doh_response.Status);
+        }
+
+        Ok(doh_response)
+    }
+
+    /// Batch query multiple record types concurrently
+    ///
+    /// Returns a HashMap with record type as key and list of answers as value
+    pub async fn query_batch(
+        &self,
+        name: &str,
+        types: &[DnsRecordType]
+    ) -> Result<HashMap<String, Vec<DnsAnswer>>> {
+        use futures::future::{join_all, FutureExt};
+
+        let mut results = HashMap::new();
+
+        // Create futures for all queries
+        let mut futures = Vec::new();
+        for record_type in types {
+            let name_owned = name.to_string();
+            let type_str = record_type.as_str().to_string();
+            let client = self.client.clone();
+
+            futures.push(
+                async move {
+                    let url = format!(
+                        "{}?name={}&type={}&do=false",
+                        CLOUDFLARE_DOH_URL,
+                        urlencoding::encode(&name_owned),
+                        type_str
+                    );
+
+                    let response = client
+                        .get(&url)
+                        .header("Accept", "application/dns-json")
+                        .send()
+                        .await;
+
+                    match response {
+                        Ok(resp) if resp.status().is_success() => {
+                            match resp.json::<crate::services::utils::doh::DnsResponse>().await {
+                                Ok(doh_response) => Ok((type_str, doh_response)),
+                                Err(_) => Err(type_str),
+                            }
+                        }
+                        _ => Err(type_str),
+                    }
+                }
+                .boxed()
+            );
+        }
+
+        // Execute all queries concurrently
+        let responses = join_all(futures).await;
+
+        // Process results
+        for result in responses {
+            match result {
+                Ok((type_str, doh_response)) if doh_response.Status == 0 => {
+                    if let Some(answers) = doh_response.Answer {
+                        if !answers.is_empty() {
+                            results.insert(type_str, answers);
+                        }
+                    }
+                }
+                Ok((type_str, doh_response)) => {
+                    log_debug!("DNS query for {} returned status: {}", type_str, doh_response.Status);
+                }
+                Err(type_str) => {
+                    log_debug!("Failed to query {} records", type_str);
+                }
+            }
+        }
+
+        Ok(results)
     }
 
     /// Query PTR records for an IP address
@@ -88,7 +279,7 @@ impl DohClient {
             return Err(anyhow::anyhow!("DOH request failed with status: {}", status));
         }
 
-        let doh_response: DohResponse = response.json().await
+        let doh_response: crate::services::utils::doh::DnsResponse = response.json().await
             .map_err(|e| anyhow::anyhow!("Failed to parse DOH response: {}", e))?;
 
         // Check if query was successful

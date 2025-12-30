@@ -3,14 +3,14 @@
 //! This module provides an async client for the Globalping API (https://globalping.io)
 //! which performs network measurements from multiple vantage points worldwide.
 //!
-//! API documentation: https://globalping.io/docs
+//! API documentation: https://globalping.io/docs/api.globalping.io#overview
 
 use anyhow::Result;
 use reqwest::Client;
-use serde::{Deserialize, Serialize};
+use serde::{ Deserialize, Serialize };
 use std::time::Duration;
 use tokio::time::sleep;
-use crate::{log_debug, log_error, log_warn};
+use crate::{ log_debug, log_error, log_warn };
 
 const GLOBALPING_API_BASE: &str = "https://api.globalping.io/v1/measurements";
 const MAX_POLL_ATTEMPTS: u32 = 60; // Maximum polling attempts (60 seconds)
@@ -197,7 +197,7 @@ pub struct Stats {
 pub struct HopResult {
     #[serde(default)]
     #[allow(dead_code)]
-    pub hop: Option<u32>,  // Not always present in API response
+    pub hop: Option<u32>, // Not always present in API response
     #[serde(default)]
     #[allow(dead_code)]
     pub result: Option<Vec<HopDetail>>,
@@ -322,7 +322,8 @@ impl GlobalpingClient {
         log_debug!("Submitting {} measurement to {}", request.measurement_type, request.target);
 
         // Log the request JSON for debugging
-        let request_json = serde_json::to_string_pretty(request)
+        let request_json = serde_json
+            ::to_string_pretty(request)
             .unwrap_or_else(|_| "[Failed to serialize]".to_string());
         log_debug!("Request JSON:\n{}", request_json);
 
@@ -337,18 +338,22 @@ impl GlobalpingClient {
 
         let response = req_builder
             .json(request)
-            .send()
-            .await
+            .send().await
             .map_err(|e| anyhow::anyhow!("Failed to submit measurement: {}", e))?;
 
         if !response.status().is_success() {
             let status = response.status();
-            let error_text = response.text().await.unwrap_or_else(|_| "Unable to read error".to_string());
+            let error_text = response
+                .text().await
+                .unwrap_or_else(|_| "Unable to read error".to_string());
             log_error!("Globalping API error: {} - {}", status, error_text);
-            return Err(anyhow::anyhow!("Globalping API returned error: {} - {}", status, error_text));
+            return Err(
+                anyhow::anyhow!("Globalping API returned error: {} - {}", status, error_text)
+            );
         }
 
-        let result: GlobalpingResponse = response.json().await
+        let result: GlobalpingResponse = response
+            .json().await
             .map_err(|e| anyhow::anyhow!("Failed to parse Globalping response: {}", e))?;
 
         log_debug!("Measurement submitted successfully, ID: {}", result.id);
@@ -369,17 +374,19 @@ impl GlobalpingClient {
         }
 
         let response = req_builder
-            .send()
-            .await
+            .send().await
             .map_err(|e| anyhow::anyhow!("Failed to get measurement results: {}", e))?;
 
         if !response.status().is_success() {
             let status = response.status();
-            let error_text = response.text().await.unwrap_or_else(|_| "Unable to read error".to_string());
+            let error_text = response
+                .text().await
+                .unwrap_or_else(|_| "Unable to read error".to_string());
             return Err(anyhow::anyhow!("Globalping API error: {} - {}", status, error_text));
         }
 
-        let result: GlobalpingResult = response.json().await
+        let result: GlobalpingResult = response
+            .json().await
             .map_err(|e| anyhow::anyhow!("Failed to parse Globalping result: {}", e))?;
 
         Ok(result)
@@ -414,8 +421,13 @@ impl GlobalpingClient {
                 return Err(anyhow::anyhow!("Measurement timed out after {} seconds", timeout_secs));
             }
 
-            log_debug!("Measurement {} in progress (status: {}), polling... ({}/{})",
-                id, result.status, attempts, max_attempts);
+            log_debug!(
+                "Measurement {} in progress (status: {}), polling... ({}/{})",
+                id,
+                result.status,
+                attempts,
+                max_attempts
+            );
             sleep(POLL_INTERVAL).await;
         }
     }
