@@ -5,11 +5,21 @@ use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream as AsyncTcpStream;
 use crate::config::{
-    DEFAULT_WHOIS_PORT, DEFAULT_WHOIS_SERVER, RADB_WHOIS_PORT, RADB_WHOIS_SERVER, TIMEOUT_SECONDS,
+    DEFAULT_WHOIS_PORT, DEFAULT_WHOIS_SERVER, RADB_WHOIS_PORT, RADB_WHOIS_SERVER, RIPE_WHOIS_PORT, RIPE_WHOIS_SERVER, TIMEOUT_SECONDS,
 };
 use crate::services::iana_cache::IanaCache;
 
 use crate::{log_debug, log_warn};
+
+/// Prepare a query with the --no-referenced flag for RIPE NCC WHOIS server
+/// This flag prevents retrieval of personal data sets to comply with RIPE AUP
+fn prepare_ripe_query(query: &str, server: &str) -> String {
+    if server == RIPE_WHOIS_SERVER {
+        format!("{} --no-referenced", query)
+    } else {
+        query.to_string()
+    }
+}
 pub async fn query_with_iana_referral(query: &str) -> Result<String> {
     log_debug!("Querying with IANA referral: {}", query);
 
@@ -25,8 +35,9 @@ pub async fn query_with_iana_referral(query: &str) -> Result<String> {
 
     log_debug!("Using WHOIS server: {}", whois_server);
 
-    // Query the WHOIS server
-    match query_whois(query, &whois_server, DEFAULT_WHOIS_PORT).await {
+    // Query the WHOIS server with RIPE flag if needed
+    let prepared_query = prepare_ripe_query(query, &whois_server);
+    match query_whois(&prepared_query, &whois_server, DEFAULT_WHOIS_PORT).await {
         Ok(response) => {
             // Check if response indicates transferred/no data and try RADB fallback
             if should_try_radb_fallback(&response, query) {
@@ -76,7 +87,8 @@ pub async fn query_with_iana_referral(query: &str) -> Result<String> {
             // Query failed, try to refresh IANA cache
             if let Some(refreshed_server) = iana_cache.refresh_cache_on_failure(query).await {
                 log_debug!("Retrying with refreshed server: {}", refreshed_server);
-                match query_whois(query, &refreshed_server, DEFAULT_WHOIS_PORT).await {
+                let prepared_query = prepare_ripe_query(query, &refreshed_server);
+                match query_whois(&prepared_query, &refreshed_server, DEFAULT_WHOIS_PORT).await {
                     Ok(response) => Ok(response),
                     Err(_) => {
                         // If refreshed server also fails, try RADB as final fallback
@@ -87,7 +99,9 @@ pub async fn query_with_iana_referral(query: &str) -> Result<String> {
                         match query_whois(query, RADB_WHOIS_SERVER, RADB_WHOIS_PORT).await {
                             Ok(radb_resp) => Ok(radb_resp),
                             Err(_) => {
-                                query_whois(query, DEFAULT_WHOIS_SERVER, DEFAULT_WHOIS_PORT).await
+                                // Final fallback to default server (RIPE), use flag
+                                let prepared_query = prepare_ripe_query(query, DEFAULT_WHOIS_SERVER);
+                                query_whois(&prepared_query, DEFAULT_WHOIS_SERVER, DEFAULT_WHOIS_PORT).await
                             }
                         }
                     }
@@ -99,7 +113,9 @@ pub async fn query_with_iana_referral(query: &str) -> Result<String> {
                     Ok(radb_resp) => Ok(radb_resp),
                     Err(_) => {
                         log_debug!("RADB failed, trying default server as final fallback");
-                        query_whois(query, DEFAULT_WHOIS_SERVER, DEFAULT_WHOIS_PORT).await
+                        // Final fallback to default server (RIPE), use flag
+                        let prepared_query = prepare_ripe_query(query, DEFAULT_WHOIS_SERVER);
+                        query_whois(&prepared_query, DEFAULT_WHOIS_SERVER, DEFAULT_WHOIS_PORT).await
                     }
                 }
             }
@@ -299,4 +315,11 @@ fn is_meaningful_response(response: &str, query: &str) -> bool {
     meaningful_lines.len() >= 5 &&
         response.len() > 200 && // At least 200 characters of content
         !should_try_radb_fallback(response, query) // And doesn't look like a transfer notice
+}
+
+/// Query RIPE NCC WHOIS server with the --no-referenced flag
+/// This prevents retrieval of personal data sets to comply with RIPE AUP
+pub async fn query_ripe_whois(query: &str) -> Result<String> {
+    let prepared_query = prepare_ripe_query(query, RIPE_WHOIS_SERVER);
+    query_whois(&prepared_query, RIPE_WHOIS_SERVER, RIPE_WHOIS_PORT).await
 }

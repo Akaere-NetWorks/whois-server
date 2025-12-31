@@ -26,8 +26,6 @@ use crate::config::{
     NTTCOM_WHOIS_SERVER,
     RADB_WHOIS_PORT,
     RADB_WHOIS_SERVER,
-    RIPE_WHOIS_PORT,
-    RIPE_WHOIS_SERVER,
     RIS_WHOIS_PORT,
     RIS_WHOIS_SERVER,
     TC_WHOIS_PORT,
@@ -91,6 +89,7 @@ use crate::services::{
     query_modrinth,
     query_random_chinese_meal,
     query_random_meal,
+    query_ripe_whois,
     query_whois,
     query_with_iana_referral,
 };
@@ -207,7 +206,7 @@ pub async fn process_query(
         }
         QueryType::RipeIrr(resource) => {
             log_debug!("Processing RIPE IRR query: {}", resource);
-            query_whois(resource, RIPE_WHOIS_SERVER, RIPE_WHOIS_PORT).await
+            query_ripe_whois(resource).await
         }
         QueryType::Ris(resource) => {
             log_debug!("Processing RIS query: {}", resource);
