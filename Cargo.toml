@@ -65,3 +65,6 @@ hmac = "0.12"
 md5 = "0.7"
 lazy_static = "1.4"
 url = "2.2"
+
+[dev-dependencies]
+tempfile = "3.8"

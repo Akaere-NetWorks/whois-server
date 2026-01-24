@@ -49,6 +49,12 @@ pub struct PluginPermissions {
     pub cache_read: bool,
     #[serde(default)]
     pub cache_write: bool,
+    /// Custom User-Agent for HTTP requests (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub user_agent: Option<String>,
+    /// Environment variables to inject into the plugin (optional)
+    #[serde(default)]
+    pub env_vars: Vec<String>,
 }
 
 impl Default for PluginPermissions {
@@ -58,6 +64,8 @@ impl Default for PluginPermissions {
             allowed_domains: Vec::new(),
             cache_read: false,
             cache_write: false,
+            user_agent: None,
+            env_vars: Vec::new(),
         }
     }
 }

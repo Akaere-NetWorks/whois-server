@@ -3,9 +3,15 @@
 //! This module creates a secure Lua environment that restricts dangerous operations
 //! while providing safe APIs for plugins.
 
-use crate::plugins::api::{register_cache_api, register_http_api, register_logging_api};
+use crate::plugins::api::{
+    register_cache_api,
+    register_env_api,
+    register_http_api,
+    register_logging_api,
+};
 use crate::plugins::registry::PluginMetadata;
-use mlua::{Table, Value};
+use mlua::{ Table, Value };
+use std::collections::HashMap;
 
 /// Create a secure Lua state for plugin execution
 ///
@@ -13,8 +19,11 @@ use mlua::{Table, Value};
 /// - Removes dangerous libraries (os, io, load, etc.)
 /// - Restricts package loading
 /// - Sets memory limits
-/// - Registers safe APIs (HTTP, cache, logging)
-pub fn create_secure_lua_state(metadata: &PluginMetadata) -> mlua::Result<mlua::Lua> {
+/// - Registers safe APIs (HTTP, cache, logging, environment variables)
+pub fn create_secure_lua_state(
+    metadata: &PluginMetadata,
+    env_vars: &HashMap<String, String>
+) -> mlua::Result<mlua::Lua> {
     let lua = mlua::Lua::new();
 
     // Remove dangerous libraries
@@ -45,6 +54,11 @@ pub fn create_secure_lua_state(metadata: &PluginMetadata) -> mlua::Result<mlua::
         register_cache_api(&lua, &metadata.permissions)?;
     }
 
+    // Register environment variable API if any env vars are configured
+    if !env_vars.is_empty() {
+        register_env_api(&lua, env_vars)?;
+    }
+
     register_logging_api(&lua)?;
 
     // Add a safe print replacement that logs
@@ -61,31 +75,33 @@ mod tests {
     #[test]
     fn test_sandbox_blocks_dangerous_libs() {
         let metadata = create_test_metadata();
-        let lua = create_secure_lua_state(&metadata).unwrap();
+        let env_vars = HashMap::new();
+        let lua = create_secure_lua_state(&metadata, &env_vars).unwrap();
 
         // Verify dangerous libraries are removed
-        assert!(lua.globals().get::<_, Value>("os").unwrap().is_nil());
-        assert!(lua.globals().get::<_, Value>("io").unwrap().is_nil());
-        assert!(lua.globals().get::<_, Value>("load").unwrap().is_nil());
-        assert!(lua.globals().get::<_, Value>("loadfile").unwrap().is_nil());
-        assert!(lua.globals().get::<_, Value>("dofile").unwrap().is_nil());
-        assert!(lua.globals().get::<_, Value>("debug").unwrap().is_nil());
+        assert!(lua.globals().get::<Value>("os").unwrap().is_nil());
+        assert!(lua.globals().get::<Value>("io").unwrap().is_nil());
+        assert!(lua.globals().get::<Value>("load").unwrap().is_nil());
+        assert!(lua.globals().get::<Value>("loadfile").unwrap().is_nil());
+        assert!(lua.globals().get::<Value>("dofile").unwrap().is_nil());
+        assert!(lua.globals().get::<Value>("debug").unwrap().is_nil());
     }
 
     #[test]
     fn test_sandbox_allows_safe_apis() {
         let metadata = create_test_metadata();
-        let lua = create_secure_lua_state(&metadata).unwrap();
+        let env_vars = HashMap::new();
+        let lua = create_secure_lua_state(&metadata, &env_vars).unwrap();
 
         // Verify safe APIs are available
-        assert!(lua.globals().get::<_, Value>("log_info").unwrap().is_function());
-        assert!(lua.globals().get::<_, Value>("log_warn").unwrap().is_function());
-        assert!(lua.globals().get::<_, Value>("log_error").unwrap().is_function());
-        assert!(lua.globals().get::<_, Value>("http_get").unwrap().is_function());
+        assert!(lua.globals().get::<Value>("log_info").unwrap().is_function());
+        assert!(lua.globals().get::<Value>("log_warn").unwrap().is_function());
+        assert!(lua.globals().get::<Value>("log_error").unwrap().is_function());
+        assert!(lua.globals().get::<Value>("http_get").unwrap().is_function());
     }
 
     fn create_test_metadata() -> PluginMetadata {
-        use crate::plugins::registry::{PluginInfo, PluginPermissions};
+        use crate::plugins::registry::{ PluginInfo, PluginPermissions };
 
         PluginMetadata {
             plugin: PluginInfo {
@@ -95,12 +111,15 @@ mod tests {
                 author: None,
                 description: None,
                 enabled: true,
+                timeout: 5,
             },
             permissions: PluginPermissions {
                 network: true,
                 allowed_domains: vec!["example.com".to_string()],
                 cache_read: true,
                 cache_write: true,
+                user_agent: None,
+                env_vars: Vec::new(),
             },
         }
     }

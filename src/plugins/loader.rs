@@ -2,9 +2,11 @@
 //!
 //! This module handles discovering and loading plugins from the plugins directory.
 
+use crate::plugins::env::{get_plugin_env_vars, load_env_file};
 use crate::plugins::registry::{LoadedPlugin, PluginMetadata, PluginRegistry};
 use crate::plugins::sandbox::create_secure_lua_state;
 use anyhow::Context;
+use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
@@ -19,6 +21,17 @@ pub async fn load_all_plugins() -> anyhow::Result<PluginRegistry> {
         crate::log_info!("Creating plugins directory");
         fs::create_dir_all(plugins_dir)?;
         return Ok(PluginRegistry::new());
+    }
+
+    // Load environment variables from .plugins.env file
+    let all_env_vars = load_env_file()
+        .unwrap_or_else(|e| {
+            crate::log_warn!("Failed to load .plugins.env file: {}", e);
+            HashMap::new()
+        });
+
+    if !all_env_vars.is_empty() {
+        crate::log_info!("Loaded {} environment variable(s) from .plugins.env", all_env_vars.len());
     }
 
     let mut registry = PluginRegistry::new();
@@ -39,7 +52,7 @@ pub async fn load_all_plugins() -> anyhow::Result<PluginRegistry> {
         }
 
         // Try to load plugin from this directory
-        match load_plugin_from_dir(&path).await {
+        match load_plugin_from_dir(&path, &all_env_vars).await {
             Ok(plugin) => {
                 if let Err(e) = registry.register(plugin) {
                     crate::log_warn!("Failed to register plugin from {:?}: {}", path, e);
@@ -68,7 +81,10 @@ pub async fn load_all_plugins() -> anyhow::Result<PluginRegistry> {
 /// The directory must contain:
 /// - `meta.toml` - Plugin metadata
 /// - `init.lua` - Plugin code
-async fn load_plugin_from_dir(dir: &Path) -> anyhow::Result<LoadedPlugin> {
+async fn load_plugin_from_dir(
+    dir: &Path,
+    all_env_vars: &HashMap<String, String>,
+) -> anyhow::Result<LoadedPlugin> {
     let meta_path = dir.join("meta.toml");
     let init_path = dir.join("init.lua");
 
@@ -98,8 +114,19 @@ async fn load_plugin_from_dir(dir: &Path) -> anyhow::Result<LoadedPlugin> {
         ));
     }
 
-    // Create secure Lua state
-    let lua = create_secure_lua_state(&metadata)
+    // Get environment variables for this plugin based on its configuration
+    let plugin_env_vars = get_plugin_env_vars(&metadata.permissions.env_vars, all_env_vars);
+
+    if !plugin_env_vars.is_empty() {
+        crate::log_info!(
+            "Plugin '{}' has access to {} environment variable(s)",
+            metadata.plugin.name,
+            plugin_env_vars.len()
+        );
+    }
+
+    // Create secure Lua state with environment variables
+    let lua = create_secure_lua_state(&metadata, &plugin_env_vars)
         .map_err(|e| anyhow::anyhow!("Failed to create Lua state: {}", e))?;
 
     // Load plugin code

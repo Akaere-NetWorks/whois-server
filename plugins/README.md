@@ -37,10 +37,19 @@ allowed_domains = [          # Whitelist of allowed domains
 ]
 cache_read = true            # Allow reading from cache
 cache_write = true           # Allow writing to cache
+user_agent = "MyPlugin/1.0"  # Custom User-Agent for HTTP requests (optional)
+env_vars = [                 # Environment variables from .plugins.env to access
+    "API_KEY",
+    "API_SECRET"
+]
 ```
 
 **Plugin Configuration Options:**
 - `timeout` - Maximum execution time in seconds for `handle_query` (default: 5, minimum: 1)
+
+**Permission Options:**
+- `user_agent` - Custom User-Agent string for HTTP requests (optional, default: "whois-server-plugin/<version>")
+- `env_vars` - List of environment variable names from `.plugins.env` that this plugin can access (optional)
 
 ## Lua Plugin API
 
@@ -151,12 +160,62 @@ log_warn("API rate limit approaching")
 log_error("Failed to fetch data")
 ```
 
+### Environment Variable API
+
+**`env_get(key: string) -> string`**
+
+Get an environment variable value from `.plugins.env`. Only variables listed in `env_vars` in `meta.toml` are accessible.
+
+**Returns:** The environment variable value as a string
+
+**Example:**
+```lua
+local api_key = env_get("API_KEY")
+local url = "https://api.example.com/data?key=" .. api_key
+local response = http_get(url)
+```
+
+**`env_list() -> table`**
+
+Get a list of all available environment variable names for this plugin.
+
+**Returns:** Array of variable names
+
+**Example:**
+```lua
+local vars = env_list()
+for i, var_name in ipairs(vars) do
+    log_info("Available env var: " .. var_name)
+end
+```
+
+### The `.plugins.env` File
+
+The `.plugins.env` file in the server root directory stores environment variables that plugins can access. This is useful for API keys, tokens, and other sensitive configuration.
+
+**File Format:**
+```
+# Comment lines start with #
+API_KEY=your_api_key_here
+API_SECRET=your_secret_here
+BASE_URL=https://api.example.com
+
+# Values can be quoted or unquoted
+DB_HOST="database.example.com"
+DB_PORT=5432
+```
+
+**Security Notes:**
+- Each plugin can only access environment variables explicitly listed in its `env_vars` configuration
+- Never commit `.plugins.env` to version control (add it to `.gitignore`)
+- Use environment variables for sensitive data instead of hardcoding in plugin files
+
 ## Complete Example
 
-Here's a complete example of a weather plugin:
+Here's a complete example of a plugin using custom User-Agent and environment variables:
 
-```lua
--- meta.toml
+```toml
+# meta.toml
 [plugin]
 name = "weather"
 version = "1.0.0"
@@ -164,35 +223,47 @@ suffix = "-WEATHER"
 author = "Your Name"
 description = "Get weather information"
 enabled = true
+timeout = 15
 
 [permissions]
 network = true
-allowed_domains = ["wttr.in"]
+allowed_domains = ["api.weather.com"]
 cache_read = true
 cache_write = true
+user_agent = "MyWeatherPlugin/1.0 (contact@example.com)"
+env_vars = ["WEATHER_API_KEY"]
 ```
 
 ```lua
 -- init.lua
 local function fetch_weather(location)
-    -- Check cache
+    -- Check cache first
     local cached = cache_get("weather:" .. location)
     if cached then
         return cached
     end
 
-    -- Fetch from API
-    local url = "https://wttr.in/" .. location .. "?format=3"
+    -- Get API key from environment
+    local api_key = env_get("WEATHER_API_KEY")
+
+    -- Fetch from API with custom User-Agent
+    local url = "https://api.weather.com/v1/current?location=" .. location .. "&apikey=" .. api_key
     local ok, result = pcall(http_get, url)
 
     if not ok then
+        log_error("Weather API request failed: " .. result)
         return nil
     end
 
-    -- Parse and use result
+    -- Parse response
     local data = parse_json(result)
-    cache_set("weather:" .. location, data, 1800)
-    return data
+    if data.status ~= 200 then
+        return nil
+    end
+
+    -- Cache for 30 minutes
+    cache_set("weather:" .. location, data.body, 1800)
+    return data.body
 end
 
 function handle_query(query)
@@ -204,15 +275,21 @@ function handle_query(query)
 
     local weather = fetch_weather(query)
     if not weather then
-        return "% Error: Failed to fetch weather\n"
+        return "% Error: Failed to fetch weather data\n"
     end
 
     return "% Weather: " .. weather .. "\n"
 end
 
 function init()
-    log_info("Weather plugin loaded")
+    log_info("Weather plugin initialized with custom User-Agent")
 end
+```
+
+**Corresponding `.plugins.env` file:**
+```
+# Weather API credentials
+WEATHER_API_KEY=your_actual_api_key_here
 ```
 
 ## Security Model

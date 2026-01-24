@@ -24,6 +24,7 @@
 //! - Resource limits (memory, execution time)
 
 pub mod api;
+pub mod env;
 pub mod loader;
 pub mod registry;
 pub mod sandbox;
