@@ -33,7 +33,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - Triggers on pushes to main branch and version tags
 
 ### Development Dependencies
-- **Rust**: 1.92.0+ (stable toolchain)
+- **Rust**: 1.92.0+ (stable toolchain, uses 2024 edition)
 - **Lua**: 5.4+ development headers (liblua5.4-dev, pkg-config) for plugin support
 - **Git**: Required for DN42 registry synchronization
 - **Standard Cargo toolchain**: build, test, clippy, fmt
@@ -43,6 +43,31 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Using netcat: `echo "example.com" | nc localhost 43`
 - Web dashboard: Access at http://localhost:9999
 - API endpoint: `curl "http://localhost:9999/api/whois?q=example.com"`
+
+### Logging System
+
+The project uses a custom systemd-style logger (not the standard `log` crate):
+- Logger implementation in `src/core/logger.rs`
+- Macro-based logging: `log_info!()`, `log_error!()`, `log_debug!()`, `log_warn!()`, `log_init_*!()`
+- Initialize with `init_from_args(debug, trace, quiet)` from CLI args
+- Specialized macros for initialization and task logging with structured output
+
+### Command-Line Options
+```
+-H, --host <HOST>              Listen address [default: 0.0.0.0]
+-p, --port <PORT>              WHOIS server port [default: 43]
+    --web-port <PORT>          Web dashboard port [default: 9999]
+    --ssh-port <PORT>          SSH server port [default: 2222]
+-d, --debug                    Enable debug output
+-t, --trace                    Enable trace output (extremely verbose)
+    --max-connections <N>      Maximum concurrent connections [default: 100]
+    --timeout <SECONDS>        Connection timeout in seconds [default: 10]
+    --dump-traffic             Write raw queries and responses to files for debugging
+    --dump-dir <DIR>           Dump traffic directory [default: dumps]
+    --enable-color             Enable colored terminal output
+    --enable-ssh               Enable SSH server
+    --ssh-cache-dir <DIR>      SSH cache directory [default: ./ssh-cache]
+```
 
 ### Patch Management
 The server uses a response patch system for remote customization:
@@ -113,30 +138,54 @@ This is a comprehensive WHOIS server built in Rust with extensive query capabili
 
 ### Query Types
 
-The server supports an extensive range of query types identified by suffixes:
+The server supports 50+ query types identified by suffixes. Query detection is in `src/core/query.rs`:
 
-**Standard WHOIS:** Domains, IPv4/IPv6 addresses, ASNs
-**Enhanced Network:** `-GEO`, `-BGPTOOL`, `-IRR`, `-LG`, `-RPKI`, `-MANRS`
-**Internet Tools:** `-DNS`, `-SSL`, `-CRT`, `-TRACE`
-**Package Repositories:** `-CARGO`, `-NPM`, `-PYPI`, `-AUR`, `-DEBIAN`, etc.
-**Entertainment:** `-MC`, `-STEAM`, `-IMDB`, `-PIXIV`, `-WIKIPEDIA`
-**Development:** `-GITHUB`, plus built-in `HELP` system
+**Standard WHOIS:** Domains, IPv4/IPv6 addresses, ASNs, CIDR blocks
+**Enhanced Network:** `-GEO`, `-BGPTOOL`, `-IRR`, `-LG`, `-RPKI`, `-MANRS`, `-PEERINGDB`, `-RDAP`
+**IRR Direct Access:** `-RADB`, `-ALTDB`, `-AFRINIC`, `-APNIC`, `-ARIN`, `-BELL`, `-JPIRR`, `-LACNIC`, `-LEVEL3`, `-NTTCOM`, `-RIPE`, `-TC`
+**Internet Tools:** `-DNS`, `-SSL`, `-CRT`, `-TRACE`, `-PING`, `-NTP`
+**Package Repositories:** `-CARGO`, `-NPM`, `-PYPI`, `-AUR`, `-DEBIAN`, `-UBUNTU`, `-NIXOS`, `-OPENSUSE`, `-OPENWRT`, `-ALMA`, `-EPEL`, `-AOSC`, `-MODRINTH`, `-CURSEFORGE`
+**Entertainment:** `-MC`, `-MCU`, `-STEAM`, `-STEAMSEARCH`, `-IMDB`, `-IMDBSEARCH`, `-PIXIV`, `-WIKIPEDIA`, `-ACGC`
+**Development:** `-GITHUB`, `-ICP`, `-PEN`
+**Utility:** `HELP`, `UPDATE-PATCH`, `-EMAIL`, `-DESC`, `-MEAL`, `-MEAL-CN`, `-LYRIC`, `-CFSTATUS`, `-RIRGEO`, `-PREFIXES`
 
 ### Configuration
 
-- Environment variables via `.env` file (Pixiv integration, proxy settings)
-- CLI arguments for ports, debugging, connection limits
-- Constants in `src/config.rs` for WHOIS servers and paths
+**Environment Variables (.env file):**
+- `PIXIV_REFRESH_TOKEN` - Pixiv API refresh token for artwork queries
+- `PIXIV_PROXY_ENABLED` - Enable/disable Pixiv image proxy (true/false)
+- `PIXIV_PROXY_BASE_URL` - Proxy base URL for bypassing referrer checks
+
+**CLI Configuration:**
+- Ports, host, debugging flags via command-line arguments (see above)
+- Connection limits and timeouts configurable
+- Traffic dumping for debugging purposes
+
+**Code Configuration:**
+- WHOIS server endpoints in `src/config.rs`
+- IRR database hosts and ports in `src/config.rs`
+- Service endpoints embedded in individual service modules
 - Plugin system: Lua scripts in `plugins/` directory for custom query handlers
 
 ### External Dependencies
 
-- **rdap** library for RDAP protocol support
-- **Tokio** for async runtime
-- **Axum** for web server
-- **LMDB** for high-performance storage
-- **mlua** for Lua 5.4 plugin integration
-- **Various API clients** for external service integration
+**Key Libraries:**
+- **rdap** (git: https://github.com/Akaere-NetWorks/rdap.git) - RDAP protocol client library
+- **Tokio** (1.48.0) - Async runtime with full features
+- **Axum** (0.7) - Web framework for dashboard and API
+- **LMDB** (0.8.0) - High-performance embedded database
+- **mlua** (0.11) - Lua 5.4 integration with async support
+- **russh** (0.45) - SSH server implementation
+- **regex** (1.12.2) - Query pattern matching
+- **reqwest** (0.11) - HTTP client with rustls TLS
+- **serde/serde_json** - Serialization for APIs and storage
+- **clap** (4.5) - CLI argument parsing
+- **chrono** - Time handling for statistics
+- **cidr** - IP address and CIDR block manipulation
+- **tokio-cron-scheduler** - Periodic task scheduling (DN42 sync, PEN updates)
+
+**Service Integrations:**
+The server integrates with numerous external APIs for query processing. See individual service modules in `src/services/` for specific endpoints used.
 
 ### Architecture Patterns
 
@@ -149,9 +198,38 @@ The server supports an extensive range of query types identified by suffixes:
 6. Patches applied (if configured) before response
 
 **Extension Points:**
-- Add new query types: Create handler in `src/services/` and register in query.rs
-- Add package repositories: Add to `src/services/packages/`
-- Create plugins: Add Lua scripts to `plugins/` directory
-- Customize responses: Add patch rules via patch management system
+- Add new query types:
+  1. Add variant to `QueryType` enum in `src/core/query.rs`
+  2. Add detection pattern in `analyze_query()` function
+  3. Create handler function in `src/services/` (or `src/services/packages/` for package repos)
+  4. Add match arm in `process_query()` in `src/core/query_processor.rs`
+  5. Export in `src/services/mod.rs`
+- Add package repositories: Create module in `src/services/packages/` following the pattern of existing modules
+- Create plugins: Add Lua scripts to `plugins/` directory (see `src/plugins/` for plugin API)
+- Customize responses: Add patch rules in `patches/` directory with JSON metadata
 
-The architecture emphasizes modularity, performance, and extensibility, with clean separation between the protocol handling, query routing, and service implementations.
+### Important Implementation Details
+
+**DN42 Detection Logic:**
+- `.dn42` domains → DN42 backend
+- Private IPv4 (RFC1918, etc.) → DN42 backend
+- Private IPv6 (fc00::/7, etc.) → DN42 backend
+- AS numbers starting with `AS42424` → DN42 backend
+- Uses platform-aware backends: Git for Unix-like systems, HTTP API for Windows
+
+**Query Routing:**
+1. Special queries (HELP, UPDATE-PATCH, meal suggestions) handled immediately
+2. Plugin queries handled by Lua plugin system if suffix matches registered plugin
+3. Suffixed queries routed to specialized handlers
+4. Standard queries (domain/IP/ASN) use IANA referral or DN42 based on detection
+
+**Color System:**
+- Supports Dark, Light, and Auto color schemes in `src/core/color/`
+- Colorization applied after query processing, before patch application
+- Protocol-aware colorization for structured data
+
+**Statistics Collection:**
+- Real-time tracking via `Arc<Stats>` in `src/storage/lmdb.rs`
+- Metrics: query counts, type distribution, response times, geographic data
+- Saved on shutdown and loaded on startup
+- Exposed via web API at `/api/stats`
