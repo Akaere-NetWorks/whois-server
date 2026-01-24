@@ -28,6 +28,7 @@ suffix = "-CUSTOM"           # The suffix this plugin handles (must start with -
 author = "Your Name"
 description = "What this plugin does"
 enabled = true               # Set to false to disable
+timeout = 10                 # Execution timeout in seconds (default: 5)
 
 [permissions]
 network = true               # Allow HTTP requests
@@ -37,6 +38,9 @@ allowed_domains = [          # Whitelist of allowed domains
 cache_read = true            # Allow reading from cache
 cache_write = true           # Allow writing to cache
 ```
+
+**Plugin Configuration Options:**
+- `timeout` - Maximum execution time in seconds for `handle_query` (default: 5, minimum: 1)
 
 ## Lua Plugin API
 
@@ -221,7 +225,7 @@ Plugins run in a secure sandbox with the following restrictions:
 - **No C modules** - `package.loadlib` is removed
 - **Network whitelist** - HTTP requests only allowed to whitelisted domains
 - **Resource limits** - 10 MB memory limit per plugin
-- **Execution timeout** - 5 second timeout per query
+- **Execution timeout** - Configurable timeout per plugin (default: 5 seconds, set via `timeout` in meta.toml)
 
 ## Testing Your Plugin
 
@@ -247,9 +251,10 @@ Plugins run in a secure sandbox with the following restrictions:
    - Use appropriate log levels
 
 4. **Performance**
-   - Keep queries fast (timeout is 5 seconds)
+   - Keep queries fast (default timeout is 5 seconds, configurable via `timeout` in meta.toml)
    - Minimize HTTP requests
    - Use caching effectively
+   - Increase timeout only when necessary for long-running operations
 
 5. **Response Format**
    - Follow WHOIS format with `%` prefixes for metadata
@@ -281,3 +286,4 @@ Plugins run in a secure sandbox with the following restrictions:
 - Reduce work done in `handle_query`
 - Use caching to avoid repeated API calls
 - Consider async operations
+- Increase the `timeout` value in `meta.toml` if your operations legitimately need more time (e.g., for slow external APIs)

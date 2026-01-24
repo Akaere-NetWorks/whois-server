@@ -26,10 +26,17 @@ pub struct PluginInfo {
     pub description: Option<String>,
     #[serde(default = "default_enabled")]
     pub enabled: bool,
+    /// Execution timeout in seconds (default: 5)
+    #[serde(default = "default_timeout")]
+    pub timeout: u64,
 }
 
 fn default_enabled() -> bool {
     true
+}
+
+fn default_timeout() -> u64 {
+    5
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -177,6 +184,7 @@ mod tests {
                 author: None,
                 description: None,
                 enabled: true,
+                timeout: 5, // default timeout
             },
             permissions: PluginPermissions::default(),
         };

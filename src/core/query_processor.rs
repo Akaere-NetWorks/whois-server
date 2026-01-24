@@ -470,6 +470,7 @@ pub async fn process_query(
 /// Process a plugin query
 ///
 /// This function executes the plugin's handle_query function with the provided input.
+/// The timeout is read from the plugin's metadata (default: 5 seconds).
 async fn process_plugin_query(
     suffix: &str,
     base_query: &str,
@@ -485,13 +486,16 @@ async fn process_plugin_query(
     let plugin = plugin_registry.get_plugin(suffix)
         .ok_or_else(|| anyhow::anyhow!("Plugin not found for suffix: {}", suffix))?;
 
-    // Execute the plugin with timeout
+    // Get timeout from plugin metadata (in seconds)
+    let timeout_secs = plugin.metadata.plugin.timeout;
+
+    // Execute the plugin with configured timeout
     let result = tokio::time::timeout(
-        std::time::Duration::from_secs(5),
+        std::time::Duration::from_secs(timeout_secs),
         execute_plugin(&plugin, base_query)
     )
     .await
-    .map_err(|_| anyhow::anyhow!("Plugin execution timeout (5s)"))??;
+    .map_err(|_| anyhow::anyhow!("Plugin execution timeout ({}s)", timeout_secs))??;
 
     Ok(result)
 }
