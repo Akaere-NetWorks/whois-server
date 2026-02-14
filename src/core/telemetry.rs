@@ -171,6 +171,7 @@ pub fn query_type_to_string(query_type: &crate::core::QueryType) -> String {
         crate::core::QueryType::IPv4(_) => "ipv4".to_string(),
         crate::core::QueryType::IPv6(_) => "ipv6".to_string(),
         crate::core::QueryType::ASN(_) => "asn".to_string(),
+        crate::core::QueryType::BareASN(_) => "bare_asn".to_string(),
         crate::core::QueryType::EmailSearch(_) => "email_search".to_string(),
         crate::core::QueryType::BGPTool(_) => "bgptool".to_string(),
         crate::core::QueryType::Geo(_) => "geo".to_string(),

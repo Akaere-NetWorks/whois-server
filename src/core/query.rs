@@ -11,6 +11,7 @@ pub enum QueryType {
     IPv4(Ipv4Addr),
     IPv6(Ipv6Addr),
     ASN(String),
+    BareASN(String), // Pure number ASN (e.g., "213605"), DN42 first then public fallback
     EmailSearch(String), // For queries ending with -EMAIL
     BGPTool(String), // For queries ending with -BGPTOOL
     Geo(String), // For queries ending with -GEO
@@ -536,6 +537,12 @@ pub fn analyze_query(query: &str) -> QueryType {
     // Identify ASN
     if query.to_uppercase().starts_with("AS") && query[2..].chars().all(|c| c.is_ascii_digit()) {
         return QueryType::ASN(query.to_string());
+    }
+
+    // Identify bare ASN (pure number, e.g., "213605")
+    // DN42 first, then fallback to public RDAP/WHOIS
+    if query.chars().all(|c| c.is_ascii_digit()) && !query.is_empty() {
+        return QueryType::BareASN(query.to_string());
     }
 
     // Check if it's a domain format

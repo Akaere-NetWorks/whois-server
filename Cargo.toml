@@ -1,6 +1,6 @@
 [package]
 name = "whois-server"
-version = "0.4.1"
+version = "0.5.0"
 edition = "2024"
 license = "AGPL-3.0-or-later"
 authors = ["Akaere Networks"]
@@ -18,7 +18,7 @@ name = "whois-server"
 path = "src/main.rs"
 
 [dependencies]
-rdap = { git = "https://github.com/Akaere-NetWorks/rdap.git", rev = "4cb1f62" }
+rdap = "0.2.0" # RDAP client library
 tokio = { version = "1.48.0", features = ["full"] }
 anyhow = "1.0.100"
 clap = { version = "4.5.51", features = ["derive"] }

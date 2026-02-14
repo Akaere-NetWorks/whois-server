@@ -5,6 +5,7 @@
 //! Core query processing logic shared between different server implementations
 
 use anyhow::Result;
+use rdap::QueryType as RdapQueryType;
 use crate::config::{
     AFRINIC_WHOIS_PORT,
     AFRINIC_WHOIS_SERVER,
@@ -92,6 +93,7 @@ use crate::services::{
     query_ripe_whois,
     query_whois,
     query_with_iana_referral,
+    rdap::query_rdap_with_whois_fallback,
 };
 
 /// Process a WHOIS query and return the response (for use by SSH server and other modules)
@@ -114,7 +116,13 @@ pub async fn process_query(
                 log_debug!("Detected .dn42 domain, using DN42 query");
                 process_dn42_query_managed(domain).await
             } else {
-                query_with_iana_referral(domain).await
+                // RDAP-first with WHOIS fallback (IANA recommendation)
+                let domain_clone = domain.clone();
+                query_rdap_with_whois_fallback(
+                    domain,
+                    RdapQueryType::Domain,
+                    query_with_iana_referral(&domain_clone),
+                ).await
             }
         }
         QueryType::IPv4(ip) => {
@@ -123,7 +131,13 @@ pub async fn process_query(
                 log_debug!("Detected private IPv4 address, using DN42 query");
                 process_dn42_query_managed(query).await
             } else {
-                query_with_iana_referral(query).await
+                // RDAP-first with WHOIS fallback (IANA recommendation)
+                let query_str = query.to_string();
+                query_rdap_with_whois_fallback(
+                    query,
+                    RdapQueryType::Ip,
+                    query_with_iana_referral(&query_str),
+                ).await
             }
         }
         QueryType::IPv6(ip) => {
@@ -132,7 +146,13 @@ pub async fn process_query(
                 log_debug!("Detected private IPv6 address, using DN42 query");
                 process_dn42_query_managed(query).await
             } else {
-                query_with_iana_referral(query).await
+                // RDAP-first with WHOIS fallback (IANA recommendation)
+                let query_str = query.to_string();
+                query_rdap_with_whois_fallback(
+                    query,
+                    RdapQueryType::Ip,
+                    query_with_iana_referral(&query_str),
+                ).await
             }
         }
         QueryType::ASN(asn) => {
@@ -141,7 +161,40 @@ pub async fn process_query(
                 log_debug!("Detected DN42 ASN, using DN42 query");
                 process_dn42_query_managed(asn).await
             } else {
-                query_with_iana_referral(asn).await
+                // AS-prefixed ASN always goes to public RDAP/WHOIS
+                let asn_clone = asn.clone();
+                query_rdap_with_whois_fallback(
+                    asn,
+                    RdapQueryType::Autnum,
+                    query_with_iana_referral(&asn_clone),
+                ).await
+            }
+        }
+        QueryType::BareASN(num) => {
+            // Pure number: try DN42 first, fallback to public RDAP/WHOIS
+            let asn_query = format!("AS{}", num);
+            log_debug!("Processing bare ASN query: {} -> {}", num, asn_query);
+            match process_dn42_query_managed(&num).await {
+                Ok(response)
+                    if !response.contains("404 Not Found")
+                        && !response.trim().is_empty() =>
+                {
+                    log_debug!("Found bare ASN in DN42: {}", num);
+                    Ok(response)
+                }
+                _ => {
+                    log_debug!(
+                        "Bare ASN not found in DN42, falling back to RDAP/WHOIS: {}",
+                        asn_query
+                    );
+                    let asn_clone = asn_query.clone();
+                    query_rdap_with_whois_fallback(
+                        &asn_query,
+                        RdapQueryType::Autnum,
+                        query_with_iana_referral(&asn_clone),
+                    )
+                    .await
+                }
             }
         }
         QueryType::EmailSearch(base_query) => {
@@ -410,8 +463,20 @@ pub async fn process_query(
                 log_debug!("Detected DN42 related query ({}), using DN42 query", q);
                 process_dn42_query_managed(q).await
             } else {
-                let public_result = query_with_iana_referral(q).await;
-                match &public_result {
+                // RDAP-first with WHOIS fallback, then DN42 if still not found
+                let rdap_whois_result = match crate::services::rdap::detect_rdap_query_type(q) {
+                    Some(rdap_qt) => {
+                        let q_clone = q.to_string();
+                        query_rdap_with_whois_fallback(
+                            q,
+                            rdap_qt,
+                            query_with_iana_referral(&q_clone),
+                        ).await
+                    }
+                    None => query_with_iana_referral(q).await,
+                };
+
+                match &rdap_whois_result {
                     Ok(response) if
                         response.trim().is_empty() ||
                         response.contains("No entries found") ||
@@ -424,7 +489,7 @@ pub async fn process_query(
                         log_debug!("Public query failed, trying DN42 for: {}", q);
                         process_dn42_query_managed(q).await
                     }
-                    _ => public_result,
+                    _ => rdap_whois_result,
                 }
             }
         }
