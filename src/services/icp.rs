@@ -10,6 +10,7 @@ use crate::storage::lmdb::LmdbStorage;
 use crate::{log_debug, log_error};
 use anyhow::Result;
 use regex::Regex;
+use std::sync::LazyLock;
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -26,8 +27,8 @@ impl ICPCacheEntry {
     fn new(response: String) -> Self {
         let cached_at = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .expect("System time should be after Unix epoch")
-            .as_secs();
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
         Self {
             response,
             cached_at,
@@ -37,8 +38,8 @@ impl ICPCacheEntry {
     fn is_expired(&self) -> bool {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .expect("System time should be after Unix epoch")
-            .as_secs();
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
         (now - self.cached_at) > ICP_CACHE_TTL
     }
 }
@@ -144,6 +145,11 @@ struct DNSPodBeian {
     info: String,
 }
 
+static DOMAIN_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^[\w\-]+(\.[\w\-]+)+[\w\-]*$")
+        .expect("Invalid ICP domain regex pattern")
+});
+
 /// Clean and validate domain input
 fn clean_domain(domain: &str) -> Result<String> {
     let domain = domain.trim().to_lowercase();
@@ -160,8 +166,7 @@ fn clean_domain(domain: &str) -> Result<String> {
     let domain = domain.split(':').next().unwrap_or(&domain);
 
     // Validate domain format
-    let domain_regex = Regex::new(r"^[\w\-]+(\.[\w\-]+)+[\w\-]*$").unwrap();
-    if !domain_regex.is_match(domain) {
+    if !DOMAIN_REGEX.is_match(domain) {
         return Err(anyhow::anyhow!("Invalid domain format: {}", domain));
     }
 

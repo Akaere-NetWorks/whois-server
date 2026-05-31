@@ -17,11 +17,14 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::sync::RwLock;
+
+static ANSI_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\x1b\[[0-9;]*m").expect("Invalid ANSI regex pattern")
+});
+
 /// Strip ANSI color codes from a string
 fn strip_ansi_codes(s: &str) -> String {
-    // ANSI escape code pattern: \x1b[...m
-    let re = Regex::new(r"\x1b\[[0-9;]*m").expect("Invalid ANSI regex pattern");
-    re.replace_all(s, "").to_string()
+    ANSI_REGEX.replace_all(s, "").to_string()
 }
 
 /// A single diff hunk (one replacement operation)
@@ -1109,7 +1112,7 @@ pub fn apply_response_patches(query: &str, response: String) -> String {
     log_debug!("Applying patches for query: {}", query);
     let manager = PATCH_MANAGER
         .read()
-        .expect("Patch manager mutex poisoned in apply_response_patches");
+        .unwrap_or_else(|e| e.into_inner());
     let result = manager.apply_patches(query, response);
     log_debug!("Patch application completed");
     result
@@ -1128,7 +1131,7 @@ pub fn reload_patches(_patches_dir: &str) -> Result<usize, Box<dyn std::error::E
 pub fn get_patches_count() -> (usize, usize) {
     let manager = PATCH_MANAGER
         .read()
-        .expect("Patch manager mutex poisoned in get_patches_count");
+        .unwrap_or_else(|e| e.into_inner());
     let files = manager.patch_files.len();
     let patches = manager.patch_files.iter().map(|pf| pf.patches.len()).sum();
     (files, patches)

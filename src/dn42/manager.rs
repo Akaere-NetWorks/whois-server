@@ -212,9 +212,9 @@ async fn get_dn42_manager() -> Result<&'static Mutex<DN42Manager>> {
         let manager = DN42Manager::new().await?;
         let mutex = Mutex::new(manager);
         match DN42_MANAGER_INSTANCE.set(mutex) {
-            Ok(_) => Ok(DN42_MANAGER_INSTANCE
+            Ok(_) => DN42_MANAGER_INSTANCE
                 .get()
-                .expect("Manager should be set after successful initialization")),
+                .ok_or_else(|| anyhow::anyhow!("Failed to get DN42 manager instance after initialization")),
             Err(_) => DN42_MANAGER_INSTANCE
                 .get()
                 .ok_or_else(|| anyhow::anyhow!("Failed to get DN42 manager instance after set")),

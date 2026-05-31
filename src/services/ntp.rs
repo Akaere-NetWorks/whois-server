@@ -108,10 +108,10 @@ fn ntp_to_unix_micros(ntp_timestamp: u64) -> i64 {
 /// Format timestamp as human-readable string
 fn format_timestamp(unix_timestamp: i64) -> String {
     use chrono::{DateTime, Utc};
-    let datetime = DateTime::<Utc>::from_timestamp(unix_timestamp, 0).unwrap_or_else(|| {
-        DateTime::<Utc>::from_timestamp(0, 0).expect("Epoch timestamp should be valid")
-    });
-    datetime.format("%Y-%m-%d %H:%M:%S UTC").to_string()
+    match DateTime::<Utc>::from_timestamp(unix_timestamp, 0) {
+        Some(datetime) => datetime.format("%Y-%m-%d %H:%M:%S UTC").to_string(),
+        None => "1970-01-01 00:00:00 UTC".to_string(),
+    }
 }
 
 /// Query NTP server and return time information

@@ -21,8 +21,8 @@ impl IanaReferral {
     fn new(whois_server: String, description: String) -> Self {
         let cached_at = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .expect("System time should be after Unix epoch")
-            .as_secs();
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
 
         Self {
             whois_server,
@@ -45,8 +45,8 @@ impl IanaReferral {
     ) -> Self {
         let cached_at = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .expect("System time should be after Unix epoch")
-            .as_secs();
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
 
         Self {
             whois_server,
@@ -69,8 +69,8 @@ impl IanaReferral {
     ) -> Self {
         let cached_at = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .expect("System time should be after Unix epoch")
-            .as_secs();
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
 
         Self {
             whois_server,
@@ -93,8 +93,8 @@ impl IanaReferral {
     ) -> Self {
         let cached_at = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .expect("System time should be after Unix epoch")
-            .as_secs();
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
 
         Self {
             whois_server,
@@ -133,8 +133,8 @@ impl IanaReferral {
     fn is_expired(&self) -> bool {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .expect("System time should be after Unix epoch")
-            .as_secs();
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
 
         // 7 days = 7 * 24 * 60 * 60 = 604800 seconds
         now - self.cached_at > 604800
@@ -531,8 +531,9 @@ impl IanaCache {
         for pattern in &patterns {
             if let Ok(regex) = Regex::new(pattern)
                 && let Some(caps) = regex.captures(response)
+                && let Some(match_str) = caps.get(1)
             {
-                return caps.get(1).unwrap().as_str().trim().to_string();
+                return match_str.as_str().trim().to_string();
             }
         }
 

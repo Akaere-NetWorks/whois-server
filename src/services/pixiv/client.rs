@@ -283,6 +283,12 @@ impl PixivClient {
 
 impl Default for PixivClient {
     fn default() -> Self {
-        Self::new().expect("Failed to create Pixiv client")
+        Self::new().unwrap_or_else(|e| {
+            crate::log_error!("Failed to create default Pixiv client: {}", e);
+            Self {
+                auth: AuthManager::new(),
+                proxy_base_url: None,
+            }
+        })
     }
 }

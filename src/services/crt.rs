@@ -51,7 +51,10 @@ impl CrtService {
             .timeout(Duration::from_secs(20))
             .user_agent("Mozilla/5.0 (WHOIS Server; Certificate Transparency Lookup)")
             .build()
-            .expect("Failed to create HTTP client");
+            .unwrap_or_else(|e| {
+                log_error!("Failed to create HTTP client for CRT service: {}", e);
+                reqwest::Client::new()
+            });
 
         Self {
             client,
@@ -68,7 +71,10 @@ impl CrtService {
             .timeout(timeout)
             .user_agent("Mozilla/5.0 (WHOIS Server; Certificate Transparency Lookup)")
             .build()
-            .expect("Failed to create HTTP client");
+            .unwrap_or_else(|e| {
+                log_error!("Failed to create HTTP client for CRT service: {}", e);
+                reqwest::Client::new()
+            });
 
         Self { client, timeout }
     }

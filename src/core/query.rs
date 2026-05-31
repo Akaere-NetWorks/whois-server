@@ -2,7 +2,7 @@ use crate::config::{PRIVATE_IPV4_RANGES, PRIVATE_IPV6_RANGES};
 use cidr::{Ipv4Cidr, Ipv6Cidr};
 use regex::Regex;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
-use std::sync::RwLock;
+use std::sync::{LazyLock, RwLock};
 
 // WHOIS query types
 #[derive(Debug, Clone)]
@@ -80,6 +80,11 @@ pub enum QueryType {
     Plugin(String, String), // For plugin-handled queries (suffix, base_query)
     Unknown(String),
 }
+
+static DOMAIN_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$")
+        .expect("Invalid domain regex pattern")
+});
 
 pub fn analyze_query(query: &str) -> QueryType {
     // Check if it's a Chinese meal suggestion query
@@ -547,10 +552,7 @@ pub fn analyze_query(query: &str) -> QueryType {
     }
 
     // Check if it's a domain format
-    let domain_regex =
-        Regex::new(r"^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$")
-            .expect("Invalid domain regex");
-    if domain_regex.is_match(query) {
+    if DOMAIN_REGEX.is_match(query) {
         return QueryType::Domain(query.to_string());
     }
 
@@ -599,12 +601,12 @@ static PLUGIN_REGISTRY: RwLock<Option<Arc<PluginRegistry>>> = RwLock::new(None);
 
 /// Set the global plugin registry
 pub fn set_plugin_registry(registry: Arc<PluginRegistry>) {
-    let mut guard = PLUGIN_REGISTRY.write().unwrap();
+    let mut guard = PLUGIN_REGISTRY.write().unwrap_or_else(|e| e.into_inner());
     *guard = Some(registry);
 }
 
 /// Get the global plugin registry
 pub fn get_plugin_registry() -> Option<Arc<PluginRegistry>> {
-    let guard = PLUGIN_REGISTRY.read().unwrap();
+    let guard = PLUGIN_REGISTRY.read().unwrap_or_else(|e| e.into_inner());
     guard.clone()
 }

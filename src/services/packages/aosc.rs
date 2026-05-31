@@ -21,8 +21,57 @@ use anyhow::{Context, Result};
 use regex::Regex;
 use reqwest;
 use serde::{Deserialize, Serialize};
+use std::sync::LazyLock;
 const AOSC_PACKAGES_URL: &str = "https://packages.aosc.io/packages/";
 const AOSC_SEARCH_URL: &str = "https://packages.aosc.io/search?q=";
+
+static VERSION_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r#"<span class="pkg-version">([^<]+)</span>"#).expect("Invalid AOSC regex pattern")
+});
+static DESC_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r#"<p class="description pkg-description">([^<]+)</p>"#)
+        .expect("Invalid AOSC regex pattern")
+});
+static SECTION_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r#"<b class="pkg-field">Section</b>:\s*([^<]+)"#)
+        .expect("Invalid AOSC regex pattern")
+});
+static DEPENDS_BLOCK_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(
+        r#"<b class="pkg-field pkg-dep-rel">Depends</b>\s*:\s*\n\s*((?:<span class="pkg-dep"><a href="[^"]+">([^<]+)</a></span>,?\s*)+)"#,
+    )
+    .expect("Invalid AOSC regex pattern")
+});
+static DEP_NAME_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r#"<a href="([^"]+)">([^<]+)</a>"#).expect("Invalid AOSC regex pattern")
+});
+static UPSTREAM_REGEX_SOURCE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r#"<b class="pkg-field"[^>]*>Upstream</b>:\s*<a href="([^"]+)">source</a>"#)
+        .expect("Invalid AOSC regex pattern")
+});
+static UPSTREAM_REGEX_TARBALL: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r#"<a href="([^"]+)"\s*>\(tarball\)[^<]*</a>"#)
+        .expect("Invalid AOSC regex pattern")
+});
+static UPSTREAM_VER_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r#"<a href="[^"]+"\s*\(git\)\s*([^<]+)</a>"#)
+        .expect("Invalid AOSC regex pattern")
+});
+static ARCH_SIZE_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r#"([a-z0-9]+):\s+(\d+\.\d+\s+[KMGT]?iB)"#).expect("Invalid AOSC regex pattern")
+});
+static DOWNLOAD_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(
+        r#"<a[^>]+href="/files/([a-z0-9]+)/[^"]*"[^>]*>\s*([0-9.]+\s*[KMGT]?iB)\s*</a>"#,
+    )
+    .expect("Invalid AOSC regex pattern")
+});
+static SIZE_CONTEXT_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(
+        r#"(amd64|arm64|loongarch64|loongson3|mips64r6el|ppc64el|riscv64)[^0-9]*?(\d+\.\d+\s*[KMGT]?iB)"#,
+    )
+    .expect("Invalid AOSC regex pattern")
+});
 
 #[derive(Debug, Deserialize, Serialize)]
 struct AOSCPackage {
@@ -126,17 +175,13 @@ fn parse_aosc_html(html: &str, query: &str) -> Result<AOSCSearchResponse> {
     let mut packages = Vec::new();
 
     // Extract package version from header
-    let version_regex = Regex::new(r#"<span class="pkg-version">([^<]+)</span>"#)
-        .expect("Invalid AOSC regex pattern");
-    let version = version_regex
+    let version = VERSION_REGEX
         .captures(html)
         .and_then(|cap| cap.get(1))
         .map_or("unknown".to_string(), |m| m.as_str().to_string());
 
     // Extract description
-    let desc_regex = Regex::new(r#"<p class="description pkg-description">([^<]+)</p>"#)
-        .expect("Invalid AOSC regex pattern");
-    let description = desc_regex
+    let description = DESC_REGEX
         .captures(html)
         .and_then(|cap| cap.get(1))
         .map_or(format!("AOSC package: {}", query), |m| {
@@ -144,23 +189,16 @@ fn parse_aosc_html(html: &str, query: &str) -> Result<AOSCSearchResponse> {
         });
 
     // Extract section
-    let section_regex = Regex::new(r#"<b class="pkg-field">Section</b>:\s*([^<]+)"#)
-        .expect("Invalid AOSC regex pattern");
-    let section = section_regex
+    let section = SECTION_REGEX
         .captures(html)
         .and_then(|cap| cap.get(1))
         .map(|m| m.as_str().trim().to_string());
 
     // Extract dependencies - only runtime dependencies, not build or library
-    let depends_regex = Regex::new(
-        r#"<b class="pkg-field pkg-dep-rel">Depends</b>\s*:\s*\n\s*((?:<span class="pkg-dep"><a href="[^"]+">([^<]+)</a></span>,?\s*)+)"#
-    ).expect("Invalid AOSC regex pattern");
     let mut depends = Vec::new();
-    if let Some(cap) = depends_regex.captures(html) {
+    if let Some(cap) = DEPENDS_BLOCK_REGEX.captures(html) {
         let deps_html = cap.get(1).map_or("", |m| m.as_str());
-        let dep_name_regex =
-            Regex::new(r#"<a href="([^"]+)">([^<]+)</a>"#).expect("Invalid AOSC regex pattern");
-        for dep_cap in dep_name_regex.captures_iter(deps_html) {
+        for dep_cap in DEP_NAME_REGEX.captures_iter(deps_html) {
             if let Some(dep_name) = dep_cap.get(1) {
                 // Only include actual package names, skip URLs and paths
                 let dep_str = dep_name.as_str();
@@ -177,10 +215,7 @@ fn parse_aosc_html(html: &str, query: &str) -> Result<AOSCSearchResponse> {
     // Extract upstream URL - try multiple patterns
     let upstream_url = {
         // Try the source link first
-        let upstream_regex1 =
-            Regex::new(r#"<b class="pkg-field"[^>]*>Upstream</b>:\s*<a href="([^"]+)">source</a>"#)
-                .expect("Invalid AOSC regex pattern");
-        let url1 = upstream_regex1
+        let url1 = UPSTREAM_REGEX_SOURCE
             .captures(html)
             .and_then(|cap| cap.get(1))
             .map(|m| m.as_str().to_string())
@@ -190,9 +225,7 @@ fn parse_aosc_html(html: &str, query: &str) -> Result<AOSCSearchResponse> {
             url1
         } else {
             // Try the tarball link as fallback
-            let upstream_regex2 = Regex::new(r#"<a href="([^"]+)"\s*>\(tarball\)[^<]*</a>"#)
-                .expect("Invalid AOSC regex pattern");
-            upstream_regex2
+            UPSTREAM_REGEX_TARBALL
                 .captures(html)
                 .and_then(|cap| cap.get(1))
                 .map(|m| m.as_str().to_string())
@@ -201,9 +234,7 @@ fn parse_aosc_html(html: &str, query: &str) -> Result<AOSCSearchResponse> {
     };
 
     // Extract upstream version
-    let upstream_ver_regex = Regex::new(r#"<a href="[^"]+"\s*\(git\)\s*([^<]+)</a>"#)
-        .expect("Invalid AOSC regex pattern");
-    let upstream_version = upstream_ver_regex
+    let upstream_version = UPSTREAM_VER_REGEX
         .captures(html)
         .and_then(|cap| cap.get(1))
         .map(|m| m.as_str().trim().to_string());
@@ -212,9 +243,7 @@ fn parse_aosc_html(html: &str, query: &str) -> Result<AOSCSearchResponse> {
     let mut architectures = Vec::new();
 
     // Pattern 1: Extract architecture and size from text patterns like "amd64: 19.8 MiB"
-    let arch_size_regex =
-        Regex::new(r#"([a-z0-9]+):\s+(\d+\.\d+\s+[KMGT]?iB)"#).expect("Invalid AOSC regex pattern");
-    for cap in arch_size_regex.captures_iter(html) {
+    for cap in ARCH_SIZE_REGEX.captures_iter(html) {
         if let (Some(arch_name), Some(size)) = (cap.get(1), cap.get(2)) {
             let arch = arch_name.as_str().trim();
             let pkg_size = size.as_str().trim();
@@ -245,11 +274,7 @@ fn parse_aosc_html(html: &str, query: &str) -> Result<AOSCSearchResponse> {
 
     // Pattern 2: Extract from download links with size information
     if architectures.is_empty() {
-        let download_regex = Regex::new(
-            r#"<a[^>]+href="/files/([a-z0-9]+)/[^"]*"[^>]*>\s*([0-9.]+\s*[KMGT]?iB)\s*</a>"#,
-        )
-        .expect("Invalid AOSC regex pattern");
-        for cap in download_regex.captures_iter(html) {
+        for cap in DOWNLOAD_REGEX.captures_iter(html) {
             if let (Some(arch_name), Some(size)) = (cap.get(1), cap.get(2)) {
                 let arch = arch_name.as_str().trim();
                 let pkg_size = size.as_str().trim();
@@ -292,10 +317,7 @@ fn parse_aosc_html(html: &str, query: &str) -> Result<AOSCSearchResponse> {
         let mut size_map = std::collections::HashMap::new();
 
         // Look for size patterns in the HTML text
-        let size_context_regex = Regex::new(
-            r#"(amd64|arm64|loongarch64|loongson3|mips64r6el|ppc64el|riscv64)[^0-9]*?(\d+\.\d+\s*[KMGT]?iB)"#
-        ).expect("Invalid AOSC regex pattern");
-        for cap in size_context_regex.captures_iter(html) {
+        for cap in SIZE_CONTEXT_REGEX.captures_iter(html) {
             if let (Some(arch_name), Some(size)) = (cap.get(1), cap.get(2)) {
                 let arch = arch_name.as_str().trim();
                 let pkg_size = size.as_str().trim();

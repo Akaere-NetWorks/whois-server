@@ -162,7 +162,10 @@ impl AuthManager {
         let client = reqwest::Client::builder()
             .user_agent(constants::USER_AGENT)
             .build()
-            .expect("Failed to create HTTP client");
+            .unwrap_or_else(|e| {
+                crate::log_error!("Failed to create HTTP client for Pixiv auth: {}", e);
+                reqwest::Client::new()
+            });
 
         Self {
             client,

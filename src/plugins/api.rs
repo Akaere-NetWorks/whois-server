@@ -100,10 +100,10 @@ pub fn register_cache_api(lua: &Lua, permissions: &PluginPermissions) -> mlua::R
     // Register cache_get if read permission is granted
     if permissions.cache_read {
         let cache_get = lua.create_function(move |_lua, key: String| {
-            let cache = CACHE.lock().unwrap();
+            let cache = CACHE.lock().unwrap_or_else(|e| e.into_inner());
             let now = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
-                .unwrap()
+                .unwrap_or_default()
                 .as_secs();
 
             if let Some((value, expiry)) = cache.get(&key)
@@ -124,11 +124,11 @@ pub fn register_cache_api(lua: &Lua, permissions: &PluginPermissions) -> mlua::R
                 let ttl = ttl.unwrap_or(3600) as u64; // Default 1 hour
                 let now = SystemTime::now()
                     .duration_since(UNIX_EPOCH)
-                    .unwrap()
+                    .unwrap_or_default()
                     .as_secs();
                 let expiry = now + ttl;
 
-                let mut cache = CACHE.lock().unwrap();
+                let mut cache = CACHE.lock().unwrap_or_else(|e| e.into_inner());
                 cache.insert(key, (value, expiry));
                 Ok(())
             },

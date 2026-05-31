@@ -773,7 +773,7 @@ pub async fn format_prefixes_response(
                     let _permit = permit
                         .acquire()
                         .await
-                        .expect("Semaphore should not be closed during operation");
+                        .ok();
 
                     log_debug!(
                         "Querying IPinfo for IP: {} (from prefix: {})",
