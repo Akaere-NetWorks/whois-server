@@ -1,8 +1,8 @@
-use anyhow::{Result, anyhow};
 use super::constants::{RIPE_PREFIXES_API_BASE, RIPE_RIR_GEO_API_BASE, RIPE_STAT_API_BASE};
 use super::types::{PrefixesResponse, RipeStatResponse, RirGeoResponse};
+use anyhow::{Result, anyhow};
 
-use crate::{log_debug};
+use crate::log_debug;
 /// Query RIPE NCC STAT API
 pub async fn query_ripe_api(client: &reqwest::Client, resource: &str) -> Result<RipeStatResponse> {
     let url = format!(

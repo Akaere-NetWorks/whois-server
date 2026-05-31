@@ -16,11 +16,11 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+use crate::{log_debug, log_error};
 use anyhow::{Context, Result};
 use regex::Regex;
 use reqwest;
 use serde::{Deserialize, Serialize};
-use crate::{log_debug, log_error};
 const AOSC_PACKAGES_URL: &str = "https://packages.aosc.io/packages/";
 const AOSC_SEARCH_URL: &str = "https://packages.aosc.io/search?q=";
 
@@ -126,14 +126,16 @@ fn parse_aosc_html(html: &str, query: &str) -> Result<AOSCSearchResponse> {
     let mut packages = Vec::new();
 
     // Extract package version from header
-    let version_regex = Regex::new(r#"<span class="pkg-version">([^<]+)</span>"#).expect("Invalid AOSC regex pattern");
+    let version_regex = Regex::new(r#"<span class="pkg-version">([^<]+)</span>"#)
+        .expect("Invalid AOSC regex pattern");
     let version = version_regex
         .captures(html)
         .and_then(|cap| cap.get(1))
         .map_or("unknown".to_string(), |m| m.as_str().to_string());
 
     // Extract description
-    let desc_regex = Regex::new(r#"<p class="description pkg-description">([^<]+)</p>"#).expect("Invalid AOSC regex pattern");
+    let desc_regex = Regex::new(r#"<p class="description pkg-description">([^<]+)</p>"#)
+        .expect("Invalid AOSC regex pattern");
     let description = desc_regex
         .captures(html)
         .and_then(|cap| cap.get(1))
@@ -142,7 +144,8 @@ fn parse_aosc_html(html: &str, query: &str) -> Result<AOSCSearchResponse> {
         });
 
     // Extract section
-    let section_regex = Regex::new(r#"<b class="pkg-field">Section</b>:\s*([^<]+)"#).expect("Invalid AOSC regex pattern");
+    let section_regex = Regex::new(r#"<b class="pkg-field">Section</b>:\s*([^<]+)"#)
+        .expect("Invalid AOSC regex pattern");
     let section = section_regex
         .captures(html)
         .and_then(|cap| cap.get(1))
@@ -155,7 +158,8 @@ fn parse_aosc_html(html: &str, query: &str) -> Result<AOSCSearchResponse> {
     let mut depends = Vec::new();
     if let Some(cap) = depends_regex.captures(html) {
         let deps_html = cap.get(1).map_or("", |m| m.as_str());
-        let dep_name_regex = Regex::new(r#"<a href="([^"]+)">([^<]+)</a>"#).expect("Invalid AOSC regex pattern");
+        let dep_name_regex =
+            Regex::new(r#"<a href="([^"]+)">([^<]+)</a>"#).expect("Invalid AOSC regex pattern");
         for dep_cap in dep_name_regex.captures_iter(deps_html) {
             if let Some(dep_name) = dep_cap.get(1) {
                 // Only include actual package names, skip URLs and paths
@@ -186,8 +190,8 @@ fn parse_aosc_html(html: &str, query: &str) -> Result<AOSCSearchResponse> {
             url1
         } else {
             // Try the tarball link as fallback
-            let upstream_regex2 =
-                Regex::new(r#"<a href="([^"]+)"\s*>\(tarball\)[^<]*</a>"#).expect("Invalid AOSC regex pattern");
+            let upstream_regex2 = Regex::new(r#"<a href="([^"]+)"\s*>\(tarball\)[^<]*</a>"#)
+                .expect("Invalid AOSC regex pattern");
             upstream_regex2
                 .captures(html)
                 .and_then(|cap| cap.get(1))
@@ -197,7 +201,8 @@ fn parse_aosc_html(html: &str, query: &str) -> Result<AOSCSearchResponse> {
     };
 
     // Extract upstream version
-    let upstream_ver_regex = Regex::new(r#"<a href="[^"]+"\s*\(git\)\s*([^<]+)</a>"#).expect("Invalid AOSC regex pattern");
+    let upstream_ver_regex = Regex::new(r#"<a href="[^"]+"\s*\(git\)\s*([^<]+)</a>"#)
+        .expect("Invalid AOSC regex pattern");
     let upstream_version = upstream_ver_regex
         .captures(html)
         .and_then(|cap| cap.get(1))
@@ -207,7 +212,8 @@ fn parse_aosc_html(html: &str, query: &str) -> Result<AOSCSearchResponse> {
     let mut architectures = Vec::new();
 
     // Pattern 1: Extract architecture and size from text patterns like "amd64: 19.8 MiB"
-    let arch_size_regex = Regex::new(r#"([a-z0-9]+):\s+(\d+\.\d+\s+[KMGT]?iB)"#).expect("Invalid AOSC regex pattern");
+    let arch_size_regex =
+        Regex::new(r#"([a-z0-9]+):\s+(\d+\.\d+\s+[KMGT]?iB)"#).expect("Invalid AOSC regex pattern");
     for cap in arch_size_regex.captures_iter(html) {
         if let (Some(arch_name), Some(size)) = (cap.get(1), cap.get(2)) {
             let arch = arch_name.as_str().trim();

@@ -1,6 +1,6 @@
+use super::types::{MeituanCityData, MeituanCityResponse, MeituanIpResponse};
 use anyhow::Result;
 use reqwest::Client;
-use super::types::{MeituanCityData, MeituanCityResponse, MeituanIpResponse};
 
 use crate::{log_debug, log_warn};
 /// Combined Meituan response containing both IP location and city details

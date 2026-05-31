@@ -1,6 +1,6 @@
+use super::types::IpApiResponse;
 use anyhow::Result;
 use reqwest::Client;
-use super::types::IpApiResponse;
 
 use crate::{log_debug, log_warn};
 /// Query IP-API for geo-location information (async version)

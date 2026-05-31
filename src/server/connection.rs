@@ -1,104 +1,39 @@
 use std::net::SocketAddr;
 use std::time::Duration;
 
-use anyhow::Result;
-use rdap::QueryType as RdapQueryType;
-use tokio::io::{ AsyncReadExt, AsyncWriteExt };
-use tokio::net::TcpStream;
 use crate::config::{
-    AFRINIC_WHOIS_PORT,
-    AFRINIC_WHOIS_SERVER,
-    ALTDB_WHOIS_PORT,
-    ALTDB_WHOIS_SERVER,
-    APNIC_WHOIS_PORT,
-    APNIC_WHOIS_SERVER,
-    ARIN_WHOIS_PORT,
-    ARIN_WHOIS_SERVER,
-    BELL_WHOIS_PORT,
-    BELL_WHOIS_SERVER,
-    JPIRR_WHOIS_PORT,
-    JPIRR_WHOIS_SERVER,
-    LACNIC_WHOIS_PORT,
-    LACNIC_WHOIS_SERVER,
-    LEVEL3_WHOIS_PORT,
-    LEVEL3_WHOIS_SERVER,
-    NTTCOM_WHOIS_PORT,
-    NTTCOM_WHOIS_SERVER,
-    RADB_WHOIS_PORT,
-    RADB_WHOIS_SERVER,
-    RIPE_WHOIS_PORT,
-    RIPE_WHOIS_SERVER,
-    RIS_WHOIS_PORT,
-    RIS_WHOIS_SERVER,
-    SERVER_BANNER,
-    TC_WHOIS_PORT,
-    TC_WHOIS_SERVER,
+    AFRINIC_WHOIS_PORT, AFRINIC_WHOIS_SERVER, ALTDB_WHOIS_PORT, ALTDB_WHOIS_SERVER,
+    APNIC_WHOIS_PORT, APNIC_WHOIS_SERVER, ARIN_WHOIS_PORT, ARIN_WHOIS_SERVER, BELL_WHOIS_PORT,
+    BELL_WHOIS_SERVER, JPIRR_WHOIS_PORT, JPIRR_WHOIS_SERVER, LACNIC_WHOIS_PORT,
+    LACNIC_WHOIS_SERVER, LEVEL3_WHOIS_PORT, LEVEL3_WHOIS_SERVER, NTTCOM_WHOIS_PORT,
+    NTTCOM_WHOIS_SERVER, RADB_WHOIS_PORT, RADB_WHOIS_SERVER, RIPE_WHOIS_PORT, RIPE_WHOIS_SERVER,
+    RIS_WHOIS_PORT, RIS_WHOIS_SERVER, SERVER_BANNER, TC_WHOIS_PORT, TC_WHOIS_SERVER,
 };
 use crate::core::{
-    ColorProtocol,
-    ColorScheme,
-    Colorizer,
-    QueryType,
-    StatsState,
-    analyze_query,
-    apply_response_patches,
-    dump_to_file,
-    is_private_ipv4,
-    is_private_ipv6,
+    ColorProtocol, ColorScheme, Colorizer, QueryType, StatsState, analyze_query,
+    apply_response_patches, dump_to_file, is_private_ipv4, is_private_ipv6,
 };
-use crate::{log_debug, log_error, log_warn};
 use crate::dn42::process_dn42_query_managed;
 use crate::services::{
-    handle_ntp_query,
-    process_ping_query,
-    process_acgc_query,
-    process_alma_query,
-    process_aosc_query,
-    process_aur_query,
-    process_bgptool_query,
-    process_cargo_query,
-    process_cfstatus_query,
-    process_crt_query,
-    process_debian_query,
-    process_desc_query,
-    process_dns_query,
-    process_email_search,
-    process_epel_query,
-    process_geo_query,
-    process_github_query,
-    process_imdb_query,
-    process_imdb_search_query,
-    process_irr_query,
-    process_looking_glass_query,
-    process_lyric_query,
-    process_manrs_query,
-    process_minecraft_query,
-    process_minecraft_user_query,
-    process_nixos_query,
-    process_npm_query,
-    process_opensuse_query,
-    process_openwrt_query,
-    process_peeringdb_query,
-    process_pen_query,
-    process_prefixes_query,
-    process_pypi_query,
-    process_rdap_query,
-    process_rir_geo_query,
-    process_rpki_query,
-    process_ssl_query,
-    process_steam_query,
-    process_steam_search_query,
-    process_traceroute_query,
-    process_ubuntu_query,
-    process_wikipedia_query,
-    query_curseforge,
-    query_modrinth,
-    query_random_chinese_meal,
-    query_random_meal,
-    query_whois,
-    query_with_iana_referral,
-    rdap::query_rdap_with_whois_fallback,
+    handle_ntp_query, process_acgc_query, process_alma_query, process_aosc_query,
+    process_aur_query, process_bgptool_query, process_cargo_query, process_cfstatus_query,
+    process_crt_query, process_debian_query, process_desc_query, process_dns_query,
+    process_email_search, process_epel_query, process_geo_query, process_github_query,
+    process_imdb_query, process_imdb_search_query, process_irr_query, process_looking_glass_query,
+    process_lyric_query, process_manrs_query, process_minecraft_query,
+    process_minecraft_user_query, process_nixos_query, process_npm_query, process_opensuse_query,
+    process_openwrt_query, process_peeringdb_query, process_pen_query, process_ping_query,
+    process_prefixes_query, process_pypi_query, process_rdap_query, process_rir_geo_query,
+    process_rpki_query, process_ssl_query, process_steam_query, process_steam_search_query,
+    process_traceroute_query, process_ubuntu_query, process_wikipedia_query, query_curseforge,
+    query_modrinth, query_random_chinese_meal, query_random_meal, query_whois,
+    query_with_iana_referral, rdap::query_rdap_with_whois_fallback,
 };
+use crate::{log_debug, log_error, log_warn};
+use anyhow::Result;
+use rdap::QueryType as RdapQueryType;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::TcpStream;
 
 pub async fn handle_connection(
     mut stream: TcpStream,
@@ -107,7 +42,7 @@ pub async fn handle_connection(
     dump_traffic: bool,
     dump_dir: &str,
     stats: StatsState,
-    enable_color: bool
+    enable_color: bool,
 ) -> Result<()> {
     // Set nodelay to ensure responses are sent immediately
     if let Err(e) = stream.set_nodelay(true) {
@@ -143,14 +78,13 @@ pub async fn handle_connection(
     };
 
     // Read with timeout
-    if let Err(_) = tokio::time::timeout(timeout, read_future).await {
+    if tokio::time::timeout(timeout, read_future).await.is_err() {
         return Err(anyhow::anyhow!("Request read timeout"));
     }
 
     // Dump query if requested
     if dump_traffic {
-        let timestamp = std::time::SystemTime
-            ::now()
+        let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_millis();
@@ -191,7 +125,12 @@ pub async fn handle_connection(
         return Ok(());
     }
 
-    log_debug!("Received query from {}: {} (color: {:?})", addr, query, color_protocol.scheme);
+    log_debug!(
+        "Received query from {}: {} (color: {:?})",
+        addr,
+        query,
+        color_protocol.scheme
+    );
 
     // Start timing the query
     let start_time = std::time::Instant::now();
@@ -213,7 +152,8 @@ pub async fn handle_connection(
                     domain,
                     RdapQueryType::Domain,
                     query_with_iana_referral(&domain_clone),
-                ).await
+                )
+                .await
             }
         }
         QueryType::IPv4(ip) => {
@@ -228,7 +168,8 @@ pub async fn handle_connection(
                     &query,
                     RdapQueryType::Ip,
                     query_with_iana_referral(&query_clone),
-                ).await
+                )
+                .await
             }
         }
         QueryType::IPv6(ip) => {
@@ -243,7 +184,8 @@ pub async fn handle_connection(
                     &query,
                     RdapQueryType::Ip,
                     query_with_iana_referral(&query_clone),
-                ).await
+                )
+                .await
             }
         }
         QueryType::ASN(asn) => {
@@ -258,17 +200,17 @@ pub async fn handle_connection(
                     asn,
                     RdapQueryType::Autnum,
                     query_with_iana_referral(&asn_clone),
-                ).await
+                )
+                .await
             }
         }
         QueryType::BareASN(num) => {
             // Pure number: try DN42 first, fallback to public RDAP/WHOIS
             let asn_query = format!("AS{}", num);
             log_debug!("Processing bare ASN query: {} -> {}", num, asn_query);
-            match process_dn42_query_managed(&num).await {
+            match process_dn42_query_managed(num).await {
                 Ok(response)
-                    if !response.contains("404 Not Found")
-                        && !response.trim().is_empty() =>
+                    if !response.contains("404 Not Found") && !response.trim().is_empty() =>
                 {
                     log_debug!("Found bare ASN in DN42: {}", num);
                     Ok(response)
@@ -481,7 +423,10 @@ pub async fn handle_connection(
             process_cargo_query(base_query).await
         }
         QueryType::Modrinth(base_query) => {
-            log_debug!("Processing Modrinth mod/resource pack query: {}", base_query);
+            log_debug!(
+                "Processing Modrinth mod/resource pack query: {}",
+                base_query
+            );
             query_modrinth(base_query).await
         }
         QueryType::CurseForge(base_query) => {
@@ -509,7 +454,10 @@ pub async fn handle_connection(
             process_peeringdb_query(base_query).await
         }
         QueryType::Pen(base_query) => {
-            log_debug!("Processing IANA Private Enterprise Numbers query: {}", base_query);
+            log_debug!(
+                "Processing IANA Private Enterprise Numbers query: {}",
+                base_query
+            );
             process_pen_query(base_query).await
         }
         QueryType::Rdap(base_query) => {
@@ -553,13 +501,15 @@ pub async fn handle_connection(
         QueryType::Unknown(q) => {
             log_debug!("Unknown query type: {}", q);
             let q_upper = q.to_uppercase();
-            if
-                q_upper.ends_with("-DN42") ||
-                q_upper.ends_with("-MNT") ||
-                q_upper.ends_with("-NEONETWORK") ||
-                q_upper.ends_with("-CRXN")
+            if q_upper.ends_with("-DN42")
+                || q_upper.ends_with("-MNT")
+                || q_upper.ends_with("-NEONETWORK")
+                || q_upper.ends_with("-CRXN")
             {
-                log_debug!("Detected DN42/NeoNetwork/CRXN related query ({}), using DN42 database", q);
+                log_debug!(
+                    "Detected DN42/NeoNetwork/CRXN related query ({}), using DN42 database",
+                    q
+                );
                 process_dn42_query_managed(q).await
             } else {
                 // RDAP-first with WHOIS fallback, then DN42 if still not found
@@ -570,17 +520,18 @@ pub async fn handle_connection(
                             q,
                             rdap_qt,
                             query_with_iana_referral(&q_clone),
-                        ).await
+                        )
+                        .await
                     }
                     None => query_with_iana_referral(q).await,
                 };
 
                 match &rdap_whois_result {
-                    Ok(response) if
-                        response.trim().is_empty() ||
-                        response.contains("No entries found") ||
-                        response.contains("Not found")
-                    => {
+                    Ok(response)
+                        if response.trim().is_empty()
+                            || response.contains("No entries found")
+                            || response.contains("Not found") =>
+                    {
                         log_debug!("Public query returned no results, trying DN42 for: {}", q);
                         process_dn42_query_managed(q).await
                     }
@@ -651,16 +602,22 @@ pub async fn handle_connection(
 
     // Dump response if requested
     if dump_traffic {
-        let timestamp = std::time::SystemTime
-            ::now()
+        let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_millis();
-        dump_to_file(&format!("{}/response_{}.txt", dump_dir, timestamp), &formatted_response);
+        dump_to_file(
+            &format!("{}/response_{}.txt", dump_dir, timestamp),
+            &formatted_response,
+        );
     }
 
     // Log the response size (helpful for debugging)
-    log_debug!("Sending response ({} bytes) for query: {}", formatted_response.len(), query);
+    log_debug!(
+        "Sending response ({} bytes) for query: {}",
+        formatted_response.len(),
+        query
+    );
 
     // Send response - use write_all to ensure entire response is sent
     match stream.write_all(formatted_response.as_bytes()).await {
@@ -683,7 +640,7 @@ pub async fn handle_connection(
                 query.clone(),
                 query_type_str,
                 client_ip,
-                response_time
+                response_time,
             );
 
             crate::core::telemetry::send_telemetry(telemetry_data).await;
@@ -714,7 +671,7 @@ pub async fn handle_query(
     query: &str,
     query_type: &QueryType,
     color_scheme: Option<ColorScheme>,
-    client_ip: Option<String>
+    client_ip: Option<String>,
 ) -> Result<String> {
     crate::core::process_query(query, query_type, color_scheme, client_ip).await
 }

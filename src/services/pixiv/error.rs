@@ -60,7 +60,9 @@ impl PixivError {
     pub fn is_recoverable(&self) -> bool {
         match self {
             Self::Network(_) | Self::RateLimit => true,
-            Self::Api { message, .. } => message.contains("too many requests") || message.contains("Rate Limit"),
+            Self::Api { message, .. } => {
+                message.contains("too many requests") || message.contains("Rate Limit")
+            }
             _ => false,
         }
     }

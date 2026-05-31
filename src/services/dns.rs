@@ -3,14 +3,20 @@
 //! This module provides DNS functionality using Cloudflare's DNS-over-HTTPS API
 //! with support for multiple record types: A, AAAA, CNAME, MX, TXT, NS, SOA, PTR
 
+use crate::services::utils::doh::{DnsAnswer, DnsRecordType, DohClient};
+use crate::{log_debug, log_error};
 use anyhow::Result;
 use std::net::IpAddr;
-use crate::services::utils::doh::{DohClient, DnsRecordType, DnsAnswer};
-use crate::{log_debug, log_error};
 
 /// DNS service using Cloudflare DOH API
 pub struct DnsService {
     client: DohClient,
+}
+
+impl Default for DnsService {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl DnsService {
@@ -46,12 +52,12 @@ impl DnsService {
         // Output records in order
         for record_type in &record_types {
             let type_str = record_type.as_str();
-            if let Some(answers) = results.get(type_str) {
-                if !answers.is_empty() {
-                    output.push_str(&format!("\n{} Records:\n", type_str));
-                    for answer in answers {
-                        output.push_str(&self.format_doh_answer(answer, type_str));
-                    }
+            if let Some(answers) = results.get(type_str)
+                && !answers.is_empty()
+            {
+                output.push_str(&format!("\n{} Records:\n", type_str));
+                for answer in answers {
+                    output.push_str(&self.format_doh_answer(answer, type_str));
                 }
             }
         }

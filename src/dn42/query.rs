@@ -34,6 +34,7 @@ pub fn parse_asn(query: &str) -> Option<String> {
 
 /// Detect query type and parse parameters
 #[derive(Debug, Clone)]
+#[allow(clippy::upper_case_acronyms)]
 pub enum DN42QueryType {
     IPv4Network {
         ip: Ipv4Addr,

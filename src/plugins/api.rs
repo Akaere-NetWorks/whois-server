@@ -8,7 +8,7 @@
 
 use crate::plugins::registry::PluginPermissions;
 use mlua::Lua;
-use std::collections::{ HashMap, HashSet };
+use std::collections::{HashMap, HashSet};
 
 /// Register HTTP client API with domain whitelist enforcement
 pub fn register_http_api(lua: &Lua, permissions: &PluginPermissions) -> mlua::Result<()> {
@@ -18,15 +18,17 @@ pub fn register_http_api(lua: &Lua, permissions: &PluginPermissions) -> mlua::Re
     }
 
     // Build whitelist set for fast lookup
-    let whitelist: HashSet<String> = permissions.allowed_domains
+    let whitelist: HashSet<String> = permissions
+        .allowed_domains
         .iter()
         .map(|d| d.to_lowercase())
         .collect();
 
     // Get custom User-Agent or use default
-    let user_agent = permissions.user_agent
+    let user_agent = permissions
+        .user_agent
         .clone()
-        .unwrap_or_else(|| { format!("whois-server-plugin/{}", env!("CARGO_PKG_VERSION")) });
+        .unwrap_or_else(|| format!("whois-server-plugin/{}", env!("CARGO_PKG_VERSION")));
 
     let http_get = lua.create_async_function(move |_lua, url: String| {
         let whitelist = whitelist.clone();
@@ -37,34 +39,34 @@ pub fn register_http_api(lua: &Lua, permissions: &PluginPermissions) -> mlua::Re
 
             // Check against whitelist
             if !whitelist.is_empty() && !whitelist.contains(&domain.to_lowercase()) {
-                return Err(
-                    mlua::Error::runtime(
-                        format!("Domain '{}' is not in the allowed domains whitelist", domain)
-                    )
-                );
+                return Err(mlua::Error::runtime(format!(
+                    "Domain '{}' is not in the allowed domains whitelist",
+                    domain
+                )));
             }
 
             // Make HTTP request with custom User-Agent
-            let client = reqwest::Client
-                ::builder()
+            let client = reqwest::Client::builder()
                 .timeout(std::time::Duration::from_secs(5))
                 .build()
-                .map_err(|e| mlua::Error::runtime(format!("Failed to create HTTP client: {}", e)))?;
+                .map_err(|e| {
+                    mlua::Error::runtime(format!("Failed to create HTTP client: {}", e))
+                })?;
 
             let response = client
                 .get(&url)
                 .header("User-Agent", &user_agent)
-                .send().await
+                .send()
+                .await
                 .map_err(|e| mlua::Error::runtime(format!("HTTP request failed: {}", e)))?;
 
             let status = response.status().as_u16();
-            let body = response
-                .text().await
-                .map_err(|e| mlua::Error::runtime(format!("Failed to read response body: {}", e)))?;
+            let body = response.text().await.map_err(|e| {
+                mlua::Error::runtime(format!("Failed to read response body: {}", e))
+            })?;
 
             // Return as JSON string
-            let result =
-                serde_json::json!({
+            let result = serde_json::json!({
                 "status": status,
                 "body": body
             });
@@ -85,27 +87,29 @@ pub fn register_http_api(lua: &Lua, permissions: &PluginPermissions) -> mlua::Re
 /// Note: For now, cache operations are simplified and stored in-memory.
 /// Future implementation will integrate with LMDB.
 pub fn register_cache_api(lua: &Lua, permissions: &PluginPermissions) -> mlua::Result<()> {
-    use std::sync::Mutex;
-    use std::collections::HashMap;
-    use std::time::{ SystemTime, UNIX_EPOCH };
     use once_cell::sync::Lazy;
+    use std::collections::HashMap;
+    use std::sync::Mutex;
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     // Simple in-memory cache for plugins
     // TODO: Integrate with LMDB storage
-    static CACHE: Lazy<Mutex<HashMap<String, (String, u64)>>> = Lazy::new(||
-        Mutex::new(HashMap::new())
-    );
+    static CACHE: Lazy<Mutex<HashMap<String, (String, u64)>>> =
+        Lazy::new(|| Mutex::new(HashMap::new()));
 
     // Register cache_get if read permission is granted
     if permissions.cache_read {
         let cache_get = lua.create_function(move |_lua, key: String| {
             let cache = CACHE.lock().unwrap();
-            let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+            let now = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs();
 
-            if let Some((value, expiry)) = cache.get(&key) {
-                if *expiry > now {
-                    return Ok(Some(value.clone()));
-                }
+            if let Some((value, expiry)) = cache.get(&key)
+                && *expiry > now
+            {
+                return Ok(Some(value.clone()));
             }
             Ok(None)
         })?;
@@ -118,13 +122,16 @@ pub fn register_cache_api(lua: &Lua, permissions: &PluginPermissions) -> mlua::R
         let cache_set = lua.create_function(
             move |_lua, (key, value, ttl): (String, String, Option<u32>)| {
                 let ttl = ttl.unwrap_or(3600) as u64; // Default 1 hour
-                let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+                let now = SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs();
                 let expiry = now + ttl;
 
                 let mut cache = CACHE.lock().unwrap();
                 cache.insert(key, (value, expiry));
                 Ok(())
-            }
+            },
         )?;
 
         lua.globals().set("cache_set", cache_set)?;
@@ -171,14 +178,12 @@ pub fn register_env_api(lua: &Lua, env_vars: &HashMap<String, String>) -> mlua::
 
     // Create a read-only env_get function
     let env_get = lua.create_function(move |_lua, key: String| {
-        env_vars_for_get
-            .get(&key)
-            .cloned()
-            .ok_or_else(|| {
-                mlua::Error::runtime(
-                    format!("Environment variable '{}' not found or not allowed", key)
-                )
-            })
+        env_vars_for_get.get(&key).cloned().ok_or_else(|| {
+            mlua::Error::runtime(format!(
+                "Environment variable '{}' not found or not allowed",
+                key
+            ))
+        })
     })?;
 
     lua.globals().set("env_get", env_get)?;
@@ -201,12 +206,13 @@ pub fn register_env_api(lua: &Lua, env_vars: &HashMap<String, String>) -> mlua::
 /// - `http://api.example.com:8080/v1` -> `api.example.com`
 fn extract_domain(url: &str) -> mlua::Result<String> {
     // Parse URL
-    let parsed = url::Url
-        ::parse(url)
-        .map_err(|e| mlua::Error::runtime(format!("Invalid URL: {}", e)))?;
+    let parsed =
+        url::Url::parse(url).map_err(|e| mlua::Error::runtime(format!("Invalid URL: {}", e)))?;
 
     // Get host (domain)
-    let host = parsed.host_str().ok_or_else(|| mlua::Error::runtime("URL has no host"))?;
+    let host = parsed
+        .host_str()
+        .ok_or_else(|| mlua::Error::runtime("URL has no host"))?;
 
     Ok(host.to_string())
 }
@@ -217,9 +223,18 @@ mod tests {
 
     #[test]
     fn test_extract_domain() {
-        assert_eq!(extract_domain("https://example.com/path").unwrap(), "example.com");
-        assert_eq!(extract_domain("http://api.example.com:8080/v1").unwrap(), "api.example.com");
-        assert_eq!(extract_domain("https://sub.domain.co.uk").unwrap(), "sub.domain.co.uk");
+        assert_eq!(
+            extract_domain("https://example.com/path").unwrap(),
+            "example.com"
+        );
+        assert_eq!(
+            extract_domain("http://api.example.com:8080/v1").unwrap(),
+            "api.example.com"
+        );
+        assert_eq!(
+            extract_domain("https://sub.domain.co.uk").unwrap(),
+            "sub.domain.co.uk"
+        );
     }
 
     #[test]

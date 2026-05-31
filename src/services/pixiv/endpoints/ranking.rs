@@ -8,7 +8,7 @@ impl PixivClient {
     /// Get ranking information
     pub async fn illust_ranking(
         &mut self,
-        mode: &str, // "daily", "weekly", "monthly", "daily_r18", etc.
+        mode: &str,           // "daily", "weekly", "monthly", "daily_r18", etc.
         filter: Option<&str>, // "for_ios", "safe"
         offset: Option<i32>,
         limit: Option<usize>,
@@ -61,10 +61,7 @@ impl PixivClient {
             params.insert("offset".to_string(), offset.to_string());
         }
 
-        self.authenticated_request(
-            reqwest::Method::GET,
-            &url,
-            Some(&params),
-        ).await
+        self.authenticated_request(reqwest::Method::GET, &url, Some(&params))
+            .await
     }
 }

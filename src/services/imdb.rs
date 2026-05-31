@@ -16,10 +16,10 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+use crate::{log_debug, log_error, log_warn};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
-use crate::{log_debug, log_error, log_warn};
 /// IMDb API response structures for movie/TV show information
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ImdbResponse {

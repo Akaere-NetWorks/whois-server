@@ -10,9 +10,9 @@
 //! - Clean, readable output for both terminal and journald
 //! - Thread-safe async-friendly implementation
 
-use std::sync::atomic::{ AtomicU8, Ordering };
 use std::sync::Mutex;
-use std::time::{ SystemTime, UNIX_EPOCH };
+use std::sync::atomic::{AtomicU8, Ordering};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Log levels following systemd priority conventions
 /// https://www.freedesktop.org/software/systemd/man/sd-daemon.html
@@ -78,13 +78,13 @@ impl LogLevel {
     pub fn color_code(self) -> &'static str {
         match self {
             LogLevel::Emergency => "\x1b[1;41m", // Bold red background
-            LogLevel::Alert => "\x1b[1;91m", // Bold bright red
-            LogLevel::Critical => "\x1b[1;31m", // Bold red
-            LogLevel::Error => "\x1b[31m", // Red
-            LogLevel::Warning => "\x1b[33m", // Yellow
-            LogLevel::Notice => "\x1b[36m", // Cyan
-            LogLevel::Info => "\x1b[32m", // Green
-            LogLevel::Debug => "\x1b[37m", // White/gray
+            LogLevel::Alert => "\x1b[1;91m",     // Bold bright red
+            LogLevel::Critical => "\x1b[1;31m",  // Bold red
+            LogLevel::Error => "\x1b[31m",       // Red
+            LogLevel::Warning => "\x1b[33m",     // Yellow
+            LogLevel::Notice => "\x1b[36m",      // Cyan
+            LogLevel::Info => "\x1b[32m",        // Green
+            LogLevel::Debug => "\x1b[37m",       // White/gray
         }
     }
 }
@@ -169,7 +169,12 @@ impl Logger {
         }
 
         let timestamp = if self.config.include_timestamp {
-            Some(SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs())
+            Some(
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs(),
+            )
         } else {
             None
         };
@@ -189,7 +194,7 @@ impl Logger {
         level: LogLevel,
         target: &str,
         message: &str,
-        timestamp: Option<u64>
+        timestamp: Option<u64>,
     ) -> String {
         let mut output = String::new();
 
@@ -221,56 +226,57 @@ impl Logger {
         level: LogLevel,
         _target: &str,
         message: &str,
-        timestamp: Option<u64>
+        timestamp: Option<u64>,
     ) -> String {
         let mut output = String::new();
 
         // Timestamp
         if let Some(ts) = timestamp {
-            let datetime = chrono::DateTime
-                ::from_timestamp(ts as i64, 0)
+            let datetime = chrono::DateTime::from_timestamp(ts as i64, 0)
                 .unwrap_or_default()
                 .format("%Y-%m-%d %H:%M:%S");
             output.push_str(&format!("{} ", datetime));
         }
 
         // Check if message already has [..] format (systemd-style)
-        if
-            message.starts_with('[') &&
-            (message.contains("[*]") ||
-                message.contains("[   OK   ]") ||
-                message.contains("[  FAILED ]") ||
-                message.contains("[   WARN ]") ||
-                message.contains("[ INFO ]") ||
-                message.contains("[ DEBUG ]"))
+        if message.starts_with('[')
+            && (message.contains("[*]")
+                || message.contains("[   OK   ]")
+                || message.contains("[  FAILED ]")
+                || message.contains("[   WARN ]")
+                || message.contains("[ INFO ]")
+                || message.contains("[ DEBUG ]"))
         {
             // For systemd-style messages, don't add level prefix, just color the status
             if self.config.use_colors {
                 if message.contains("[  FAILED ]") {
-                    output.push_str(
-                        &format!("{}{}{}\x1b[0m", LogLevel::Error.color_code(), message, "\x1b[0m")
-                    );
+                    output.push_str(&format!(
+                        "{}{}{}\x1b[0m",
+                        LogLevel::Error.color_code(),
+                        message,
+                        "\x1b[0m"
+                    ));
                 } else if message.contains("[   WARN ]") {
-                    output.push_str(
-                        &format!(
-                            "{}{}{}\x1b[0m",
-                            LogLevel::Warning.color_code(),
-                            message,
-                            "\x1b[0m"
-                        )
-                    );
-                } else if message.contains("[   OK   ]") {
-                    output.push_str(
-                        &format!("{}{}{}\x1b[0m", LogLevel::Info.color_code(), message, "\x1b[0m")
-                    );
-                } else if message.contains("[ INFO ]") {
-                    output.push_str(
-                        &format!("{}{}{}\x1b[0m", LogLevel::Info.color_code(), message, "\x1b[0m")
-                    );
+                    output.push_str(&format!(
+                        "{}{}{}\x1b[0m",
+                        LogLevel::Warning.color_code(),
+                        message,
+                        "\x1b[0m"
+                    ));
+                } else if message.contains("[   OK   ]") || message.contains("[ INFO ]") {
+                    output.push_str(&format!(
+                        "{}{}{}\x1b[0m",
+                        LogLevel::Info.color_code(),
+                        message,
+                        "\x1b[0m"
+                    ));
                 } else if message.contains("[ DEBUG ]") {
-                    output.push_str(
-                        &format!("{}{}{}\x1b[0m", LogLevel::Debug.color_code(), message, "\x1b[0m")
-                    );
+                    output.push_str(&format!(
+                        "{}{}{}\x1b[0m",
+                        LogLevel::Debug.color_code(),
+                        message,
+                        "\x1b[0m"
+                    ));
                 } else {
                     output.push_str(message);
                 }
@@ -280,15 +286,13 @@ impl Logger {
         } else {
             // For regular messages, add level in brackets
             if self.config.use_colors {
-                output.push_str(
-                    &format!(
-                        "{}[{}]{}\x1b[0m {}",
-                        level.color_code(),
-                        level.as_str(),
-                        "\x1b[0m",
-                        message
-                    )
-                );
+                output.push_str(&format!(
+                    "{}[{}]{}\x1b[0m {}",
+                    level.color_code(),
+                    level.as_str(),
+                    "\x1b[0m",
+                    message
+                ));
             } else {
                 output.push_str(&format!("[{}] {}", level.as_str(), message));
             }
@@ -357,10 +361,10 @@ macro_rules! log_debug {
 
 /// Internal function to log with level
 pub fn log_with_level(level: LogLevel, target: &str, message: &str) {
-    if let Ok(logger_guard) = LOGGER.lock() {
-        if let Some(ref logger) = *logger_guard {
-            logger.log(level, target, message);
-        }
+    if let Ok(logger_guard) = LOGGER.lock()
+        && let Some(ref logger) = *logger_guard
+    {
+        logger.log(level, target, message);
     }
 }
 
@@ -435,7 +439,7 @@ pub fn log_progress_step(
     service_name: &str,
     current_step: usize,
     total_steps: usize,
-    step_name: &str
+    step_name: &str,
 ) {
     let percentage = (current_step * 100) / total_steps;
     let bar_length = 20;
@@ -452,7 +456,10 @@ pub fn log_progress_step(
         }
     }
 
-    let message = format!("[*] {} [{:3}%] [{}] {}", service_name, percentage, bar, step_name);
+    let message = format!(
+        "[*] {} [{:3}%] [{}] {}",
+        service_name, percentage, bar, step_name
+    );
     log_with_level(LogLevel::Notice, module_path!(), &message);
 }
 
@@ -558,9 +565,7 @@ pub enum LoggerError {
 
 /// Initialize logger from CLI arguments
 pub fn init_from_args(debug: bool, trace: bool, journald: bool) -> Result<(), LoggerError> {
-    let min_level = if trace {
-        LogLevel::Debug
-    } else if debug {
+    let min_level = if trace || debug {
         LogLevel::Debug
     } else {
         LogLevel::Info
@@ -580,10 +585,10 @@ pub fn init_from_args(debug: bool, trace: bool, journald: bool) -> Result<(), Lo
 /// Get the current minimum log level
 #[allow(dead_code)] // Global convenience functions
 pub fn get_min_level() -> LogLevel {
-    if let Ok(logger_guard) = LOGGER.lock() {
-        if let Some(ref logger) = *logger_guard {
-            return LogLevel::from_priority(logger.min_level.load(Ordering::Relaxed));
-        }
+    if let Ok(logger_guard) = LOGGER.lock()
+        && let Some(ref logger) = *logger_guard
+    {
+        return LogLevel::from_priority(logger.min_level.load(Ordering::Relaxed));
     }
     LogLevel::Info
 }
@@ -591,10 +596,10 @@ pub fn get_min_level() -> LogLevel {
 /// Check if we should log at the given level
 #[allow(dead_code)] // Global convenience functions
 pub fn should_log(level: LogLevel) -> bool {
-    if let Ok(logger_guard) = LOGGER.lock() {
-        if let Some(ref logger) = *logger_guard {
-            return logger.should_log(level);
-        }
+    if let Ok(logger_guard) = LOGGER.lock()
+        && let Some(ref logger) = *logger_guard
+    {
+        return logger.should_log(level);
     }
     false
 }

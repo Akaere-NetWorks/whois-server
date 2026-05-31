@@ -16,10 +16,10 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+use crate::{log_debug, log_error};
 use anyhow::{Context, Result};
 use reqwest;
 use serde::{Deserialize, Serialize};
-use crate::{log_debug, log_error};
 #[allow(dead_code)]
 const OPENWRT_PACKAGES_API: &str = "https://downloads.openwrt.org/releases";
 const OPENWRT_PACKAGES_SEARCH: &str = "https://openwrt.org/packages";

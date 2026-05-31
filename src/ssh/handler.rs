@@ -2,17 +2,17 @@
 // Copyright (C) 2025 Akaere Networks
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+use super::history::{SshConnectionHistory, SshConnectionRecord};
+use crate::core::process_query;
+use crate::{log_debug, log_error, log_info};
 use anyhow::Result;
-use chrono::{ DateTime, Utc };
-use russh::{ Channel, ChannelId, CryptoVec, server };
+use chrono::{DateTime, Utc};
+use russh::{Channel, ChannelId, CryptoVec, server};
 use russh_keys::key;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use super::history::{ SshConnectionHistory, SshConnectionRecord };
-use crate::{log_debug, log_error, log_info};
-use crate::core::process_query;
 
 /// ANSI escape sequence parsing state
 #[derive(Debug, Clone, PartialEq)]
@@ -80,7 +80,11 @@ impl WhoisSshHandler {
 
         // Detect query type and process
         let query_type = crate::core::analyze_query(query);
-        log_debug!("Processing SSH WHOIS query: {} (type: {:?})", query, query_type);
+        log_debug!(
+            "Processing SSH WHOIS query: {} (type: {:?})",
+            query,
+            query_type
+        );
 
         // Use the existing query handling logic from the main server
         // Note: SSH connections don't provide client IP in the same way, so we pass None
@@ -117,16 +121,14 @@ impl WhoisSshHandler {
                     );
 
                     for (i, record) in records.iter().enumerate() {
-                        response.push_str(
-                            &format!(
-                                "{}. {} - {} queries, {}s duration, reason: {}\r\n",
-                                i + 1,
-                                record.timestamp.format("%Y-%m-%d %H:%M:%S UTC"),
-                                record.queries_count,
-                                record.session_duration_seconds,
-                                record.disconnect_reason
-                            )
-                        );
+                        response.push_str(&format!(
+                            "{}. {} - {} queries, {}s duration, reason: {}\r\n",
+                            i + 1,
+                            record.timestamp.format("%Y-%m-%d %H:%M:%S UTC"),
+                            record.queries_count,
+                            record.session_duration_seconds,
+                            record.disconnect_reason
+                        ));
                     }
 
                     response.push_str("\r\n");
@@ -148,23 +150,26 @@ impl server::Handler for WhoisSshHandler {
     async fn channel_open_session(
         &mut self,
         channel: Channel<server::Msg>,
-        _session: &mut server::Session
+        _session: &mut server::Session,
     ) -> Result<bool, Self::Error> {
         log_debug!("SSH channel opened: {:?}", channel.id());
 
         // Initialize session data
         let mut sessions = self.sessions.lock().await;
-        sessions.insert(channel.id(), SshSession {
-            start_time: Utc::now(),
-            queries_count: 0,
-            username: None,
-            current_line: String::new(),
-            cursor_pos: 0,
-            command_history: Vec::new(),
-            history_index: None,
-            escape_state: EscapeState::Normal,
-            escape_buffer: Vec::new(),
-        });
+        sessions.insert(
+            channel.id(),
+            SshSession {
+                start_time: Utc::now(),
+                queries_count: 0,
+                username: None,
+                current_line: String::new(),
+                cursor_pos: 0,
+                command_history: Vec::new(),
+                history_index: None,
+                escape_state: EscapeState::Normal,
+                escape_buffer: Vec::new(),
+            },
+        );
 
         Ok(true)
     }
@@ -172,7 +177,7 @@ impl server::Handler for WhoisSshHandler {
     async fn auth_password(
         &mut self,
         user: &str,
-        _password: &str
+        _password: &str,
     ) -> Result<server::Auth, Self::Error> {
         // Accept only "whois" username for SSH connections
         if user != "whois" {
@@ -196,11 +201,14 @@ impl server::Handler for WhoisSshHandler {
     async fn auth_publickey(
         &mut self,
         user: &str,
-        _public_key: &key::PublicKey
+        _public_key: &key::PublicKey,
     ) -> Result<server::Auth, Self::Error> {
         // Accept only "whois" username for SSH connections
         if user != "whois" {
-            log_info!("SSH public key authentication failed: invalid username '{}'", user);
+            log_info!(
+                "SSH public key authentication failed: invalid username '{}'",
+                user
+            );
             return Ok(server::Auth::Reject {
                 proceed_with_methods: None,
             });
@@ -221,7 +229,7 @@ impl server::Handler for WhoisSshHandler {
         &mut self,
         channel: ChannelId,
         data: &[u8],
-        session: &mut server::Session
+        session: &mut server::Session,
     ) -> Result<(), Self::Error> {
         for &byte in data {
             self.handle_byte(channel, byte, session).await?;
@@ -232,7 +240,7 @@ impl server::Handler for WhoisSshHandler {
     async fn channel_close(
         &mut self,
         channel: ChannelId,
-        _session: &mut server::Session
+        _session: &mut server::Session,
     ) -> Result<(), Self::Error> {
         log_debug!("SSH channel closed: {:?}", channel);
 
@@ -263,7 +271,7 @@ impl server::Handler for WhoisSshHandler {
     async fn channel_eof(
         &mut self,
         channel: ChannelId,
-        _session: &mut server::Session
+        _session: &mut server::Session,
     ) -> Result<(), Self::Error> {
         log_debug!("SSH channel EOF: {:?}", channel);
         Ok(())
@@ -278,7 +286,7 @@ impl server::Handler for WhoisSshHandler {
         _pix_width: u32,
         _pix_height: u32,
         _modes: &[(russh::Pty, u32)],
-        session: &mut server::Session
+        session: &mut server::Session,
     ) -> Result<(), Self::Error> {
         log_debug!("SSH PTY request for channel: {:?}", channel);
         // Accept PTY request
@@ -289,14 +297,13 @@ impl server::Handler for WhoisSshHandler {
     async fn shell_request(
         &mut self,
         channel: ChannelId,
-        session: &mut server::Session
+        session: &mut server::Session,
     ) -> Result<(), Self::Error> {
         log_debug!("SSH shell request for channel: {:?}", channel);
         // Accept shell request and send welcome message
         session.request_success();
 
-        let welcome_msg =
-            "┌─────────────────────────────────────────────────────────────┐\r\n\
+        let welcome_msg = "┌─────────────────────────────────────────────────────────────┐\r\n\
             │              Akaere NetWorks WHOIS SSH Server               │\r\n\
             │                     whois.akae.re                           │\r\n\
             └─────────────────────────────────────────────────────────────┘\r\n\
@@ -317,7 +324,8 @@ impl server::Handler for WhoisSshHandler {
             \r\n\
             © 2025 Akaere Networks | Licensed under AGPL-3.0-or-later\r\n\
             \r\n\
-            whois> ".to_string();
+            whois> "
+            .to_string();
 
         session.data(channel, CryptoVec::from_slice(welcome_msg.as_bytes()));
         Ok(())
@@ -329,7 +337,7 @@ impl WhoisSshHandler {
         &mut self,
         channel: ChannelId,
         byte: u8,
-        session: &mut server::Session
+        session: &mut server::Session,
     ) -> Result<(), anyhow::Error> {
         let mut sessions = self.sessions.lock().await;
         let session_data = match sessions.get_mut(&channel) {
@@ -350,10 +358,9 @@ impl WhoisSshHandler {
 
                         if !command.is_empty() {
                             // Check for exit commands
-                            if
-                                command.eq_ignore_ascii_case("exit") ||
-                                command.eq_ignore_ascii_case("quit") ||
-                                command.eq_ignore_ascii_case("bye")
+                            if command.eq_ignore_ascii_case("exit")
+                                || command.eq_ignore_ascii_case("quit")
+                                || command.eq_ignore_ascii_case("bye")
                             {
                                 session.data(channel, CryptoVec::from_slice(b"Goodbye!\r\n"));
                                 session.close(channel);
@@ -361,9 +368,8 @@ impl WhoisSshHandler {
                             }
 
                             // Check for clear command
-                            if
-                                command.eq_ignore_ascii_case("clear") ||
-                                command.eq_ignore_ascii_case("cls")
+                            if command.eq_ignore_ascii_case("clear")
+                                || command.eq_ignore_ascii_case("cls")
                             {
                                 // Clear screen using ANSI escape sequences
                                 session.data(channel, CryptoVec::from_slice(b"\x1B[2J\x1B[H"));
@@ -403,20 +409,20 @@ impl WhoisSshHandler {
                     }
 
                     // Backspace
-                    b'\x08' | b'\x7f' => {
-                        if session_data.cursor_pos > 0 {
-                            session_data.current_line.remove(session_data.cursor_pos - 1);
-                            session_data.cursor_pos -= 1;
+                    b'\x08' | b'\x7f' if session_data.cursor_pos > 0 => {
+                        session_data
+                            .current_line
+                            .remove(session_data.cursor_pos - 1);
+                        session_data.cursor_pos -= 1;
 
-                            // Move cursor back, clear to end of line, rewrite line
-                            session.data(channel, CryptoVec::from_slice(b"\x08\x1B[K"));
-                            let remaining = &session_data.current_line[session_data.cursor_pos..];
-                            if !remaining.is_empty() {
-                                session.data(channel, CryptoVec::from_slice(remaining.as_bytes()));
-                                // Move cursor back to correct position
-                                let move_back = format!("\x1B[{}D", remaining.len());
-                                session.data(channel, CryptoVec::from_slice(move_back.as_bytes()));
-                            }
+                        // Move cursor back, clear to end of line, rewrite line
+                        session.data(channel, CryptoVec::from_slice(b"\x08\x1B[K"));
+                        let remaining = &session_data.current_line[session_data.cursor_pos..];
+                        if !remaining.is_empty() {
+                            session.data(channel, CryptoVec::from_slice(remaining.as_bytes()));
+                            // Move cursor back to correct position
+                            let move_back = format!("\x1B[{}D", remaining.len());
+                            session.data(channel, CryptoVec::from_slice(move_back.as_bytes()));
                         }
                     }
 
@@ -448,20 +454,16 @@ impl WhoisSshHandler {
                     }
 
                     // Ctrl+D (EOF)
-                    b'\x04' => {
-                        if session_data.current_line.is_empty() {
-                            session.data(channel, CryptoVec::from_slice(b"exit\r\n"));
-                            session.close(channel);
-                        }
+                    b'\x04' if session_data.current_line.is_empty() => {
+                        session.data(channel, CryptoVec::from_slice(b"exit\r\n"));
+                        session.close(channel);
                     }
 
                     // Ctrl+A (beginning of line)
-                    b'\x01' => {
-                        if session_data.cursor_pos > 0 {
-                            let move_back = format!("\x1B[{}D", session_data.cursor_pos);
-                            session.data(channel, CryptoVec::from_slice(move_back.as_bytes()));
-                            session_data.cursor_pos = 0;
-                        }
+                    b'\x01' if session_data.cursor_pos > 0 => {
+                        let move_back = format!("\x1B[{}D", session_data.cursor_pos);
+                        session.data(channel, CryptoVec::from_slice(move_back.as_bytes()));
+                        session_data.cursor_pos = 0;
                     }
 
                     // Ctrl+E (end of line)
@@ -496,7 +498,9 @@ impl WhoisSshHandler {
                     // Regular printable characters
                     32..=126 => {
                         let ch = byte as char;
-                        session_data.current_line.insert(session_data.cursor_pos, ch);
+                        session_data
+                            .current_line
+                            .insert(session_data.cursor_pos, ch);
                         session_data.cursor_pos += 1;
 
                         // Echo the character
@@ -540,7 +544,8 @@ impl WhoisSshHandler {
                         session_data.escape_state = EscapeState::Normal;
                         session_data.escape_buffer.clear();
                         drop(sessions); // Release lock before calling handle_csi_sequence
-                        self.handle_csi_sequence(channel, &escape_buffer, session).await?;
+                        self.handle_csi_sequence(channel, &escape_buffer, session)
+                            .await?;
                         return Ok(()); // Early return to avoid re-acquiring lock
                     }
                     // Continue building the sequence
@@ -563,7 +568,7 @@ impl WhoisSshHandler {
         &mut self,
         channel: ChannelId,
         sequence: &[u8],
-        session: &mut server::Session
+        session: &mut server::Session,
     ) -> Result<(), anyhow::Error> {
         let mut sessions = self.sessions.lock().await;
         let session_data = match sessions.get_mut(&channel) {
@@ -576,27 +581,29 @@ impl WhoisSshHandler {
         if sequence.len() >= 3 && sequence[0] == b'\x1b' && sequence[1] == b'[' {
             match sequence[sequence.len() - 1] {
                 // Up arrow - previous command in history
-                b'A' => {
-                    if !session_data.command_history.is_empty() {
-                        let new_index = match session_data.history_index {
-                            None => session_data.command_history.len() - 1,
-                            Some(idx) => {
-                                if idx > 0 { idx - 1 } else { 0 }
+                b'A' if !session_data.command_history.is_empty() => {
+                    let new_index = match session_data.history_index {
+                        None => session_data.command_history.len() - 1,
+                        Some(idx) => {
+                            if idx > 0 {
+                                idx - 1
+                            } else {
+                                0
                             }
-                        };
-
-                        if let Some(cmd) = session_data.command_history.get(new_index) {
-                            // Clear current line
-                            session.data(channel, CryptoVec::from_slice(b"\r\x1B[K"));
-                            session.data(channel, CryptoVec::from_slice(b"whois> "));
-
-                            // Display command from history
-                            session.data(channel, CryptoVec::from_slice(cmd.as_bytes()));
-
-                            session_data.current_line = cmd.clone();
-                            session_data.cursor_pos = cmd.len();
-                            session_data.history_index = Some(new_index);
                         }
+                    };
+
+                    if let Some(cmd) = session_data.command_history.get(new_index) {
+                        // Clear current line
+                        session.data(channel, CryptoVec::from_slice(b"\r\x1B[K"));
+                        session.data(channel, CryptoVec::from_slice(b"whois> "));
+
+                        // Display command from history
+                        session.data(channel, CryptoVec::from_slice(cmd.as_bytes()));
+
+                        session_data.current_line = cmd.clone();
+                        session_data.cursor_pos = cmd.len();
+                        session_data.history_index = Some(new_index);
                     }
                 }
 
@@ -630,28 +637,22 @@ impl WhoisSshHandler {
                 }
 
                 // Right arrow - move cursor right
-                b'C' => {
-                    if session_data.cursor_pos < session_data.current_line.len() {
-                        session.data(channel, CryptoVec::from_slice(b"\x1B[C"));
-                        session_data.cursor_pos += 1;
-                    }
+                b'C' if session_data.cursor_pos < session_data.current_line.len() => {
+                    session.data(channel, CryptoVec::from_slice(b"\x1B[C"));
+                    session_data.cursor_pos += 1;
                 }
 
                 // Left arrow - move cursor left
-                b'D' => {
-                    if session_data.cursor_pos > 0 {
-                        session.data(channel, CryptoVec::from_slice(b"\x1B[D"));
-                        session_data.cursor_pos -= 1;
-                    }
+                b'D' if session_data.cursor_pos > 0 => {
+                    session.data(channel, CryptoVec::from_slice(b"\x1B[D"));
+                    session_data.cursor_pos -= 1;
                 }
 
                 // Home key
-                b'H' => {
-                    if session_data.cursor_pos > 0 {
-                        let move_back = format!("\x1B[{}D", session_data.cursor_pos);
-                        session.data(channel, CryptoVec::from_slice(move_back.as_bytes()));
-                        session_data.cursor_pos = 0;
-                    }
+                b'H' if session_data.cursor_pos > 0 => {
+                    let move_back = format!("\x1B[{}D", session_data.cursor_pos);
+                    session.data(channel, CryptoVec::from_slice(move_back.as_bytes()));
+                    session_data.cursor_pos = 0;
                 }
 
                 // End key
@@ -666,19 +667,20 @@ impl WhoisSshHandler {
                 }
 
                 // Delete key
-                b'~' if sequence.len() >= 4 && sequence[2] == b'3' => {
-                    if session_data.cursor_pos < session_data.current_line.len() {
-                        session_data.current_line.remove(session_data.cursor_pos);
+                b'~' if sequence.len() >= 4
+                    && sequence[2] == b'3'
+                    && session_data.cursor_pos < session_data.current_line.len() =>
+                {
+                    session_data.current_line.remove(session_data.cursor_pos);
 
-                        // Clear to end of line and redraw
-                        session.data(channel, CryptoVec::from_slice(b"\x1B[K"));
-                        let remaining = &session_data.current_line[session_data.cursor_pos..];
-                        if !remaining.is_empty() {
-                            session.data(channel, CryptoVec::from_slice(remaining.as_bytes()));
-                            // Move cursor back to correct position
-                            let move_back = format!("\x1B[{}D", remaining.len());
-                            session.data(channel, CryptoVec::from_slice(move_back.as_bytes()));
-                        }
+                    // Clear to end of line and redraw
+                    session.data(channel, CryptoVec::from_slice(b"\x1B[K"));
+                    let remaining = &session_data.current_line[session_data.cursor_pos..];
+                    if !remaining.is_empty() {
+                        session.data(channel, CryptoVec::from_slice(remaining.as_bytes()));
+                        // Move cursor back to correct position
+                        let move_back = format!("\x1B[{}D", remaining.len());
+                        session.data(channel, CryptoVec::from_slice(move_back.as_bytes()));
                     }
                 }
 

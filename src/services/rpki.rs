@@ -1,7 +1,7 @@
+use crate::log_debug;
 use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
-use crate::{log_debug};
 // RPKI API
 const RPKI_API_BASE: &str = "https://rpki.akae.re/api/v1/validity";
 

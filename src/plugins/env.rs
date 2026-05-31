@@ -21,8 +21,7 @@ pub fn load_env_file() -> Result<HashMap<String, String>> {
         return Ok(HashMap::new());
     }
 
-    let content = fs::read_to_string(env_path)
-        .context("Failed to read .plugins.env file")?;
+    let content = fs::read_to_string(env_path).context("Failed to read .plugins.env file")?;
 
     let mut env_vars = HashMap::new();
 

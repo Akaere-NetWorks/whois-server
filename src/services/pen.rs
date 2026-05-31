@@ -100,7 +100,7 @@ impl PenService {
     pub fn needs_update(&self) -> Result<bool> {
         let last_update_key = "pen_last_update";
 
-        match self.storage.get_json::<u64>(&last_update_key) {
+        match self.storage.get_json::<u64>(last_update_key) {
             Ok(Some(last_update)) => {
                 let now = SystemTime::now()
                     .duration_since(UNIX_EPOCH)
@@ -226,7 +226,7 @@ impl PenService {
         let sample_key = "pen_1";
         if self
             .storage
-            .get_json::<PenEntry>(&sample_key)
+            .get_json::<PenEntry>(sample_key)
             .ok()
             .flatten()
             .is_some()
@@ -261,7 +261,7 @@ impl PenService {
         let file_cache_key = "pen_file_content";
         let last_update_key = "pen_last_update";
 
-        let should_refresh = match self.storage.get_json::<u64>(&last_update_key) {
+        let should_refresh = match self.storage.get_json::<u64>(last_update_key) {
             Ok(Some(last_update)) => {
                 let now = SystemTime::now()
                     .duration_since(UNIX_EPOCH)
@@ -281,7 +281,7 @@ impl PenService {
             let sample_key = "pen_1";
             if self
                 .storage
-                .get_json::<PenEntry>(&sample_key)
+                .get_json::<PenEntry>(sample_key)
                 .ok()
                 .flatten()
                 .is_none()

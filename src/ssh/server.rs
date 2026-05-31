@@ -2,6 +2,9 @@
 // Copyright (C) 2025 Akaere Networks
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+use super::certificates::SshCertificateManager;
+use super::handler::WhoisSshHandler;
+use super::history::SshConnectionHistory;
 use anyhow::{Context, Result};
 use russh::server;
 use russh_keys::key;
@@ -9,9 +12,6 @@ use std::net::SocketAddr;
 use std::path::Path;
 use std::sync::Arc;
 use tokio::net::TcpListener;
-use super::certificates::SshCertificateManager;
-use super::handler::WhoisSshHandler;
-use super::history::SshConnectionHistory;
 
 use crate::{log_debug, log_error, log_info, log_warn};
 /// SSH server configuration

@@ -3,11 +3,11 @@
 //! This module provides an async client for the IPInfo API (https://ipinfo.io)
 //! which returns ASN, organization, and geolocation information for IP addresses.
 
+use crate::{log_debug, log_error};
 use anyhow::Result;
 use reqwest::Client;
 use serde::Deserialize;
 use std::time::Duration;
-use crate::{log_debug, log_error};
 
 const IPINFO_API_BASE: &str = "https://api.ipinfo.io/lite";
 
@@ -77,7 +77,8 @@ impl IpInfoClient {
 
         let url = format!("{}/{}?token={}", IPINFO_API_BASE, ip, self.api_token);
 
-        let response = self.client
+        let response = self
+            .client
             .get(&url)
             .send()
             .await
@@ -85,12 +86,21 @@ impl IpInfoClient {
 
         if !response.status().is_success() {
             let status = response.status();
-            let error_text = response.text().await.unwrap_or_else(|_| "Unable to read error".to_string());
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unable to read error".to_string());
             log_error!("IPInfo API error: {} - {}", status, error_text);
-            return Err(anyhow::anyhow!("IPInfo API returned error: {} - {}", status, error_text));
+            return Err(anyhow::anyhow!(
+                "IPInfo API returned error: {} - {}",
+                status,
+                error_text
+            ));
         }
 
-        let info: IpInfo = response.json().await
+        let info: IpInfo = response
+            .json()
+            .await
             .map_err(|e| anyhow::anyhow!("Failed to parse IPInfo response: {}", e))?;
 
         log_debug!("Got IP info: {} -> {}", ip, info.as_name);

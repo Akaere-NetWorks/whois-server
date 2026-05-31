@@ -3,27 +3,27 @@
 //! This module provides an async client for Cloudflare's DOH service
 //! to perform DNS queries over HTTPS.
 
+use crate::log_debug;
 use anyhow::Result;
 use reqwest::Client;
 use serde::Deserialize;
 use std::collections::HashMap;
-use std::net::{ IpAddr, Ipv4Addr, Ipv6Addr };
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::time::Duration;
-use crate::log_debug;
 
 const CLOUDFLARE_DOH_URL: &str = "https://cloudflare-dns.com/dns-query";
 
 /// DNS record types
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[allow(dead_code)]
+#[allow(dead_code, clippy::upper_case_acronyms)]
 pub enum DnsRecordType {
-    A = 1, // IPv4 address
-    NS = 2, // Name server
+    A = 1,     // IPv4 address
+    NS = 2,    // Name server
     CNAME = 5, // Canonical name
-    SOA = 6, // Start of authority
-    PTR = 12, // Pointer record
-    MX = 15, // Mail exchange
-    TXT = 16, // Text record
+    SOA = 6,   // Start of authority
+    PTR = 12,  // Pointer record
+    MX = 15,   // Mail exchange
+    TXT = 16,  // Text record
     AAAA = 28, // IPv6 address
 }
 
@@ -148,19 +148,25 @@ impl DohClient {
             record_type
         );
 
-        let response = self.client
+        let response = self
+            .client
             .get(&url)
             .header("Accept", "application/dns-json")
-            .send().await
+            .send()
+            .await
             .map_err(|e| anyhow::anyhow!("DOH request failed: {}", e))?;
 
         if !response.status().is_success() {
             let status = response.status();
-            return Err(anyhow::anyhow!("DOH request failed with HTTP status: {}", status));
+            return Err(anyhow::anyhow!(
+                "DOH request failed with HTTP status: {}",
+                status
+            ));
         }
 
         let doh_response: DnsResponse = response
-            .json().await
+            .json()
+            .await
             .map_err(|e| anyhow::anyhow!("Failed to parse DOH response: {}", e))?;
 
         if doh_response.Status != 0 {
@@ -176,9 +182,9 @@ impl DohClient {
     pub async fn query_batch(
         &self,
         name: &str,
-        types: &[DnsRecordType]
+        types: &[DnsRecordType],
     ) -> Result<HashMap<String, Vec<DnsAnswer>>> {
-        use futures::future::{ join_all, FutureExt };
+        use futures::future::{FutureExt, join_all};
 
         let mut results = HashMap::new();
 
@@ -190,31 +196,34 @@ impl DohClient {
             let client = self.client.clone();
 
             futures.push(
-                (
-                    async move {
-                        let url = format!(
-                            "{}?name={}&type={}&do=false",
-                            CLOUDFLARE_DOH_URL,
-                            urlencoding::encode(&name_owned),
-                            type_str
-                        );
+                (async move {
+                    let url = format!(
+                        "{}?name={}&type={}&do=false",
+                        CLOUDFLARE_DOH_URL,
+                        urlencoding::encode(&name_owned),
+                        type_str
+                    );
 
-                        let response = client
-                            .get(&url)
-                            .header("Accept", "application/dns-json")
-                            .send().await;
+                    let response = client
+                        .get(&url)
+                        .header("Accept", "application/dns-json")
+                        .send()
+                        .await;
 
-                        match response {
-                            Ok(resp) if resp.status().is_success() => {
-                                match resp.json::<crate::services::utils::doh::DnsResponse>().await {
-                                    Ok(doh_response) => Ok((type_str, doh_response)),
-                                    Err(_) => Err(type_str),
-                                }
+                    match response {
+                        Ok(resp) if resp.status().is_success() => {
+                            match resp
+                                .json::<crate::services::utils::doh::DnsResponse>()
+                                .await
+                            {
+                                Ok(doh_response) => Ok((type_str, doh_response)),
+                                Err(_) => Err(type_str),
                             }
-                            _ => Err(type_str),
                         }
+                        _ => Err(type_str),
                     }
-                ).boxed()
+                })
+                .boxed(),
             );
         }
 
@@ -225,10 +234,10 @@ impl DohClient {
         for result in responses {
             match result {
                 Ok((type_str, doh_response)) if doh_response.Status == 0 => {
-                    if let Some(answers) = doh_response.Answer {
-                        if !answers.is_empty() {
-                            results.insert(type_str, answers);
-                        }
+                    if let Some(answers) = doh_response.Answer
+                        && !answers.is_empty()
+                    {
+                        results.insert(type_str, answers);
                     }
                 }
                 Ok((type_str, doh_response)) => {
@@ -272,19 +281,25 @@ impl DohClient {
             urlencoding::encode(&ptr_name)
         );
 
-        let response = self.client
+        let response = self
+            .client
             .get(&url)
             .header("Accept", "application/dns-json")
-            .send().await
+            .send()
+            .await
             .map_err(|e| anyhow::anyhow!("DOH request failed: {}", e))?;
 
         if !response.status().is_success() {
             let status = response.status();
-            return Err(anyhow::anyhow!("DOH request failed with status: {}", status));
+            return Err(anyhow::anyhow!(
+                "DOH request failed with status: {}",
+                status
+            ));
         }
 
         let doh_response: crate::services::utils::doh::DnsResponse = response
-            .json().await
+            .json()
+            .await
             .map_err(|e| anyhow::anyhow!("Failed to parse DOH response: {}", e))?;
 
         // Check if query was successful
@@ -295,18 +310,18 @@ impl DohClient {
         }
 
         // Extract PTR records
-        let ptr_records: Vec<String> = doh_response.Answer
+        let ptr_records: Vec<String> = doh_response
+            .Answer
             .unwrap_or_default()
             .into_iter()
             .filter(|a| a.record_type == 12) // 12 = PTR record type
             .map(|a| {
                 // Remove trailing dot if present
-                let name = if a.data.ends_with('.') {
+                if a.data.ends_with('.') {
                     a.data[..a.data.len() - 1].to_string()
                 } else {
                     a.data
-                };
-                name
+                }
             })
             .collect();
 
@@ -322,7 +337,10 @@ impl DohClient {
     /// Create IPv4 PTR name (e.g., 1.1.1.1 -> 1.1.1.1.in-addr.arpa)
     fn create_ipv4_ptr_name(&self, ip: Ipv4Addr) -> String {
         let octets = ip.octets();
-        format!("{}.{}.{}.{}.in-addr.arpa", octets[3], octets[2], octets[1], octets[0])
+        format!(
+            "{}.{}.{}.{}.in-addr.arpa",
+            octets[3], octets[2], octets[1], octets[0]
+        )
     }
 
     /// Create IPv6 PTR name (e.g., 2001:db8::1 -> 1.0.0.0...ip6.arpa)

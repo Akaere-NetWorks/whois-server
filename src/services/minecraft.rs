@@ -1,10 +1,10 @@
+use crate::{log_debug, log_error};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::time::{Duration, Instant};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
-use crate::{log_debug, log_error};
 /// Minecraft server status response structure
 #[derive(Debug, Deserialize, Serialize)]
 struct MinecraftStatus {
@@ -90,7 +90,9 @@ impl MinecraftService {
                 let output = self.format_server_info(&server_info);
                 log_debug!(
                     "Minecraft query completed for {}:{}, latency: {}ms",
-                    host, port, server_info.latency
+                    host,
+                    port,
+                    server_info.latency
                 );
                 Ok(output)
             }
@@ -873,7 +875,8 @@ mod tests {
 
         // Test hostname without port (should default to 25565)
         assert_eq!(
-            service.parse_minecraft_target("mc.hypixel.net")
+            service
+                .parse_minecraft_target("mc.hypixel.net")
                 .expect("Failed to parse minecraft target without port"),
             ("mc.hypixel.net".to_string(), 25565,)
         );

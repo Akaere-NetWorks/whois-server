@@ -278,7 +278,10 @@ async fn query_dnspod_icp(domain: &str) -> Result<String> {
         .map_err(|e| anyhow::anyhow!("DNSPod request failed: {}", e))?;
 
     if !response.status().is_success() {
-        return Err(anyhow::anyhow!("DNSPod HTTP error: status={}", response.status()));
+        return Err(anyhow::anyhow!(
+            "DNSPod HTTP error: status={}",
+            response.status()
+        ));
     }
 
     let text = response.text().await?;
@@ -301,18 +304,13 @@ async fn query_dnspod_icp(domain: &str) -> Result<String> {
     };
 
     Ok(format_icp_result(
-        domain,
-        "dnspod",
-        exists,
-        &number,
-        "", // DNSPod doesn't return company info
-        None,
-        None,
-        None,
+        domain, "dnspod", exists, &number, "", // DNSPod doesn't return company info
+        None, None, None,
     ))
 }
 
 /// Format ICP result in WHOIS style
+#[allow(clippy::too_many_arguments)]
 fn format_icp_result(
     domain: &str,
     provider: &str,
@@ -335,20 +333,20 @@ fn format_icp_result(
         if !company.is_empty() {
             result.push_str(&format!("Company:          {}\n", company));
         }
-        if let Some(site) = site_name {
-            if !site.is_empty() {
-                result.push_str(&format!("Site Name:        {}\n", site));
-            }
+        if let Some(site) = site_name
+            && !site.is_empty()
+        {
+            result.push_str(&format!("Site Name:        {}\n", site));
         }
-        if let Some(typ) = icp_type {
-            if !typ.is_empty() {
-                result.push_str(&format!("Type:             {}\n", typ));
-            }
+        if let Some(typ) = icp_type
+            && !typ.is_empty()
+        {
+            result.push_str(&format!("Type:             {}\n", typ));
         }
-        if let Some(audit) = audit_time {
-            if !audit.is_empty() {
-                result.push_str(&format!("Audit Time:       {}\n", audit));
-            }
+        if let Some(audit) = audit_time
+            && !audit.is_empty()
+        {
+            result.push_str(&format!("Audit Time:       {}\n", audit));
         }
     } else {
         result.push_str("Status:           No ICP filing found\n");
@@ -365,7 +363,10 @@ pub async fn process_icp_query(domain: &str) -> String {
         Ok(d) => d,
         Err(e) => {
             log_error!("Invalid domain for ICP query: {} - {}", domain, e);
-            return format!("% ICP Query Failed\n% Error: Invalid domain format: {}\n", domain);
+            return format!(
+                "% ICP Query Failed\n% Error: Invalid domain format: {}\n",
+                domain
+            );
         }
     };
 

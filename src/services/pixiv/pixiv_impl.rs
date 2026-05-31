@@ -121,7 +121,11 @@ pub async fn search_pixiv_artworks_json_rust(keyword: &str, limit: Option<i32>) 
 }
 
 /// Internal function to search Pixiv artworks using Rust implementation
-async fn search_pixiv_artworks_internal_rust(keyword: &str, limit: Option<i32>, json_output: bool) -> Result<String> {
+async fn search_pixiv_artworks_internal_rust(
+    keyword: &str,
+    limit: Option<i32>,
+    json_output: bool,
+) -> Result<String> {
     log_debug!("Searching Pixiv artworks (Rust): {}", keyword);
 
     let limit = limit.unwrap_or(10);
@@ -156,16 +160,27 @@ pub async fn query_pixiv_ranking_rust(mode: Option<&str>, limit: Option<i32>) ->
 }
 
 /// Get Pixiv ranking (returns JSON)
-pub async fn query_pixiv_ranking_json_rust(mode: Option<&str>, limit: Option<i32>) -> Result<String> {
+pub async fn query_pixiv_ranking_json_rust(
+    mode: Option<&str>,
+    limit: Option<i32>,
+) -> Result<String> {
     query_pixiv_ranking_internal_rust(mode, limit, true).await
 }
 
 /// Internal function to get Pixiv ranking using Rust implementation
-async fn query_pixiv_ranking_internal_rust(mode: Option<&str>, limit: Option<i32>, json_output: bool) -> Result<String> {
+async fn query_pixiv_ranking_internal_rust(
+    mode: Option<&str>,
+    limit: Option<i32>,
+    json_output: bool,
+) -> Result<String> {
     let mode = mode.unwrap_or("day");
     let limit = limit.unwrap_or(10);
 
-    log_debug!("Querying Pixiv ranking (Rust): mode={}, limit={}", mode, limit);
+    log_debug!(
+        "Querying Pixiv ranking (Rust): mode={}, limit={}",
+        mode,
+        limit
+    );
 
     // Use Rust client
     let mut client = get_client().await?;
@@ -197,12 +212,19 @@ pub async fn query_pixiv_user_illusts_rust(user_id: &str, limit: Option<i32>) ->
 }
 
 /// Get user's artworks (returns JSON)
-pub async fn query_pixiv_user_illusts_json_rust(user_id: &str, limit: Option<i32>) -> Result<String> {
+pub async fn query_pixiv_user_illusts_json_rust(
+    user_id: &str,
+    limit: Option<i32>,
+) -> Result<String> {
     query_pixiv_user_illusts_internal_rust(user_id, limit, true).await
 }
 
 /// Internal function to get user's artworks using Rust implementation
-async fn query_pixiv_user_illusts_internal_rust(user_id: &str, limit: Option<i32>, json_output: bool) -> Result<String> {
+async fn query_pixiv_user_illusts_internal_rust(
+    user_id: &str,
+    limit: Option<i32>,
+    json_output: bool,
+) -> Result<String> {
     log_debug!("Querying Pixiv user illusts (Rust): {}", user_id);
 
     let id: i64 = user_id
@@ -269,10 +291,10 @@ fn format_artwork_info_rust(data: &Value) -> Result<String> {
         output.push_str(&format!("Created:         {}\n", created_at));
     }
 
-    if let Some(width) = data.get("width") {
-        if let Some(height) = data.get("height") {
-            output.push_str(&format!("Dimensions:      {}x{}\n", width, height));
-        }
+    if let Some(width) = data.get("width")
+        && let Some(height) = data.get("height")
+    {
+        output.push_str(&format!("Dimensions:      {}x{}\n", width, height));
     }
 
     if let Some(page_count) = data.get("page_count") {
@@ -292,11 +314,9 @@ fn format_artwork_info_rust(data: &Value) -> Result<String> {
         let tag_names: Vec<String> = tags
             .iter()
             .filter_map(|t| {
-                if let Some(name) = t.get("name").and_then(|v| v.as_str()) {
-                    Some(name.to_string())
-                } else {
-                    None
-                }
+                t.get("name")
+                    .and_then(|v| v.as_str())
+                    .map(|name| name.to_string())
             })
             .collect();
         output.push_str(&tag_names.join(", "));
@@ -321,30 +341,38 @@ fn format_artwork_info_rust(data: &Value) -> Result<String> {
     }
 
     // 显示多页作品的所有页面
-    if let Some(meta_pages) = data.get("meta_pages").and_then(|v| v.as_array()) {
-        if !meta_pages.is_empty() {
-            output.push_str(&format!(
-                "\nMulti-page Artwork ({} pages):\n",
-                meta_pages.len()
-            ));
-            for (i, page) in meta_pages.iter().enumerate() {
-                output.push_str(&format!("  Page {}:\n", i + 1));
+    if let Some(meta_pages) = data.get("meta_pages").and_then(|v| v.as_array())
+        && !meta_pages.is_empty()
+    {
+        output.push_str(&format!(
+            "\nMulti-page Artwork ({} pages):\n",
+            meta_pages.len()
+        ));
+        for (i, page) in meta_pages.iter().enumerate() {
+            output.push_str(&format!("  Page {}:\n", i + 1));
 
-                if let Some(large) = page.get("image_urls").and_then(|u| u.get("large")).and_then(|v| v.as_str()) {
-                    output.push_str(&format!("    Large:     {}\n", large));
-                }
+            if let Some(large) = page
+                .get("image_urls")
+                .and_then(|u| u.get("large"))
+                .and_then(|v| v.as_str())
+            {
+                output.push_str(&format!("    Large:     {}\n", large));
+            }
 
-                if let Some(medium) = page.get("image_urls").and_then(|u| u.get("medium")).and_then(|v| v.as_str()) {
-                    output.push_str(&format!("    Medium:    {}\n", medium));
-                }
+            if let Some(medium) = page
+                .get("image_urls")
+                .and_then(|u| u.get("medium"))
+                .and_then(|v| v.as_str())
+            {
+                output.push_str(&format!("    Medium:    {}\n", medium));
             }
         }
     }
 
-    if let Some(description) = data.get("description").and_then(|v| v.as_str()) {
-        if !description.is_empty() {
-            output.push_str(&format!("\nCaption: {}\n", description));
-        }
+    if let Some(description) = data.get("description").and_then(|v| v.as_str())
+        && !description.is_empty()
+    {
+        output.push_str(&format!("\nCaption: {}\n", description));
     }
 
     Ok(output)
@@ -363,11 +391,17 @@ fn format_user_info_rust(data: &Value) -> Result<String> {
         output.push_str(&format!("User ID:         {}\n", id));
     }
 
-    if let Some(name) = data.get("user").and_then(|u| u.get("name").and_then(|v| v.as_str())) {
+    if let Some(name) = data
+        .get("user")
+        .and_then(|u| u.get("name").and_then(|v| v.as_str()))
+    {
         output.push_str(&format!("Name:            {}\n", name));
     }
 
-    if let Some(account) = data.get("user").and_then(|u| u.get("account").and_then(|v| v.as_str())) {
+    if let Some(account) = data
+        .get("user")
+        .and_then(|u| u.get("account").and_then(|v| v.as_str()))
+    {
         output.push_str(&format!("Account:         {}\n", account));
     }
 
@@ -384,16 +418,16 @@ fn format_user_info_rust(data: &Value) -> Result<String> {
             output.push_str(&format!("Total Novels:    {}\n", novels));
         }
 
-        if let Some(webpage) = profile.get("webpage").and_then(|v| v.as_str()) {
-            if !webpage.is_empty() {
-                output.push_str(&format!("Webpage:         {}\n", webpage));
-            }
+        if let Some(webpage) = profile.get("webpage").and_then(|v| v.as_str())
+            && !webpage.is_empty()
+        {
+            output.push_str(&format!("Webpage:         {}\n", webpage));
         }
 
-        if let Some(twitter) = profile.get("twitter_account").and_then(|v| v.as_str()) {
-            if !twitter.is_empty() {
-                output.push_str(&format!("Twitter:         @{}\n", twitter));
-            }
+        if let Some(twitter) = profile.get("twitter_account").and_then(|v| v.as_str())
+            && !twitter.is_empty()
+        {
+            output.push_str(&format!("Twitter:         @{}\n", twitter));
         }
     }
 
@@ -422,7 +456,7 @@ fn format_search_results_rust(data: &Value) -> Result<String> {
             output.push_str(&format!("{}. ", i + 1));
 
             if let Some(title) = result.get("title").and_then(|v| v.as_str()) {
-                output.push_str(&format!("{}", title));
+                output.push_str(title);
             }
 
             if let Some(id) = result.get("id") {
@@ -431,17 +465,20 @@ fn format_search_results_rust(data: &Value) -> Result<String> {
 
             output.push('\n');
 
-            if let Some(user) = result.get("user") {
-                if let Some(name) = user.get("name").and_then(|v| v.as_str()) {
-                    output.push_str(&format!("   Artist: {}\n", name));
-                }
+            if let Some(user) = result.get("user")
+                && let Some(name) = user.get("name").and_then(|v| v.as_str())
+            {
+                output.push_str(&format!("   Artist: {}\n", name));
             }
 
             if let Some(bookmarks) = result.get("total_bookmarks") {
                 output.push_str(&format!("   Bookmarks: {}\n", bookmarks));
             }
 
-            if let Some(url) = result.get("image_urls").and_then(|u| u.get("large").and_then(|v| v.as_str())) {
+            if let Some(url) = result
+                .get("image_urls")
+                .and_then(|u| u.get("large").and_then(|v| v.as_str()))
+            {
                 output.push_str(&format!("   URL: {}\n", url));
             }
 
@@ -472,7 +509,7 @@ fn format_ranking_results_rust(data: &Value, mode: &str) -> Result<String> {
             output.push_str(&format!("{}. ", i + 1));
 
             if let Some(title) = result.get("title").and_then(|v| v.as_str()) {
-                output.push_str(&format!("{}", title));
+                output.push_str(title);
             }
 
             if let Some(id) = result.get("id") {
@@ -481,17 +518,20 @@ fn format_ranking_results_rust(data: &Value, mode: &str) -> Result<String> {
 
             output.push('\n');
 
-            if let Some(user) = result.get("user") {
-                if let Some(name) = user.get("name").and_then(|v| v.as_str()) {
-                    output.push_str(&format!("   Artist: {}\n", name));
-                }
+            if let Some(user) = result.get("user")
+                && let Some(name) = user.get("name").and_then(|v| v.as_str())
+            {
+                output.push_str(&format!("   Artist: {}\n", name));
             }
 
             if let Some(bookmarks) = result.get("total_bookmarks") {
                 output.push_str(&format!("   Bookmarks: {}\n", bookmarks));
             }
 
-            if let Some(url) = result.get("image_urls").and_then(|u| u.get("large").and_then(|v| v.as_str())) {
+            if let Some(url) = result
+                .get("image_urls")
+                .and_then(|u| u.get("large").and_then(|v| v.as_str()))
+            {
                 output.push_str(&format!("   URL: {}\n", url));
             }
 
@@ -524,7 +564,7 @@ fn format_user_illusts_results_rust(data: &Value) -> Result<String> {
             output.push_str(&format!("{}. ", i + 1));
 
             if let Some(title) = result.get("title").and_then(|v| v.as_str()) {
-                output.push_str(&format!("{}", title));
+                output.push_str(title);
             }
 
             if let Some(id) = result.get("id") {
@@ -541,7 +581,10 @@ fn format_user_illusts_results_rust(data: &Value) -> Result<String> {
                 output.push_str(&format!("   Bookmarks: {}\n", bookmarks));
             }
 
-            if let Some(url) = result.get("image_urls").and_then(|u| u.get("large").and_then(|v| v.as_str())) {
+            if let Some(url) = result
+                .get("image_urls")
+                .and_then(|u| u.get("large").and_then(|v| v.as_str()))
+            {
                 output.push_str(&format!("   URL: {}\n", url));
             }
 
@@ -578,15 +621,13 @@ async fn process_pixiv_query_internal_rust(query: &str, json_output: bool) -> Re
     // - ranking or ranking:mode: ranking
     // - illusts:ID: user's artworks
 
-    if base_query.starts_with("user:") {
-        let user_id = &base_query[5..];
+    if let Some(user_id) = base_query.strip_prefix("user:") {
         if json_output {
             query_pixiv_user_json_rust(user_id).await
         } else {
             query_pixiv_user_rust(user_id).await
         }
-    } else if base_query.starts_with("search:") {
-        let keyword = &base_query[7..];
+    } else if let Some(keyword) = base_query.strip_prefix("search:") {
         if json_output {
             search_pixiv_artworks_json_rust(keyword, None).await
         } else {
@@ -608,8 +649,7 @@ async fn process_pixiv_query_internal_rust(query: &str, json_output: bool) -> Re
         } else {
             query_pixiv_ranking_rust(mode, None).await
         }
-    } else if base_query.starts_with("illusts:") {
-        let user_id = &base_query[8..];
+    } else if let Some(user_id) = base_query.strip_prefix("illusts:") {
         if json_output {
             query_pixiv_user_illusts_json_rust(user_id, None).await
         } else {

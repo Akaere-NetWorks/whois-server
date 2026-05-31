@@ -16,10 +16,10 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+use crate::{log_debug, log_error};
 use anyhow::{Context, Result};
 use reqwest;
 use serde::{Deserialize, Serialize};
-use crate::{log_debug, log_error};
 const NIXOS_SEARCH_API: &str = "https://search.nixos.org/packages";
 const NIXOS_SEARCH_URL: &str = "https://search.nixos.org/packages?query=";
 

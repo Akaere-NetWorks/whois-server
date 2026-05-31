@@ -1,8 +1,8 @@
+use crate::{log_error, log_info};
 use anyhow::{Context, Result};
 use std::time::Duration;
 use tokio::net::TcpListener;
 use tokio::sync::mpsc;
-use crate::{log_error, log_info};
 
 use super::connection::handle_connection;
 use crate::core::StatsState;
@@ -38,7 +38,6 @@ pub async fn run_async_server(
 
                         // Set timeout
                         let timeout = Duration::from_secs(timeout);
-                        let dump_traffic = dump_traffic;
                         let dump_dir = dump_dir.to_string();
 
                         // Handle connection

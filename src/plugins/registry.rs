@@ -4,7 +4,7 @@
 //! and allows querying them by their registered suffixes.
 
 use mlua::Lua;
-use serde::{ Deserialize, Serialize };
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -39,7 +39,7 @@ fn default_timeout() -> u64 {
     5
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct PluginPermissions {
     #[serde(default)]
     pub network: bool,
@@ -57,19 +57,6 @@ pub struct PluginPermissions {
     pub env_vars: Vec<String>,
 }
 
-impl Default for PluginPermissions {
-    fn default() -> Self {
-        Self {
-            network: false,
-            allowed_domains: Vec::new(),
-            cache_read: false,
-            cache_write: false,
-            user_agent: None,
-            env_vars: Vec::new(),
-        }
-    }
-}
-
 /// A loaded plugin with its Lua state and metadata
 pub struct LoadedPlugin {
     /// Plugin metadata
@@ -81,10 +68,10 @@ pub struct LoadedPlugin {
 impl LoadedPlugin {
     /// Call the plugin's cleanup function if it exists
     pub fn call_cleanup(&self) {
-        if let Ok(cleanup) = self.lua.globals().get::<mlua::Function>("cleanup") {
-            if let Err(e) = cleanup.call::<()>(()) {
-                eprintln!("Plugin {} cleanup error: {}", self.metadata.plugin.name, e);
-            }
+        if let Ok(cleanup) = self.lua.globals().get::<mlua::Function>("cleanup")
+            && let Err(e) = cleanup.call::<()>(())
+        {
+            eprintln!("Plugin {} cleanup error: {}", self.metadata.plugin.name, e);
         }
     }
 
@@ -123,16 +110,18 @@ impl PluginRegistry {
         let suffix = plugin.suffix().to_uppercase();
 
         if self.plugins.contains_key(&suffix) {
-            return Err(
-                anyhow::anyhow!(
-                    "Plugin suffix {} is already registered by {}",
-                    suffix,
-                    self.plugins[&suffix].name()
-                )
-            );
+            return Err(anyhow::anyhow!(
+                "Plugin suffix {} is already registered by {}",
+                suffix,
+                self.plugins[&suffix].name()
+            ));
         }
 
-        crate::log_info!("Registered plugin '{}' with suffix '{}'", plugin.name(), suffix);
+        crate::log_info!(
+            "Registered plugin '{}' with suffix '{}'",
+            plugin.name(),
+            suffix
+        );
 
         self.plugins.insert(suffix, Arc::new(plugin));
         Ok(())

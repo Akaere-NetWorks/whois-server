@@ -2,15 +2,16 @@
 //!
 //! Implements OAuth 2.0 + PKCE flow for Pixiv authentication.
 
+use super::error::{PixivError, PixivResult};
 use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
-use super::error::{PixivError, PixivResult};
 
 /// Pixiv API authentication constants
 pub mod constants {
     pub const CLIENT_ID: &str = "MOBrBDS8blbauoSck0ZfDbtuzpyT";
     pub const CLIENT_SECRET: &str = "lsACyCD94FhDUtGTXi3QzcFE2uU1hqtDaKeqrdwj";
-    pub const HASH_SECRET: &str = "28c1fdd170a5204386cb1313c7077b34f83e4aaf4aa829ce78c231e05b0bae2c";
+    pub const HASH_SECRET: &str =
+        "28c1fdd170a5204386cb1313c7077b34f83e4aaf4aa829ce78c231e05b0bae2c";
     pub const AUTH_URL: &str = "https://oauth.secure.pixiv.net/auth/token";
     pub const USER_AGENT: &str = "PixivAndroidApp/5.0.64 (Android 6.0; Pixiv)";
 }
@@ -116,15 +117,16 @@ pub struct PkceChallenge {
 impl PkceChallenge {
     /// Generate a new PKCE challenge
     pub fn generate() -> Self {
+        use base64::Engine;
         use rand::Rng;
         use sha2::{Digest, Sha256};
-        use base64::Engine;
 
         // Generate random code verifier (43-128 characters)
         let mut rng = rand::thread_rng();
         let code_verifier: String = (0..64)
             .map(|_| {
-                const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
+                const CHARSET: &[u8] =
+                    b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
                 CHARSET[rng.gen_range(0..CHARSET.len())] as char
             })
             .collect();
@@ -169,7 +171,10 @@ impl AuthManager {
     }
 
     /// Authenticate using refresh token
-    pub async fn authenticate_with_refresh_token(&mut self, refresh_token: &str) -> PixivResult<()> {
+    pub async fn authenticate_with_refresh_token(
+        &mut self,
+        refresh_token: &str,
+    ) -> PixivResult<()> {
         let form_data = [
             ("client_id", constants::CLIENT_ID),
             ("client_secret", constants::CLIENT_SECRET),
@@ -224,8 +229,8 @@ impl AuthManager {
 
     /// Calculate X-Client-Hash header
     pub fn calculate_client_hash(client_time: &str) -> String {
-        use md5::compute;
         use base64::Engine;
+        use md5::compute;
 
         let hash = compute(format!("{}{}", client_time, constants::HASH_SECRET));
         base64::engine::general_purpose::STANDARD.encode(hash.0)

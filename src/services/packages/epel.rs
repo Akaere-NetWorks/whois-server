@@ -16,10 +16,10 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+use crate::{log_debug, log_error};
 use anyhow::{Context, Result};
 use reqwest;
 use serde::{Deserialize, Serialize};
-use crate::{log_debug, log_error};
 // EPEL repository URLs for different versions
 const EPEL_10_REPO: &str = "https://dl.fedoraproject.org/pub/epel/10/Everything/x86_64";
 const EPEL_9_REPO: &str = "https://dl.fedoraproject.org/pub/epel/9/Everything/x86_64";

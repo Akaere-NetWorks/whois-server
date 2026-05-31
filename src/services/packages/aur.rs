@@ -8,10 +8,10 @@
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 
+use crate::{log_debug, log_error};
 use anyhow::{Context, Result};
 use reqwest;
 use serde::{Deserialize, Serialize};
-use crate::{log_debug, log_error};
 const AUR_API_BASE: &str = "https://aur.archlinux.org/rpc/v5/info";
 const AUR_PACKAGE_BASE: &str = "https://aur.archlinux.org/packages";
 
@@ -127,7 +127,8 @@ async fn query_aur_api(package_name: &str) -> Result<AurPackage> {
 
     log_debug!(
         "AUR API response: {} results for {}",
-        aur_response.resultcount, package_name
+        aur_response.resultcount,
+        package_name
     );
 
     if aur_response.resultcount == 0 {

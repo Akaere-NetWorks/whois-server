@@ -1,8 +1,8 @@
+use crate::config::DN42_LMDB_PATH;
+use crate::storage::{SharedLmdbStorage, create_shared_storage};
 use anyhow::Result;
 use reqwest::Client;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use crate::config::DN42_LMDB_PATH;
-use crate::storage::{SharedLmdbStorage, create_shared_storage};
 
 use crate::{log_debug, log_error, log_info, log_warn};
 const DN42_RAW_BASE_URL: &str = "https://git.pysio.online/pysio/mirrors-dn42/-/raw/master/data";
@@ -86,7 +86,8 @@ impl DN42OnlineFetcher {
         // Fetch from online
         log_debug!(
             "DN42 Online: Fetching {}/{} from remote",
-            object_type, file_name
+            object_type,
+            file_name
         );
         let url = format!("{}/{}/{}", DN42_RAW_BASE_URL, object_type, file_name);
 
@@ -122,7 +123,9 @@ impl DN42OnlineFetcher {
                         Err(e) => {
                             log_warn!(
                                 "DN42 Online: Failed to read response body for {}/{}: {}",
-                                object_type, file_name, e
+                                object_type,
+                                file_name,
+                                e
                             );
                             Ok(None)
                         }
@@ -143,7 +146,9 @@ impl DN42OnlineFetcher {
             Err(e) => {
                 log_error!(
                     "DN42 Online: Network error fetching {}/{}: {}",
-                    object_type, file_name, e
+                    object_type,
+                    file_name,
+                    e
                 );
                 Ok(None)
             }
@@ -159,7 +164,9 @@ impl DN42OnlineFetcher {
     ) -> Result<Option<String>> {
         log_debug!(
             "DN42 Online: Searching for IPv4 network in '{}' for IP {} with mask /{}",
-            object_type, ip, query_mask
+            object_type,
+            ip,
+            query_mask
         );
         let ip_int = u32::from(ip);
 
@@ -183,7 +190,8 @@ impl DN42OnlineFetcher {
 
         log_debug!(
             "DN42 Online: No matching IPv4 network found in '{}' for IP {}",
-            object_type, ip
+            object_type,
+            ip
         );
         Ok(None)
     }
@@ -197,7 +205,9 @@ impl DN42OnlineFetcher {
     ) -> Result<Option<String>> {
         log_debug!(
             "DN42 Online: Searching for IPv6 network in '{}' for IP {} with mask /{}",
-            object_type, ip, query_mask
+            object_type,
+            ip,
+            query_mask
         );
         let ip_int = u128::from(ip);
 
@@ -221,7 +231,8 @@ impl DN42OnlineFetcher {
 
         log_debug!(
             "DN42 Online: No matching IPv6 network found in '{}' for IP {}",
-            object_type, ip
+            object_type,
+            ip
         );
         Ok(None)
     }

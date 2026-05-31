@@ -419,7 +419,8 @@ pub async fn process_ssl_query(query: &str) -> Result<String> {
     if let Some((domain, port)) = SslService::parse_ssl_query(query) {
         log_debug!(
             "Processing SSL query for domain: {}, port: {:?}",
-            domain, port
+            domain,
+            port
         );
         return ssl_service.query_ssl_certificate(&domain, port).await;
     }

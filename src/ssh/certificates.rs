@@ -2,11 +2,11 @@
 // Copyright (C) 2025 Akaere Networks
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+use crate::log_info;
 use anyhow::{Context, Result};
 use russh_keys::{encode_pkcs8_pem, key, load_secret_key};
 use std::fs;
 use std::path::{Path, PathBuf};
-use crate::{log_info};
 /// Manages SSH server certificates and keys
 pub struct SshCertificateManager {
     cache_dir: PathBuf,

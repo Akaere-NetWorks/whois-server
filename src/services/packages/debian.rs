@@ -8,10 +8,10 @@
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 
+use crate::{log_debug, log_error};
 use anyhow::{Context, Result};
 use reqwest;
 use serde::{Deserialize, Serialize};
-use crate::{log_debug, log_error};
 const DEBIAN_API_BASE: &str = "https://sources.debian.org/api/src";
 const DEBIAN_PACKAGES_BASE: &str = "https://packages.debian.org";
 const UBUNTU_PACKAGES_BASE: &str = "https://packages.ubuntu.com";

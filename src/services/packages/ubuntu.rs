@@ -16,10 +16,10 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+use crate::{log_debug, log_error};
 use anyhow::{Context, Result};
 use reqwest;
 use serde::{Deserialize, Serialize};
-use crate::{log_debug, log_error};
 const UBUNTU_PACKAGES_API: &str = "https://api.launchpad.net/1.0/ubuntu/+archive/primary";
 const UBUNTU_PACKAGES_SEARCH: &str = "https://packages.ubuntu.com";
 

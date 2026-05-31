@@ -12,11 +12,11 @@
 //!
 //! Patches use standard unified diff format for compatibility and readability.
 
+use crate::{log_debug, log_error, log_info, log_warn};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::sync::RwLock;
-use crate::{log_debug, log_error, log_info, log_warn};
 /// Strip ANSI color codes from a string
 fn strip_ansi_codes(s: &str) -> String {
     // ANSI escape code pattern: \x1b[...m
@@ -312,7 +312,9 @@ impl PatchManager {
                 } else {
                     log_debug!(
                         "Patch {} exists but SHA1 changed: {} -> {}",
-                        patch_info.name, existing_info.sha1, patch_info.sha1
+                        patch_info.name,
+                        existing_info.sha1,
+                        patch_info.sha1
                     );
                 }
             }
@@ -686,18 +688,18 @@ impl PatchManager {
             }
 
             // Parse diff line
-            if line.starts_with('-') {
-                let content = line[1..].to_string();
+            if let Some(stripped) = line.strip_prefix('-') {
+                let content = stripped.to_string();
                 remove_lines.push(content);
                 in_removal = true;
                 in_addition = false;
-            } else if line.starts_with('+') {
-                let content = line[1..].to_string();
+            } else if let Some(stripped) = line.strip_prefix('+') {
+                let content = stripped.to_string();
                 add_lines.push(content);
                 in_removal = false;
                 in_addition = true;
-            } else if line.starts_with(' ') {
-                let content = line[1..].to_string();
+            } else if let Some(stripped) = line.strip_prefix(' ') {
+                let content = stripped.to_string();
                 if !in_removal && !in_addition {
                     context_before.push(content);
                 } else {
@@ -1053,7 +1055,9 @@ impl PatchManager {
 
 /// Initialize the patch system - load from LMDB storage
 pub fn init_patches(_patches_dir: &str) -> Result<usize, Box<dyn std::error::Error>> {
-    let mut manager = PATCH_MANAGER.write().map_err(|_| anyhow::anyhow!("Patch manager mutex poisoned"))?;
+    let mut manager = PATCH_MANAGER
+        .write()
+        .map_err(|_| anyhow::anyhow!("Patch manager mutex poisoned"))?;
     manager.load_patches_from_storage()
 }
 
@@ -1064,7 +1068,9 @@ pub async fn update_patches_from_remote(
     // Spawn blocking task to avoid Send issues with RwLock
     let url = update_url.map(|s| s.to_string());
     let result = tokio::task::spawn_blocking(move || {
-        let mut manager = PATCH_MANAGER.write().map_err(|_| "Patch manager mutex poisoned".to_string())?;
+        let mut manager = PATCH_MANAGER
+            .write()
+            .map_err(|_| "Patch manager mutex poisoned".to_string())?;
         // Use tokio runtime handle to run async code in blocking context
         match tokio::runtime::Handle::current()
             .block_on(manager.update_patches_from_remote(url.as_deref()))
@@ -1101,7 +1107,9 @@ pub async fn process_update_patch_query() -> Result<String, Box<dyn std::error::
 /// Apply patches to a WHOIS response
 pub fn apply_response_patches(query: &str, response: String) -> String {
     log_debug!("Applying patches for query: {}", query);
-    let manager = PATCH_MANAGER.read().expect("Patch manager mutex poisoned in apply_response_patches");
+    let manager = PATCH_MANAGER
+        .read()
+        .expect("Patch manager mutex poisoned in apply_response_patches");
     let result = manager.apply_patches(query, response);
     log_debug!("Patch application completed");
     result
@@ -1110,13 +1118,17 @@ pub fn apply_response_patches(query: &str, response: String) -> String {
 /// Reload all patch files from LMDB storage
 #[allow(dead_code)]
 pub fn reload_patches(_patches_dir: &str) -> Result<usize, Box<dyn std::error::Error>> {
-    let mut manager = PATCH_MANAGER.write().map_err(|_| anyhow::anyhow!("Patch manager mutex poisoned"))?;
+    let mut manager = PATCH_MANAGER
+        .write()
+        .map_err(|_| anyhow::anyhow!("Patch manager mutex poisoned"))?;
     manager.load_patches_from_storage()
 }
 
 /// Get the number of loaded patches
 pub fn get_patches_count() -> (usize, usize) {
-    let manager = PATCH_MANAGER.read().expect("Patch manager mutex poisoned in get_patches_count");
+    let manager = PATCH_MANAGER
+        .read()
+        .expect("Patch manager mutex poisoned in get_patches_count");
     let files = manager.patch_files.len();
     let patches = manager.patch_files.iter().map(|pf| pf.patches.len()).sum();
     (files, patches)

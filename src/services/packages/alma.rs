@@ -16,10 +16,10 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+use crate::{log_debug, log_error};
 use anyhow::{Context, Result};
 use reqwest;
 use serde::{Deserialize, Serialize};
-use crate::{log_debug, log_error};
 const ALMA_REPO_BASE: &str = "https://repo.almalinux.org/almalinux/9/BaseOS/x86_64/os";
 const ALMA_APPSTREAM_BASE: &str = "https://repo.almalinux.org/almalinux/9/AppStream/x86_64/os";
 const ALMA_EXTRAS_BASE: &str = "https://repo.almalinux.org/almalinux/9/extras/x86_64/os";
@@ -77,7 +77,8 @@ pub async fn process_alma_query(package_name: &str) -> Result<String> {
         Err(e) => {
             log_error!(
                 "AlmaLinux packages query failed for {}: {}",
-                package_name, e
+                package_name,
+                e
             );
             Ok(format_alma_not_found(package_name))
         }
@@ -101,7 +102,8 @@ async fn query_alma_packages(package_name: &str) -> Result<Vec<AlmaPackageResult
     for (repo_name, repo_base) in &repositories {
         log_debug!(
             "Checking AlmaLinux {} repository for: {}",
-            repo_name, package_name
+            repo_name,
+            package_name
         );
 
         // Try to access the repodata/primary.xml.gz file which contains package metadata

@@ -3,7 +3,7 @@ use std::collections::HashSet;
 // Removed unused import
 use crate::dn42::query_dn42_raw_managed;
 
-use crate::{log_debug};
+use crate::log_debug;
 /// Process email search queries ending with -EMAIL
 pub async fn process_email_search(base_query: &str) -> Result<String> {
     log_debug!("Processing email search for: {}", base_query);
@@ -59,7 +59,8 @@ pub async fn process_email_search(base_query: &str) -> Result<String> {
                         if !references.contains(&ref_name) {
                             log_debug!(
                                 "Querying additional reference from {}: {}",
-                                related_query, ref_name
+                                related_query,
+                                ref_name
                             );
                             match query_dn42_raw_managed(&ref_name).await {
                                 Ok(ref_response) => {
@@ -75,7 +76,8 @@ pub async fn process_email_search(base_query: &str) -> Result<String> {
                                 Err(e) => {
                                     log_debug!(
                                         "Failed to query additional reference {}: {}",
-                                        ref_name, e
+                                        ref_name,
+                                        e
                                     );
                                 }
                             }

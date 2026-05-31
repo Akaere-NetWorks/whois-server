@@ -5,9 +5,12 @@
 //!
 //! Supports location-based queries: target-location-TRACE (e.g., 1.1.1.1-us-TRACE)
 
-use anyhow::Result;
-use crate::services::utils::{GlobalpingClient, GlobalpingRequest, IpInfoClient, DohClient, TracerouteOptions, MeasurementOptions, MeasurementLocation};
+use crate::services::utils::{
+    DohClient, GlobalpingClient, GlobalpingRequest, IpInfoClient, MeasurementLocation,
+    MeasurementOptions, TracerouteOptions,
+};
 use crate::{log_debug, log_error};
+use anyhow::Result;
 
 /// Parse a query with optional location code
 /// Returns (target, location) where location is None if not specified
@@ -18,7 +21,7 @@ use crate::{log_debug, log_error};
 ///   "1.1.1.1" -> ("1.1.1.1", None)
 ///   "1.1.1.1-TW" -> ("1.1.1.1", Some("TW"))
 ///   "example.com-us" -> ("example.com", Some("us"))
-fn parse_location_query<'a>(query: &'a str) -> Result<(&'a str, Option<String>)> {
+fn parse_location_query(query: &str) -> Result<(&str, Option<String>)> {
     // Check if there's a location code (format: target-location)
     // Location code is typically 2-5 characters (country codes, region codes)
     // We need to be careful: target can be IP (1.1.1.1) or domain (example.com)
@@ -28,9 +31,9 @@ fn parse_location_query<'a>(query: &'a str) -> Result<(&'a str, Option<String>)>
 
         // Validate: target must contain a dot (domain or IP) or be parseable as IP
         // Location codes are short strings without dots
-        let is_valid_target = potential_target.contains('.') ||
-                             potential_target.parse::<std::net::Ipv4Addr>().is_ok() ||
-                             potential_target.parse::<std::net::Ipv6Addr>().is_ok();
+        let is_valid_target = potential_target.contains('.')
+            || potential_target.parse::<std::net::Ipv4Addr>().is_ok()
+            || potential_target.parse::<std::net::Ipv6Addr>().is_ok();
 
         if is_valid_target && potential_location.len() <= 5 && !potential_location.contains('.') {
             return Ok((potential_target, Some(potential_location.to_string())));
@@ -51,7 +54,11 @@ pub async fn process_traceroute_query(query: &str) -> Result<String> {
     // Format: target-location or target
     let (target, location) = parse_location_query(query)?;
 
-    log_debug!("Starting traceroute to {} (location: {:?})", target, location);
+    log_debug!(
+        "Starting traceroute to {} (location: {:?})",
+        target,
+        location
+    );
 
     // Initialize clients
     let globalping = match GlobalpingClient::new() {
@@ -113,7 +120,10 @@ pub async fn process_traceroute_query(query: &str) -> Result<String> {
         Ok(results) => results,
         Err(e) => {
             log_error!("Failed to get traceroute results: {}", e);
-            return Ok(format!("Traceroute measurement timed out or failed: {}\n", e));
+            return Ok(format!(
+                "Traceroute measurement timed out or failed: {}\n",
+                e
+            ));
         }
     };
 
@@ -131,7 +141,10 @@ async fn format_traceroute_output(
     let mut output = String::new();
 
     if results.results.is_empty() {
-        output.push_str(&format!("No results received for traceroute to {}\n", target));
+        output.push_str(&format!(
+            "No results received for traceroute to {}\n",
+            target
+        ));
         return Ok(output);
     }
 
@@ -149,7 +162,8 @@ async fn format_traceroute_output(
             target_ip
         ));
 
-        output.push_str(&format!("Probe: {} - {}, {}\n\n",
+        output.push_str(&format!(
+            "Probe: {} - {}, {}\n\n",
             probe_info.network,
             probe_info.city.as_deref().unwrap_or("Unknown"),
             probe_info.country
@@ -177,8 +191,11 @@ async fn format_traceroute_output(
                     if let Some(info) = &ip_info {
                         output.push_str(&format!(
                             "   {:15}  {:20}  {:6}  {:10}  {}\n",
-                            info.asn, info.as_name, info.country_code,
-                            info.continent_code, info.as_domain
+                            info.asn,
+                            info.as_name,
+                            info.country_code,
+                            info.continent_code,
+                            info.as_domain
                         ));
                     } else {
                         // No IP info available
@@ -186,18 +203,17 @@ async fn format_traceroute_output(
                     }
 
                     // PTR records on next line (indented)
-                    if let Some(ptrs) = &ptr_records {
-                        if !ptrs.is_empty() {
-                            // Take first PTR record
-                            output.push_str(&format!("      {:15}\n", ptrs[0]));
-                        }
+                    if let Some(ptrs) = &ptr_records
+                        && !ptrs.is_empty()
+                    {
+                        // Take first PTR record
+                        output.push_str(&format!("      {:15}\n", ptrs[0]));
                     }
 
                     // RTT times on next line (indented)
                     if let Some(timings) = &hop.timings {
-                        let times: Vec<String> = timings.iter()
-                            .map(|t| format!("{:.2} ms", t.rtt))
-                            .collect();
+                        let times: Vec<String> =
+                            timings.iter().map(|t| format!("{:.2} ms", t.rtt)).collect();
 
                         if !times.is_empty() {
                             output.push_str(&format!(

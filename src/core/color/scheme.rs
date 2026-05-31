@@ -34,5 +34,4 @@ impl ColorScheme {
             _ => None,
         }
     }
-
-  }
+}

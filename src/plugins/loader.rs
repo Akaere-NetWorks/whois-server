@@ -24,14 +24,16 @@ pub async fn load_all_plugins() -> anyhow::Result<PluginRegistry> {
     }
 
     // Load environment variables from .plugins.env file
-    let all_env_vars = load_env_file()
-        .unwrap_or_else(|e| {
-            crate::log_warn!("Failed to load .plugins.env file: {}", e);
-            HashMap::new()
-        });
+    let all_env_vars = load_env_file().unwrap_or_else(|e| {
+        crate::log_warn!("Failed to load .plugins.env file: {}", e);
+        HashMap::new()
+    });
 
     if !all_env_vars.is_empty() {
-        crate::log_info!("Loaded {} environment variable(s) from .plugins.env", all_env_vars.len());
+        crate::log_info!(
+            "Loaded {} environment variable(s) from .plugins.env",
+            all_env_vars.len()
+        );
     }
 
     let mut registry = PluginRegistry::new();
@@ -39,8 +41,7 @@ pub async fn load_all_plugins() -> anyhow::Result<PluginRegistry> {
     let mut skipped_count = 0;
 
     // Read all entries in the plugins directory
-    let entries = fs::read_dir(plugins_dir)
-        .context("Failed to read plugins directory")?;
+    let entries = fs::read_dir(plugins_dir).context("Failed to read plugins directory")?;
 
     for entry in entries {
         let entry = entry.context("Failed to read directory entry")?;
@@ -70,7 +71,8 @@ pub async fn load_all_plugins() -> anyhow::Result<PluginRegistry> {
 
     crate::log_info!(
         "Loaded {} plugin(s), skipped {}",
-        loaded_count, skipped_count
+        loaded_count,
+        skipped_count
     );
 
     Ok(registry)
@@ -130,8 +132,7 @@ async fn load_plugin_from_dir(
         .map_err(|e| anyhow::anyhow!("Failed to create Lua state: {}", e))?;
 
     // Load plugin code
-    let code = fs::read_to_string(&init_path)
-        .context("Failed to read init.lua")?;
+    let code = fs::read_to_string(&init_path).context("Failed to read init.lua")?;
 
     // Execute the plugin code
     lua.load(&code)
@@ -147,18 +148,21 @@ async fn load_plugin_from_dir(
     }
 
     // Call init function if it exists
-    if let Ok(init) = lua.globals().get::<mlua::Function>("init") {
-        if let Err(e) = init.call::<()>(()) {
-            crate::log_warn!(
-                "Plugin {} init function failed: {}",
-                metadata.plugin.name, e
-            );
-        }
+    if let Ok(init) = lua.globals().get::<mlua::Function>("init")
+        && let Err(e) = init.call::<()>(())
+    {
+        crate::log_warn!(
+            "Plugin {} init function failed: {}",
+            metadata.plugin.name,
+            e
+        );
     }
 
     crate::log_info!(
         "Loaded plugin '{}' v{} (suffix: {})",
-        metadata.plugin.name, metadata.plugin.version, suffix
+        metadata.plugin.name,
+        metadata.plugin.version,
+        suffix
     );
 
     Ok(LoadedPlugin { metadata, lua })
@@ -166,11 +170,9 @@ async fn load_plugin_from_dir(
 
 /// Read plugin metadata from meta.toml
 fn read_metadata(path: &Path) -> anyhow::Result<PluginMetadata> {
-    let content = fs::read_to_string(path)
-        .context("Failed to read meta.toml")?;
+    let content = fs::read_to_string(path).context("Failed to read meta.toml")?;
 
-    let metadata: PluginMetadata = toml::from_str(&content)
-        .context("Failed to parse meta.toml")?;
+    let metadata: PluginMetadata = toml::from_str(&content).context("Failed to parse meta.toml")?;
 
     // Validate required fields
     if metadata.plugin.name.is_empty() {
@@ -215,7 +217,8 @@ enabled = true
 network = false
 cache_read = false
 cache_write = false"#
-        ).unwrap();
+        )
+        .unwrap();
 
         let metadata = read_metadata(&meta_path).unwrap();
         assert_eq!(metadata.plugin.name, "test-plugin");
@@ -230,10 +233,14 @@ cache_write = false"#
         let meta_path = temp_dir.path().join("meta.toml");
 
         let mut file = File::create(&meta_path).unwrap();
-        writeln!(file, r#"[plugin]
+        writeln!(
+            file,
+            r#"[plugin]
 name = "test"
 suffix = "-TEST"
-"#).unwrap();
+"#
+        )
+        .unwrap();
 
         let result = read_metadata(&meta_path);
         assert!(result.is_err() || result.unwrap().plugin.version.is_empty());

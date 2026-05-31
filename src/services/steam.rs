@@ -16,10 +16,10 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+use crate::{log_debug, log_error, log_warn};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
-use crate::{log_debug, log_error, log_warn};
 /// Steam API response structures
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SteamAppDetails {
@@ -307,7 +307,8 @@ impl SteamService {
             Err(e) => {
                 log_error!(
                     "Failed to parse Steam API response for app {}: {}",
-                    app_id, e
+                    app_id,
+                    e
                 );
                 Ok(format!(
                     "Steam App Query Failed for ID: {}\nAPI response parsing error: {}\n",
@@ -486,7 +487,7 @@ impl SteamService {
         }
 
         // Sort by score (descending) and take top results
-        matches.sort_by(|a, b| b.2.cmp(&a.2));
+        matches.sort_by_key(|b| std::cmp::Reverse(b.2));
         matches.truncate(limit);
 
         if matches.is_empty() {
@@ -582,6 +583,7 @@ impl SteamService {
     }
 
     /// Format search results for WHOIS display
+    #[allow(clippy::type_complexity)]
     fn format_search_results(
         &self,
         query: &str,

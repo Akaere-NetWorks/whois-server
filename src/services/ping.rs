@@ -5,17 +5,12 @@
 //!
 //! Supports location-based queries: target-location-PING (e.g., 1.1.1.1-tw-PING)
 
-use anyhow::Result;
 use crate::services::utils::{
-    GlobalpingClient,
-    GlobalpingRequest,
-    IpInfoClient,
-    DohClient,
-    PingOptions,
-    MeasurementOptions,
-    MeasurementLocation,
+    DohClient, GlobalpingClient, GlobalpingRequest, IpInfoClient, MeasurementLocation,
+    MeasurementOptions, PingOptions,
 };
 use crate::{log_debug, log_error};
+use anyhow::Result;
 
 /// Parse a query with optional location code
 /// Returns (target, location) where location is None if not specified
@@ -26,7 +21,7 @@ use crate::{log_debug, log_error};
 ///   "1.1.1.1" -> ("1.1.1.1", None)
 ///   "1.1.1.1-tw" -> ("1.1.1.1", Some("tw"))
 ///   "example.com-us" -> ("example.com", Some("us"))
-fn parse_location_query<'a>(query: &'a str) -> Result<(&'a str, Option<String>)> {
+fn parse_location_query(query: &str) -> Result<(&str, Option<String>)> {
     // Check if there's a location code (format: target-location)
     // Location code is typically 2-5 characters (country codes, region codes)
     // We need to be careful: target can be IP (1.1.1.1) or domain (example.com)
@@ -36,9 +31,9 @@ fn parse_location_query<'a>(query: &'a str) -> Result<(&'a str, Option<String>)>
 
         // Validate: target must contain a dot (domain or IP) or be parseable as IP
         // Location codes are short strings without dots
-        let is_valid_target = potential_target.contains('.') ||
-                             potential_target.parse::<std::net::Ipv4Addr>().is_ok() ||
-                             potential_target.parse::<std::net::Ipv6Addr>().is_ok();
+        let is_valid_target = potential_target.contains('.')
+            || potential_target.parse::<std::net::Ipv4Addr>().is_ok()
+            || potential_target.parse::<std::net::Ipv6Addr>().is_ok();
 
         if is_valid_target && potential_location.len() <= 5 && !potential_location.contains('.') {
             return Ok((potential_target, Some(potential_location.to_string())));
@@ -131,7 +126,7 @@ async fn format_ping_output(
     results: &crate::services::utils::GlobalpingResult,
     ip_info_client: &Result<IpInfoClient>,
     doh_client: &DohClient,
-    target: &str
+    target: &str,
 ) -> Result<String> {
     let mut output = String::new();
 
@@ -165,15 +160,13 @@ async fn format_ping_output(
         output.push('\n');
 
         // Probe location info
-        output.push_str(
-            &format!(
-                "Probe: {} - {}, {}, {}\n",
-                probe_info.network,
-                probe_info.city.as_deref().unwrap_or("Unknown"),
-                probe_info.state.as_deref().unwrap_or(""),
-                probe_info.country
-            )
-        );
+        output.push_str(&format!(
+            "Probe: {} - {}, {}, {}\n",
+            probe_info.network,
+            probe_info.city.as_deref().unwrap_or("Unknown"),
+            probe_info.state.as_deref().unwrap_or(""),
+            probe_info.country
+        ));
 
         // Statistics
         if let Some(stats) = &test_result.stats {
@@ -183,44 +176,31 @@ async fn format_ping_output(
                 0
             };
 
-            output.push_str(
-                &format!(
-                    "{} packets transmitted, {} received, {}% packet loss\n",
-                    stats.total,
-                    stats.rcv,
-                    loss_rate
-                )
-            );
+            output.push_str(&format!(
+                "{} packets transmitted, {} received, {}% packet loss\n",
+                stats.total, stats.rcv, loss_rate
+            ));
 
             // RTT statistics
-            output.push_str(
-                &format!(
-                    "rtt min/avg/max = {:.2}/{:.2}/{:.2} ms\n",
-                    stats.min,
-                    stats.avg,
-                    stats.max
-                )
-            );
+            output.push_str(&format!(
+                "rtt min/avg/max = {:.2}/{:.2}/{:.2} ms\n",
+                stats.min, stats.avg, stats.max
+            ));
         }
 
         // IP info details
         if let Some(info) = &ip_info {
-            output.push_str(
-                &format!(
-                    "  ASN: {} | {} | {} | {}\n",
-                    info.asn,
-                    info.country,
-                    info.continent,
-                    info.as_domain
-                )
-            );
+            output.push_str(&format!(
+                "  ASN: {} | {} | {} | {}\n",
+                info.asn, info.country, info.continent, info.as_domain
+            ));
         }
 
         // PTR records
-        if let Some(ptrs) = &ptr_records {
-            if !ptrs.is_empty() {
-                output.push_str(&format!("  PTR: {}\n", ptrs.join(", ")));
-            }
+        if let Some(ptrs) = &ptr_records
+            && !ptrs.is_empty()
+        {
+            output.push_str(&format!("  PTR: {}\n", ptrs.join(", ")));
         }
 
         // Individual packet times

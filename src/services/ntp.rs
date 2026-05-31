@@ -7,10 +7,10 @@
 //! Connects to NTP servers and retrieves time information for testing purposes.
 //! Does not actually synchronize the system clock.
 
+use crate::{log_debug, log_warn};
 use anyhow::Result;
 use std::net::{ToSocketAddrs, UdpSocket};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use crate::{log_debug, log_warn};
 /// NTP packet structure (48 bytes)
 #[repr(C)]
 struct NtpPacket {
@@ -108,8 +108,9 @@ fn ntp_to_unix_micros(ntp_timestamp: u64) -> i64 {
 /// Format timestamp as human-readable string
 fn format_timestamp(unix_timestamp: i64) -> String {
     use chrono::{DateTime, Utc};
-    let datetime = DateTime::<Utc>::from_timestamp(unix_timestamp, 0)
-        .unwrap_or_else(|| DateTime::<Utc>::from_timestamp(0, 0).expect("Epoch timestamp should be valid"));
+    let datetime = DateTime::<Utc>::from_timestamp(unix_timestamp, 0).unwrap_or_else(|| {
+        DateTime::<Utc>::from_timestamp(0, 0).expect("Epoch timestamp should be valid")
+    });
     datetime.format("%Y-%m-%d %H:%M:%S UTC").to_string()
 }
 

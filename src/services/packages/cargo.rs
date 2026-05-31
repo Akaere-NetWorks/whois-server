@@ -16,11 +16,11 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+use crate::{log_debug, log_error};
 use anyhow::{Context, Result};
 use reqwest;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use crate::{log_debug, log_error};
 const CRATES_IO_API_URL: &str = "https://crates.io/api/v1/crates/";
 
 #[derive(Debug, Deserialize, Serialize)]

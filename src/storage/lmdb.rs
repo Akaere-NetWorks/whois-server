@@ -10,20 +10,20 @@ use sysinfo::System;
 static LMDB_MAP_SIZE: Lazy<usize> = Lazy::new(|| {
     let mut sys = System::new_all();
     sys.refresh_memory();
-    
+
     let total_memory = sys.total_memory(); // in bytes
     let ten_percent = (total_memory as f64 * 0.10) as usize;
     let min_size = 256 * 1024 * 1024; // 256MB
-    
+
     let map_size = ten_percent.max(min_size);
-    
+
     log_info!(
         "LMDB map size calculated: {} MB (system memory: {} MB, 10% = {} MB)",
         map_size / 1024 / 1024,
         total_memory / 1024 / 1024,
         ten_percent / 1024 / 1024
     );
-    
+
     map_size
 });
 
@@ -70,13 +70,13 @@ impl LmdbStorage {
 
         // Use the globally calculated map size
         let map_size = *LMDB_MAP_SIZE;
-        
+
         let env = Environment::new()
             .set_map_size(map_size) // Dynamic: 10% of system RAM, min 256MB
             .set_max_dbs(1)
-            .set_flags(lmdb::EnvironmentFlags::NO_SYNC) 
-            .set_flags(lmdb::EnvironmentFlags::WRITE_MAP) 
-            .set_flags(lmdb::EnvironmentFlags::MAP_ASYNC) 
+            .set_flags(lmdb::EnvironmentFlags::NO_SYNC)
+            .set_flags(lmdb::EnvironmentFlags::WRITE_MAP)
+            .set_flags(lmdb::EnvironmentFlags::MAP_ASYNC)
             .open(db_dir)
             .map_err(|e| {
                 anyhow::anyhow!("Failed to open LMDB environment at {}: {}", db_path, e)
@@ -285,7 +285,8 @@ impl LmdbStorage {
                             Err(e) => {
                                 log_warn!(
                                     "Failed to get stored metadata for {}: {}, treating as new file",
-                                    key, e
+                                    key,
+                                    e
                                 );
                                 true
                             }
@@ -326,7 +327,11 @@ impl LmdbStorage {
 
         log_info!(
             "LMDB incremental update completed: {}/{} files processed, {} updated, {} skipped, {} deleted",
-            total_files, total_files, updated_files, skipped_files, deleted_count
+            total_files,
+            total_files,
+            updated_files,
+            skipped_files,
+            deleted_count
         );
         Ok(())
     }

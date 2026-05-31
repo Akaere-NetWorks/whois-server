@@ -16,13 +16,13 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+use crate::{log_debug, log_error, log_warn};
 use axum::{
     extract::Path,
-    http::{header, HeaderMap, StatusCode},
+    http::{HeaderMap, StatusCode, header},
     response::{IntoResponse, Response},
 };
 use reqwest::Client;
-use crate::{log_debug, log_error, log_warn};
 /// Pixiv image reverse proxy handler
 /// Proxies requests to i.pximg.net with proper headers to bypass restrictions
 pub async fn proxy_pixiv_image(Path(path): Path<String>) -> Response {
@@ -51,10 +51,7 @@ pub async fn proxy_pixiv_image(Path(path): Path<String>) -> Response {
     // Make request to Pixiv with proper User-Agent
     let response = match client
         .get(&pixiv_url)
-        .header(
-            reqwest::header::USER_AGENT,
-            "TelegramBot (like TwitterBot)",
-        )
+        .header(reqwest::header::USER_AGENT, "TelegramBot (like TwitterBot)")
         .header(reqwest::header::REFERER, "https://www.pixiv.net/")
         .send()
         .await
@@ -62,8 +59,7 @@ pub async fn proxy_pixiv_image(Path(path): Path<String>) -> Response {
         Ok(resp) => resp,
         Err(e) => {
             log_warn!("Failed to fetch image from Pixiv: {}", e);
-            return (StatusCode::BAD_GATEWAY, "Failed to fetch image from Pixiv")
-                .into_response();
+            return (StatusCode::BAD_GATEWAY, "Failed to fetch image from Pixiv").into_response();
         }
     };
 
@@ -109,9 +105,9 @@ pub async fn proxy_pixiv_image(Path(path): Path<String>) -> Response {
     let mut headers = HeaderMap::new();
     headers.insert(
         header::CONTENT_TYPE,
-        content_type.parse().unwrap_or_else(|_| {
-            header::HeaderValue::from_static("application/octet-stream")
-        }),
+        content_type
+            .parse()
+            .unwrap_or_else(|_| header::HeaderValue::from_static("application/octet-stream")),
     );
     headers.insert(
         header::CACHE_CONTROL,

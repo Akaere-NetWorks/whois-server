@@ -2,7 +2,7 @@
 
 use super::super::client::PixivClient;
 use super::super::error::PixivResult;
-use super::super::models::{UserProfile, Artwork};
+use super::super::models::{Artwork, UserProfile};
 
 impl PixivClient {
     /// Get user profile details
@@ -131,10 +131,7 @@ impl PixivClient {
             params.insert("restrict".to_string(), restrict.to_string());
         }
 
-        self.authenticated_request(
-            reqwest::Method::GET,
-            &url,
-            Some(&params),
-        ).await
+        self.authenticated_request(reqwest::Method::GET, &url, Some(&params))
+            .await
     }
 }

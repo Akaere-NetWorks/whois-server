@@ -16,6 +16,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+use crate::config::STATS_LMDB_PATH;
+use crate::storage::lmdb::LmdbStorage;
 use chrono::{Duration as ChronoDuration, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -23,8 +25,6 @@ use std::path::Path;
 use std::sync::Arc;
 use tokio::fs;
 use tokio::sync::RwLock;
-use crate::config::STATS_LMDB_PATH;
-use crate::storage::lmdb::LmdbStorage;
 
 use crate::{log_error, log_info, log_warn};
 // Legacy stats file path for migration
@@ -57,15 +57,21 @@ const STATS_KEY_DAILY_PREFIX: &str = "stats:daily:";
 const STATS_KEY_HOURLY_PREFIX: &str = "stats:hourly:";
 
 pub async fn create_stats_state() -> StatsState {
-    use crate::{log_init_ok_with_details, log_init_failed};
+    use crate::{log_init_failed, log_init_ok_with_details};
 
     let storage = match LmdbStorage::new(STATS_LMDB_PATH) {
         Ok(s) => {
-            log_init_ok_with_details!("Statistics Storage", &format!("LMDB at {}", STATS_LMDB_PATH));
+            log_init_ok_with_details!(
+                "Statistics Storage",
+                &format!("LMDB at {}", STATS_LMDB_PATH)
+            );
             Arc::new(s)
-        },
+        }
         Err(e) => {
-            log_init_failed!("Statistics Storage", &format!("LMDB creation failed: {}", e));
+            log_init_failed!(
+                "Statistics Storage",
+                &format!("LMDB creation failed: {}", e)
+            );
             // Create a dummy storage that doesn't persist
             Arc::new(LmdbStorage::new("/tmp/stats_dummy").unwrap_or_else(|_| {
                 // As a last resort, create in-memory storage
@@ -127,7 +133,8 @@ async fn migrate_from_legacy_json(
     if let Err(e) = fs::rename(legacy_path, &backup_path).await {
         log_warn!(
             "Failed to rename legacy stats.json to {}: {}",
-            backup_path, e
+            backup_path,
+            e
         );
         log_warn!("You may want to manually delete or rename stats.json");
     } else {
@@ -146,7 +153,8 @@ async fn load_stats_from_lmdb(
             Some((req, bytes)) => {
                 log_info!(
                     "Loaded total statistics from LMDB: {} requests, {} bytes",
-                    req, bytes
+                    req,
+                    bytes
                 );
                 (req, bytes)
             }
@@ -160,10 +168,10 @@ async fn load_stats_from_lmdb(
     let mut daily_stats = HashMap::new();
     let daily_keys = storage.get_keys_with_prefix(STATS_KEY_DAILY_PREFIX)?;
     for key in daily_keys {
-        if let Some(date) = key.strip_prefix(STATS_KEY_DAILY_PREFIX) {
-            if let Some(stats) = storage.get_json::<DailyStats>(&key)? {
-                daily_stats.insert(date.to_string(), stats);
-            }
+        if let Some(date) = key.strip_prefix(STATS_KEY_DAILY_PREFIX)
+            && let Some(stats) = storage.get_json::<DailyStats>(&key)?
+        {
+            daily_stats.insert(date.to_string(), stats);
         }
     }
     log_info!("Loaded {} daily stats entries from LMDB", daily_stats.len());
@@ -172,10 +180,10 @@ async fn load_stats_from_lmdb(
     let mut hourly_stats = HashMap::new();
     let hourly_keys = storage.get_keys_with_prefix(STATS_KEY_HOURLY_PREFIX)?;
     for key in hourly_keys {
-        if let Some(datetime) = key.strip_prefix(STATS_KEY_HOURLY_PREFIX) {
-            if let Some(stats) = storage.get_json::<DailyStats>(&key)? {
-                hourly_stats.insert(datetime.to_string(), stats);
-            }
+        if let Some(datetime) = key.strip_prefix(STATS_KEY_HOURLY_PREFIX)
+            && let Some(stats) = storage.get_json::<DailyStats>(&key)?
+        {
+            hourly_stats.insert(datetime.to_string(), stats);
         }
     }
     log_info!(

@@ -64,21 +64,37 @@ async fn main() -> Result<()> {
     match init_patches("./patches") {
         Ok(_count) => {
             let (files, rules) = get_patches_count();
-            log_init_ok_with_details!("Response Patches Loader", &format!("{} files, {} rules", files, rules));
+            log_init_ok_with_details!(
+                "Response Patches Loader",
+                &format!("{} files, {} rules", files, rules)
+            );
         }
         Err(e) => {
-            log_init_warn!("Response Patches Loader", &format!("continuing without patches: {}", e));
+            log_init_warn!(
+                "Response Patches Loader",
+                &format!("continuing without patches: {}", e)
+            );
         }
     }
 
     // Initialize DN42 manager (platform-aware)
     log_init_start!("DN42 System");
     if let Err(e) = initialize_dn42_manager().await {
-        log_init_failed!("DN42 System", &format!("manager initialization failed: {}", e));
+        log_init_failed!(
+            "DN42 System",
+            &format!("manager initialization failed: {}", e)
+        );
     } else {
         let platform_info = get_dn42_platform_info().await.unwrap_or("Unknown");
         let is_online = is_dn42_online_mode().await.unwrap_or(false);
-        log_init_ok_with_details!("DN42 System", &format!("Platform: {}, Mode: {}", platform_info, if is_online { "Online" } else { "Git" }));
+        log_init_ok_with_details!(
+            "DN42 System",
+            &format!(
+                "Platform: {}, Mode: {}",
+                platform_info,
+                if is_online { "Online" } else { "Git" }
+            )
+        );
     }
 
     // Start DN42 sync task (Git mode) or maintenance task (Online mode)
@@ -111,7 +127,10 @@ async fn main() -> Result<()> {
     let plugin_registry = match plugins::load_all_plugins().await {
         Ok(registry) => {
             let plugin_count = registry.len();
-            log_init_ok_with_details!("Plugin System", &format!("{} plugin(s) loaded", plugin_count));
+            log_init_ok_with_details!(
+                "Plugin System",
+                &format!("{} plugin(s) loaded", plugin_count)
+            );
 
             // Store plugin registry for query detection (Arc for thread-safe sharing)
             let shared_registry = std::sync::Arc::new(registry);
@@ -120,7 +139,10 @@ async fn main() -> Result<()> {
             Some(shared_registry)
         }
         Err(e) => {
-            log_init_warn!("Plugin System", &format!("continuing without plugins: {}", e));
+            log_init_warn!(
+                "Plugin System",
+                &format!("continuing without plugins: {}", e)
+            );
             None
         }
     };

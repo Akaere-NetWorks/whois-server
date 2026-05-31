@@ -4,9 +4,9 @@
 
 //! Telemetry collection module for query analytics
 
-use serde::{ Deserialize, Serialize };
-use std::sync::OnceLock;
 use crate::{log_debug, log_warn};
+use serde::{Deserialize, Serialize};
+use std::sync::OnceLock;
 
 /// HTTP request timeout in seconds
 const REQUEST_TIMEOUT_SECS: u64 = 5;
@@ -31,8 +31,7 @@ struct TelemetryConfig {
 
 impl TelemetryConfig {
     fn from_env() -> Self {
-        let enabled = std::env
-            ::var("TELEMETRY_ENABLED")
+        let enabled = std::env::var("TELEMETRY_ENABLED")
             .map(|v| matches!(v.to_lowercase().as_str(), "true" | "1"))
             .unwrap_or(false); // Default: disabled
 
@@ -80,7 +79,7 @@ impl TelemetryData {
         query_object: String,
         query_type: String,
         client_ip: String,
-        response_time: u64
+        response_time: u64,
     ) -> Self {
         Self {
             query_object,
@@ -110,17 +109,20 @@ pub async fn send_telemetry(data: TelemetryData) {
 
     // Set a timeout for the telemetry task - if it takes too long, just discard it
     tokio::spawn(async move {
-        match
-            tokio::time::timeout(
-                std::time::Duration::from_secs(TELEMETRY_TASK_TIMEOUT_SECS),
-                handle
-            ).await
+        match tokio::time::timeout(
+            std::time::Duration::from_secs(TELEMETRY_TASK_TIMEOUT_SECS),
+            handle,
+        )
+        .await
         {
             Ok(_) => {
                 // Task completed within timeout
             }
             Err(_) => {
-                log_warn!("Telemetry task timed out after {}s, discarding", TELEMETRY_TASK_TIMEOUT_SECS);
+                log_warn!(
+                    "Telemetry task timed out after {}s, discarding",
+                    TELEMETRY_TASK_TIMEOUT_SECS
+                );
             }
         }
     });
@@ -142,8 +144,7 @@ async fn send_telemetry_internal(data: TelemetryData) -> Result<(), anyhow::Erro
         data.response_time
     );
 
-    let client = reqwest::Client
-        ::builder()
+    let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(REQUEST_TIMEOUT_SECS))
         .build()?;
 
@@ -153,10 +154,14 @@ async fn send_telemetry_internal(data: TelemetryData) -> Result<(), anyhow::Erro
         .header("Content-Type", "application/json")
         .header("User-Agent", "Akaere-Networks-Whois")
         .json(&data)
-        .send().await?;
+        .send()
+        .await?;
 
     if !response.status().is_success() {
-        log_warn!("Telemetry endpoint returned error status: {}", response.status());
+        log_warn!(
+            "Telemetry endpoint returned error status: {}",
+            response.status()
+        );
     } else {
         log_debug!("Telemetry data sent successfully");
     }
@@ -250,7 +255,7 @@ mod tests {
             "example.com".to_string(),
             "domain".to_string(),
             "1.2.3.4".to_string(),
-            150
+            150,
         );
 
         assert_eq!(data.query_object, "example.com");
@@ -263,7 +268,10 @@ mod tests {
     fn test_query_type_to_string() {
         use crate::core::QueryType;
 
-        assert_eq!(query_type_to_string(&QueryType::Domain("example.com".to_string())), "domain");
+        assert_eq!(
+            query_type_to_string(&QueryType::Domain("example.com".to_string())),
+            "domain"
+        );
         assert_eq!(query_type_to_string(&QueryType::Help), "help");
     }
 }

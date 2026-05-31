@@ -1,6 +1,6 @@
+use crate::log_info;
 use anyhow::{Context, Result};
 use std::path::Path;
-use crate::{log_info};
 pub fn create_dump_dir_if_needed(dump_traffic: bool, dump_dir: &str) -> Result<()> {
     if dump_traffic {
         let path = Path::new(dump_dir);

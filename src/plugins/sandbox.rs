@@ -4,13 +4,10 @@
 //! while providing safe APIs for plugins.
 
 use crate::plugins::api::{
-    register_cache_api,
-    register_env_api,
-    register_http_api,
-    register_logging_api,
+    register_cache_api, register_env_api, register_http_api, register_logging_api,
 };
 use crate::plugins::registry::PluginMetadata;
-use mlua::{ Table, Value };
+use mlua::{Table, Value};
 use std::collections::HashMap;
 
 /// Create a secure Lua state for plugin execution
@@ -22,7 +19,7 @@ use std::collections::HashMap;
 /// - Registers safe APIs (HTTP, cache, logging, environment variables)
 pub fn create_secure_lua_state(
     metadata: &PluginMetadata,
-    env_vars: &HashMap<String, String>
+    env_vars: &HashMap<String, String>,
 ) -> mlua::Result<mlua::Lua> {
     let lua = mlua::Lua::new();
 
@@ -94,14 +91,34 @@ mod tests {
         let lua = create_secure_lua_state(&metadata, &env_vars).unwrap();
 
         // Verify safe APIs are available
-        assert!(lua.globals().get::<Value>("log_info").unwrap().is_function());
-        assert!(lua.globals().get::<Value>("log_warn").unwrap().is_function());
-        assert!(lua.globals().get::<Value>("log_error").unwrap().is_function());
-        assert!(lua.globals().get::<Value>("http_get").unwrap().is_function());
+        assert!(
+            lua.globals()
+                .get::<Value>("log_info")
+                .unwrap()
+                .is_function()
+        );
+        assert!(
+            lua.globals()
+                .get::<Value>("log_warn")
+                .unwrap()
+                .is_function()
+        );
+        assert!(
+            lua.globals()
+                .get::<Value>("log_error")
+                .unwrap()
+                .is_function()
+        );
+        assert!(
+            lua.globals()
+                .get::<Value>("http_get")
+                .unwrap()
+                .is_function()
+        );
     }
 
     fn create_test_metadata() -> PluginMetadata {
-        use crate::plugins::registry::{ PluginInfo, PluginPermissions };
+        use crate::plugins::registry::{PluginInfo, PluginPermissions};
 
         PluginMetadata {
             plugin: PluginInfo {

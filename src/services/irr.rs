@@ -1,7 +1,7 @@
+use crate::log_debug;
 use anyhow::Result;
 use serde::Deserialize;
 use std::time::Duration;
-use crate::{log_debug};
 /// IRR Explorer API response structures
 #[derive(Debug, Deserialize)]
 pub struct IrrResponse {

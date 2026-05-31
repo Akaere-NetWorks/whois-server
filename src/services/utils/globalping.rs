@@ -5,12 +5,12 @@
 //!
 //! API documentation: https://globalping.io/docs/api.globalping.io#overview
 
+use crate::{log_debug, log_error, log_warn};
 use anyhow::Result;
 use reqwest::Client;
-use serde::{ Deserialize, Serialize };
+use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use tokio::time::sleep;
-use crate::{ log_debug, log_error, log_warn };
 
 const GLOBALPING_API_BASE: &str = "https://api.globalping.io/v1/measurements";
 const MAX_POLL_ATTEMPTS: u32 = 60; // Maximum polling attempts (60 seconds)
@@ -310,7 +310,10 @@ impl GlobalpingClient {
             .user_agent("whois-server/1.0")
             .build()?;
 
-        log_debug!("Globalping client initialized (authenticated: {})", api_token.is_some());
+        log_debug!(
+            "Globalping client initialized (authenticated: {})",
+            api_token.is_some()
+        );
 
         Ok(Self { client, api_token })
     }
@@ -319,15 +322,19 @@ impl GlobalpingClient {
     ///
     /// Returns the measurement ID for polling results
     pub async fn submit_measurement(&self, request: &GlobalpingRequest) -> Result<String> {
-        log_debug!("Submitting {} measurement to {}", request.measurement_type, request.target);
+        log_debug!(
+            "Submitting {} measurement to {}",
+            request.measurement_type,
+            request.target
+        );
 
         // Log the request JSON for debugging
-        let request_json = serde_json
-            ::to_string_pretty(request)
+        let request_json = serde_json::to_string_pretty(request)
             .unwrap_or_else(|_| "[Failed to serialize]".to_string());
         log_debug!("Request JSON:\n{}", request_json);
 
-        let mut req_builder = self.client
+        let mut req_builder = self
+            .client
             .post(GLOBALPING_API_BASE)
             .header("Content-Type", "application/json");
 
@@ -338,22 +345,27 @@ impl GlobalpingClient {
 
         let response = req_builder
             .json(request)
-            .send().await
+            .send()
+            .await
             .map_err(|e| anyhow::anyhow!("Failed to submit measurement: {}", e))?;
 
         if !response.status().is_success() {
             let status = response.status();
             let error_text = response
-                .text().await
+                .text()
+                .await
                 .unwrap_or_else(|_| "Unable to read error".to_string());
             log_error!("Globalping API error: {} - {}", status, error_text);
-            return Err(
-                anyhow::anyhow!("Globalping API returned error: {} - {}", status, error_text)
-            );
+            return Err(anyhow::anyhow!(
+                "Globalping API returned error: {} - {}",
+                status,
+                error_text
+            ));
         }
 
         let result: GlobalpingResponse = response
-            .json().await
+            .json()
+            .await
             .map_err(|e| anyhow::anyhow!("Failed to parse Globalping response: {}", e))?;
 
         log_debug!("Measurement submitted successfully, ID: {}", result.id);
@@ -374,19 +386,26 @@ impl GlobalpingClient {
         }
 
         let response = req_builder
-            .send().await
+            .send()
+            .await
             .map_err(|e| anyhow::anyhow!("Failed to get measurement results: {}", e))?;
 
         if !response.status().is_success() {
             let status = response.status();
             let error_text = response
-                .text().await
+                .text()
+                .await
                 .unwrap_or_else(|_| "Unable to read error".to_string());
-            return Err(anyhow::anyhow!("Globalping API error: {} - {}", status, error_text));
+            return Err(anyhow::anyhow!(
+                "Globalping API error: {} - {}",
+                status,
+                error_text
+            ));
         }
 
         let result: GlobalpingResult = response
-            .json().await
+            .json()
+            .await
             .map_err(|e| anyhow::anyhow!("Failed to parse Globalping result: {}", e))?;
 
         Ok(result)
@@ -396,7 +415,11 @@ impl GlobalpingClient {
     ///
     /// Polls the measurement status until it completes or times out
     pub async fn wait_for_results(&self, id: &str, timeout_secs: u64) -> Result<GlobalpingResult> {
-        log_debug!("Waiting for measurement {} to complete (timeout: {}s)", id, timeout_secs);
+        log_debug!(
+            "Waiting for measurement {} to complete (timeout: {}s)",
+            id,
+            timeout_secs
+        );
 
         let max_attempts = timeout_secs.min(MAX_POLL_ATTEMPTS as u64);
         let mut attempts = 0;
@@ -406,7 +429,11 @@ impl GlobalpingClient {
 
             // Check if measurement is finished
             if result.status == "finished" {
-                log_debug!("Measurement {} completed after {} attempts", id, attempts + 1);
+                log_debug!(
+                    "Measurement {} completed after {} attempts",
+                    id,
+                    attempts + 1
+                );
                 return Ok(result);
             }
 
@@ -418,7 +445,10 @@ impl GlobalpingClient {
             attempts += 1;
             if attempts >= max_attempts {
                 log_warn!("Measurement {} timed out after {} attempts", id, attempts);
-                return Err(anyhow::anyhow!("Measurement timed out after {} seconds", timeout_secs));
+                return Err(anyhow::anyhow!(
+                    "Measurement timed out after {} seconds",
+                    timeout_secs
+                ));
             }
 
             log_debug!(

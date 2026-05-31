@@ -1,6 +1,6 @@
+use crate::{log_debug, log_error};
 use std::fs::File;
 use std::io::Write;
-use crate::{log_debug, log_error};
 // Helper function to dump content to a file
 pub fn dump_to_file(filename: &str, content: &str) {
     match File::create(filename) {

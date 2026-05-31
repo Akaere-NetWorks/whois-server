@@ -59,8 +59,8 @@ impl ColorProtocol {
                 let value_part = value_part.trim();
 
                 // Support both formats: "ripe", "ripe-dark", "scheme=ripe", etc.
-                let scheme_str = if value_part.starts_with("scheme=") {
-                    &value_part[7..] // Remove "scheme=" prefix
+                let scheme_str = if let Some(stripped) = value_part.strip_prefix("scheme=") {
+                    stripped // Remove "scheme=" prefix
                 } else {
                     value_part
                 };
@@ -81,7 +81,8 @@ impl ColorProtocol {
 
     pub fn get_capability_response(&self) -> String {
         if self.enabled {
-            "X-WHOIS-COLOR-SUPPORT: 1.0 schemes=ripe,ripe-dark,bgptools,bgptools-dark\r\n\r\n".to_string()
+            "X-WHOIS-COLOR-SUPPORT: 1.0 schemes=ripe,ripe-dark,bgptools,bgptools-dark\r\n\r\n"
+                .to_string()
         } else {
             "X-WHOIS-COLOR-SUPPORT: no\r\n\r\n".to_string()
         }

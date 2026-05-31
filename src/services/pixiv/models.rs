@@ -300,7 +300,7 @@ pub struct SearchParams {
     pub word: String,
     #[serde(rename = "search_target")]
     pub search_target: Option<String>, // "partial_match_for_tags", "exact_match_for_tags", etc.
-    pub sort: Option<String>, // "date_desc", "date_asc", "popular_desc"
+    pub sort: Option<String>,   // "date_desc", "date_asc", "popular_desc"
     pub filter: Option<String>, // "for_ios", "safe"
     pub offset: Option<i32>,
     pub include_translated_tag_results: Option<bool>,

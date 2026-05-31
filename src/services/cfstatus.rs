@@ -7,9 +7,9 @@
 //! This module provides functionality to query Cloudflare's status page API
 //! to retrieve system status, component statuses, and incident information.
 
-use anyhow::{ Context, Result, anyhow };
-use serde::{ Deserialize, Serialize };
 use crate::log_debug;
+use anyhow::{Context, Result, anyhow};
+use serde::{Deserialize, Serialize};
 const CLOUDFLARE_STATUS_API: &str = "https://www.cloudflarestatus.com/api/v2";
 const REQUEST_TIMEOUT_SECS: u64 = 10;
 
@@ -119,23 +119,27 @@ async fn query_status() -> Result<String> {
     log_debug!("Querying Cloudflare overall status");
 
     let url = format!("{}/status.json", CLOUDFLARE_STATUS_API);
-    let client = reqwest::Client
-        ::builder()
+    let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(REQUEST_TIMEOUT_SECS))
         .build()
         .context("Failed to build HTTP client")?;
 
     let response = client
         .get(&url)
-        .send().await
+        .send()
+        .await
         .context("Failed to send request to Cloudflare Status API")?;
 
     if !response.status().is_success() {
-        return Err(anyhow!("Cloudflare Status API returned error: {}", response.status()));
+        return Err(anyhow!(
+            "Cloudflare Status API returned error: {}",
+            response.status()
+        ));
     }
 
     let status_response: StatusResponse = response
-        .json().await
+        .json()
+        .await
         .context("Failed to parse Cloudflare Status API response")?;
 
     Ok(format_status_response(&status_response))
@@ -146,23 +150,27 @@ async fn query_components() -> Result<String> {
     log_debug!("Querying Cloudflare components");
 
     let url = format!("{}/components.json", CLOUDFLARE_STATUS_API);
-    let client = reqwest::Client
-        ::builder()
+    let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(REQUEST_TIMEOUT_SECS))
         .build()
         .context("Failed to build HTTP client")?;
 
     let response = client
         .get(&url)
-        .send().await
+        .send()
+        .await
         .context("Failed to send request to Cloudflare Status API")?;
 
     if !response.status().is_success() {
-        return Err(anyhow!("Cloudflare Status API returned error: {}", response.status()));
+        return Err(anyhow!(
+            "Cloudflare Status API returned error: {}",
+            response.status()
+        ));
     }
 
     let components_response: ComponentsResponse = response
-        .json().await
+        .json()
+        .await
         .context("Failed to parse Cloudflare Status API response")?;
 
     Ok(format_components_response(&components_response))
@@ -173,23 +181,27 @@ async fn query_incidents() -> Result<String> {
     log_debug!("Querying Cloudflare unresolved incidents");
 
     let url = format!("{}/incidents/unresolved.json", CLOUDFLARE_STATUS_API);
-    let client = reqwest::Client
-        ::builder()
+    let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(REQUEST_TIMEOUT_SECS))
         .build()
         .context("Failed to build HTTP client")?;
 
     let response = client
         .get(&url)
-        .send().await
+        .send()
+        .await
         .context("Failed to send request to Cloudflare Status API")?;
 
     if !response.status().is_success() {
-        return Err(anyhow!("Cloudflare Status API returned error: {}", response.status()));
+        return Err(anyhow!(
+            "Cloudflare Status API returned error: {}",
+            response.status()
+        ));
     }
 
     let incidents_response: IncidentsResponse = response
-        .json().await
+        .json()
+        .await
         .context("Failed to parse Cloudflare Status API response")?;
 
     Ok(format_incidents_response(&incidents_response))
@@ -210,7 +222,10 @@ fn format_status_response(response: &StatusResponse) -> String {
     output.push_str(&format!("% Last Updated: {}\n", response.page.updated_at));
     output.push_str(&format!("% URL: {}\n", response.page.url));
     output.push_str("%\n");
-    output.push_str(&format!("% Status: {} {}\n", indicator_symbol, response.status.description));
+    output.push_str(&format!(
+        "% Status: {} {}\n",
+        indicator_symbol, response.status.description
+    ));
     output.push_str(&format!("% Indicator: {}\n", response.status.indicator));
     output.push_str("%\n");
     output.push_str("% Query 'components-cfstatus' for component details\n");
@@ -222,7 +237,10 @@ fn format_status_response(response: &StatusResponse) -> String {
 /// Format the components response for display
 fn format_components_response(response: &ComponentsResponse) -> String {
     let mut output = String::new();
-    output.push_str(&format!("% Cloudflare Components - {}\n", response.page.name));
+    output.push_str(&format!(
+        "% Cloudflare Components - {}\n",
+        response.page.name
+    ));
     output.push_str(&format!("% Last Updated: {}\n", response.page.updated_at));
     output.push_str("%\n");
 
@@ -247,14 +265,15 @@ fn format_components_response(response: &ComponentsResponse) -> String {
             _ => "?",
         };
 
-        output.push_str(
-            &format!("% {} {} ({})\n", status_symbol, component.name, component.status)
-        );
+        output.push_str(&format!(
+            "% {} {} ({})\n",
+            status_symbol, component.name, component.status
+        ));
 
-        if let Some(desc) = &component.description {
-            if !desc.is_empty() {
-                output.push_str(&format!("%   Description: {}\n", desc));
-            }
+        if let Some(desc) = &component.description
+            && !desc.is_empty()
+        {
+            output.push_str(&format!("%   Description: {}\n", desc));
         }
 
         if component.group {
@@ -272,7 +291,10 @@ fn format_components_response(response: &ComponentsResponse) -> String {
 /// Format the incidents response for display
 fn format_incidents_response(response: &IncidentsResponse) -> String {
     let mut output = String::new();
-    output.push_str(&format!("% Cloudflare Incidents - {}\n", response.page.name));
+    output.push_str(&format!(
+        "% Cloudflare Incidents - {}\n",
+        response.page.name
+    ));
     output.push_str(&format!("% Last Updated: {}\n", response.page.updated_at));
     output.push_str("%\n");
 
@@ -282,7 +304,10 @@ fn format_incidents_response(response: &IncidentsResponse) -> String {
         return output;
     }
 
-    output.push_str(&format!("% Unresolved Incidents: {}\n", response.incidents.len()));
+    output.push_str(&format!(
+        "% Unresolved Incidents: {}\n",
+        response.incidents.len()
+    ));
     output.push_str("%\n");
 
     for incident in &response.incidents {
@@ -294,9 +319,12 @@ fn format_incidents_response(response: &IncidentsResponse) -> String {
             _ => "?",
         };
 
-        output.push_str(
-            &format!("% {} {} [{}]\n", impact_symbol, incident.name, incident.impact.to_uppercase())
-        );
+        output.push_str(&format!(
+            "% {} {} [{}]\n",
+            impact_symbol,
+            incident.name,
+            incident.impact.to_uppercase()
+        ));
         output.push_str(&format!("%   Status: {}\n", incident.status));
         output.push_str(&format!("%   Created: {}\n", incident.created_at));
         output.push_str(&format!("%   Updated: {}\n", incident.updated_at));
@@ -310,7 +338,10 @@ fn format_incidents_response(response: &IncidentsResponse) -> String {
             let updates_to_show = incident.incident_updates.iter().take(3);
 
             for update in updates_to_show {
-                output.push_str(&format!("%     [{} at {}]\n", update.status, update.created_at));
+                output.push_str(&format!(
+                    "%     [{} at {}]\n",
+                    update.status, update.created_at
+                ));
 
                 // Wrap the body text
                 let wrapped_body = wrap_text(&update.body, 70);
@@ -333,12 +364,10 @@ fn wrap_text(text: &str, max_width: usize) -> String {
     let mut current_line = String::new();
 
     for word in text.split_whitespace() {
-        if current_line.len() + word.len() + 1 > max_width {
-            if !current_line.is_empty() {
-                result.push_str(&current_line);
-                result.push('\n');
-                current_line.clear();
-            }
+        if current_line.len() + word.len() + 1 > max_width && !current_line.is_empty() {
+            result.push_str(&current_line);
+            result.push('\n');
+            current_line.clear();
         }
 
         if !current_line.is_empty() {

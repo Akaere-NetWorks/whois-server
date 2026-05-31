@@ -1,8 +1,8 @@
+use crate::{log_debug, log_error, log_warn};
 use anyhow::Result;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
-use crate::{log_debug, log_error, log_warn};
 /// Certificate entry from crt.sh API
 #[derive(Debug, Deserialize, Serialize)]
 struct CrtEntry {
@@ -164,7 +164,8 @@ impl CrtService {
                 Err(e) => {
                     log_warn!(
                         "Failed to parse not_before date '{}': {}",
-                        cert.not_before, e
+                        cert.not_before,
+                        e
                     );
                     continue;
                 }

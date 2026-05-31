@@ -1,6 +1,5 @@
 #![allow(non_snake_case)]
 
-use anyhow::Result;
 use super::ipinfo_api::query_ipinfo_api;
 use super::meituan::MeituanCombinedResponse;
 use super::types::{
@@ -8,8 +7,9 @@ use super::types::{
     RirGeoResponse,
 };
 use super::utils::{extract_ip_from_prefix, truncate_string};
+use anyhow::Result;
 
-use crate::{log_debug};
+use crate::log_debug;
 /// Format RIR geo location response
 pub fn format_rir_geo_response(resource: &str, response: &RirGeoResponse) -> Result<String> {
     let mut formatted = String::new();
@@ -770,19 +770,24 @@ pub async fn format_prefixes_response(
 
                 let task = tokio::spawn(async move {
                     // Acquire semaphore permit to limit concurrency
-                    let _permit = permit.acquire().await
+                    let _permit = permit
+                        .acquire()
+                        .await
                         .expect("Semaphore should not be closed during operation");
 
                     log_debug!(
                         "Querying IPinfo for IP: {} (from prefix: {})",
-                        ip_addr, prefix
+                        ip_addr,
+                        prefix
                     );
 
                     let (country, as_name) = match query_ipinfo_api(&client, &ip_addr).await {
                         Ok(ipinfo_response) => {
                             log_debug!(
                                 "IPinfo response for {}: as_name={:?}, country={:?}",
-                                ip_addr, ipinfo_response.as_name, ipinfo_response.country
+                                ip_addr,
+                                ipinfo_response.as_name,
+                                ipinfo_response.country
                             );
                             let country = ipinfo_response
                                 .country

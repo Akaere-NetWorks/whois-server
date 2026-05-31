@@ -8,7 +8,7 @@ use reqwest::{Method, StatusCode};
 use std::collections::HashMap;
 use std::env;
 
-use crate::{log_info};
+use crate::log_info;
 /// Main Pixiv API client
 pub struct PixivClient {
     auth: AuthManager,
@@ -47,7 +47,9 @@ impl PixivClient {
             let refresh_token = env::var("PIXIV_REFRESH_TOKEN")
                 .map_err(|_| PixivError::EnvVar("PIXIV_REFRESH_TOKEN".to_string()))?;
 
-            self.auth.authenticate_with_refresh_token(&refresh_token).await?;
+            self.auth
+                .authenticate_with_refresh_token(&refresh_token)
+                .await?;
         }
 
         self.auth.get_access_token().await
@@ -90,18 +92,11 @@ impl PixivClient {
             Ok(result)
         } else {
             match status {
-                StatusCode::UNAUTHORIZED => {
-                    Err(PixivError::TokenExpired)
-                }
-                StatusCode::TOO_MANY_REQUESTS => {
-                    Err(PixivError::RateLimit)
-                }
+                StatusCode::UNAUTHORIZED => Err(PixivError::TokenExpired),
+                StatusCode::TOO_MANY_REQUESTS => Err(PixivError::RateLimit),
                 _ => {
                     let error_text = response.text().await.unwrap_or_default();
-                    Err(PixivError::api_error(
-                        status.to_string(),
-                        error_text,
-                    ))
+                    Err(PixivError::api_error(status.to_string(), error_text))
                 }
             }
         }
@@ -119,7 +114,8 @@ impl PixivClient {
     /// Post-process artwork data to apply proxy
     pub fn process_artwork(&self, artwork: &mut Artwork) {
         // Apply proxy to all image URLs
-        artwork.image_urls.square_medium = self.process_image_url(&artwork.image_urls.square_medium);
+        artwork.image_urls.square_medium =
+            self.process_image_url(&artwork.image_urls.square_medium);
         artwork.image_urls.medium = self.process_image_url(&artwork.image_urls.medium);
         artwork.image_urls.large = self.process_image_url(&artwork.image_urls.large);
 
@@ -136,12 +132,16 @@ impl PixivClient {
         }
 
         // Also process user profile image
-        artwork.user.profile_image_urls.medium = self.process_image_url(&artwork.user.profile_image_urls.medium);
+        artwork.user.profile_image_urls.medium =
+            self.process_image_url(&artwork.user.profile_image_urls.medium);
     }
 
     /// Get artwork details
     pub async fn get_artwork_info(&mut self, artwork_id: i64) -> PixivResult<Artwork> {
-        let url = format!("https://app-api.pixiv.net/v1/illust/detail?illust_id={}", artwork_id);
+        let url = format!(
+            "https://app-api.pixiv.net/v1/illust/detail?illust_id={}",
+            artwork_id
+        );
 
         let mut params = HashMap::new();
         params.insert("filter".to_string(), "for_ios".to_string());
@@ -164,7 +164,10 @@ impl PixivClient {
 
     /// Get user profile information
     pub async fn get_user_info(&mut self, user_id: i64) -> PixivResult<UserProfile> {
-        let url = format!("https://app-api.pixiv.net/v1/user/detail?user_id={}", user_id);
+        let url = format!(
+            "https://app-api.pixiv.net/v1/user/detail?user_id={}",
+            user_id
+        );
 
         let mut params = HashMap::new();
         params.insert("filter".to_string(), "for_ios".to_string());
@@ -195,7 +198,10 @@ impl PixivClient {
 
         let mut params = HashMap::new();
         params.insert("word".to_string(), keyword.to_string());
-        params.insert("search_target".to_string(), "partial_match_for_tags".to_string());
+        params.insert(
+            "search_target".to_string(),
+            "partial_match_for_tags".to_string(),
+        );
         params.insert("sort".to_string(), "date_desc".to_string());
         params.insert("filter".to_string(), "for_ios".to_string());
 
@@ -218,11 +224,7 @@ impl PixivClient {
     }
 
     /// Get ranking information
-    pub async fn get_ranking(
-        &mut self,
-        mode: &str,
-        limit: usize,
-    ) -> PixivResult<Vec<Artwork>> {
+    pub async fn get_ranking(&mut self, mode: &str, limit: usize) -> PixivResult<Vec<Artwork>> {
         let url = format!("https://app-api.pixiv.net/v1/ranking/{}", mode);
 
         let mut params = HashMap::new();
@@ -252,7 +254,10 @@ impl PixivClient {
         user_id: i64,
         limit: usize,
     ) -> PixivResult<Vec<Artwork>> {
-        let url = format!("https://app-api.pixiv.net/v1/user/illusts?user_id={}", user_id);
+        let url = format!(
+            "https://app-api.pixiv.net/v1/user/illusts?user_id={}",
+            user_id
+        );
 
         let mut params = HashMap::new();
         params.insert("filter".to_string(), "for_ios".to_string());

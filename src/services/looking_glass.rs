@@ -1,7 +1,7 @@
+use crate::log_debug;
 use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
-use crate::{log_debug};
 // RIPE STAT Looking Glass API
 const RIPE_STAT_API_BASE: &str = "https://stat.ripe.net";
 

@@ -16,18 +16,18 @@ impl PixivClient {
         illust_id: i64,
         offset: Option<i32>,
     ) -> PixivResult<serde_json::Value> {
-        let url = format!("https://app-api.pixiv.net/v2/illust/comments?illust_id={}", illust_id);
+        let url = format!(
+            "https://app-api.pixiv.net/v2/illust/comments?illust_id={}",
+            illust_id
+        );
 
         let mut params = std::collections::HashMap::new();
         if let Some(offset) = offset {
             params.insert("offset".to_string(), offset.to_string());
         }
 
-        self.authenticated_request(
-            reqwest::Method::GET,
-            &url,
-            Some(&params),
-        ).await
+        self.authenticated_request(reqwest::Method::GET, &url, Some(&params))
+            .await
     }
 
     /// Get related artworks
@@ -36,7 +36,10 @@ impl PixivClient {
         illust_id: i64,
         limit: Option<usize>,
     ) -> PixivResult<Vec<Artwork>> {
-        let url = format!("https://app-api.pixiv.net/v2/illust/related?illust_id={}", illust_id);
+        let url = format!(
+            "https://app-api.pixiv.net/v2/illust/related?illust_id={}",
+            illust_id
+        );
 
         let response: serde_json::Value = self
             .authenticated_request(reqwest::Method::GET, &url, None)

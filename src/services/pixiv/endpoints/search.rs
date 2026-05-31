@@ -10,8 +10,8 @@ impl PixivClient {
         &mut self,
         word: &str,
         search_target: Option<&str>, // "partial_match_for_tags", "exact_match_for_tags", etc.
-        sort: Option<&str>, // "date_desc", "date_asc", "popular_desc"
-        filter: Option<&str>, // "for_ios", "safe"
+        sort: Option<&str>,          // "date_desc", "date_asc", "popular_desc"
+        filter: Option<&str>,        // "for_ios", "safe"
         offset: Option<i32>,
         limit: Option<usize>,
     ) -> PixivResult<Vec<Artwork>> {
@@ -92,11 +92,8 @@ impl PixivClient {
             params.insert("offset".to_string(), offset.to_string());
         }
 
-        self.authenticated_request(
-            reqwest::Method::GET,
-            url,
-            Some(&params),
-        ).await
+        self.authenticated_request(reqwest::Method::GET, url, Some(&params))
+            .await
     }
 
     /// Search users
@@ -118,10 +115,7 @@ impl PixivClient {
             params.insert("offset".to_string(), offset.to_string());
         }
 
-        self.authenticated_request(
-            reqwest::Method::GET,
-            url,
-            Some(&params),
-        ).await
+        self.authenticated_request(reqwest::Method::GET, url, Some(&params))
+            .await
     }
 }

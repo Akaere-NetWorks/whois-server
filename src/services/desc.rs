@@ -1,9 +1,9 @@
-use anyhow::Result;
-use crate::core::{ QueryType, analyze_query };
+use crate::core::{QueryType, analyze_query};
 use crate::dn42::process_dn42_query_managed;
 use crate::services::query_with_iana_referral;
+use anyhow::Result;
 
-use crate::{ log_debug };
+use crate::log_debug;
 /// Process description-only queries ending with -DESC
 pub async fn process_desc_query(base_query: &str) -> Result<String> {
     log_debug!("Processing description query for: {}", base_query);
@@ -16,16 +16,19 @@ pub async fn process_desc_query(base_query: &str) -> Result<String> {
         QueryType::Domain(_) | QueryType::IPv4(_) | QueryType::IPv6(_) | QueryType::ASN(_) => {
             // Try public WHOIS first
             match query_with_iana_referral(base_query).await {
-                Ok(response) if
-                    !response.trim().is_empty() &&
-                    !response.contains("No entries found") &&
-                    !response.contains("Not found")
-                => {
+                Ok(response)
+                    if !response.trim().is_empty()
+                        && !response.contains("No entries found")
+                        && !response.contains("Not found") =>
+                {
                     response
                 }
                 _ => {
                     // Fall back to DN42 if public query fails
-                    log_debug!("Public query failed or returned no results, trying DN42 for: {}", base_query);
+                    log_debug!(
+                        "Public query failed or returned no results, trying DN42 for: {}",
+                        base_query
+                    );
                     process_dn42_query_managed(base_query).await?
                 }
             }
@@ -33,11 +36,11 @@ pub async fn process_desc_query(base_query: &str) -> Result<String> {
         QueryType::Unknown(_) => {
             // For unknown types, try public first, then DN42
             match query_with_iana_referral(base_query).await {
-                Ok(response) if
-                    !response.trim().is_empty() &&
-                    !response.contains("No entries found") &&
-                    !response.contains("Not found")
-                => {
+                Ok(response)
+                    if !response.trim().is_empty()
+                        && !response.contains("No entries found")
+                        && !response.contains("Not found") =>
+                {
                     response
                 }
                 _ => {
@@ -84,18 +87,16 @@ fn extract_desc_and_remarks(response: &str) -> Vec<DescField> {
                 value: desc,
             });
         } else if
-            // Look for remarks field (case-insensitive)
-            let Some(remark) = extract_field_value(line, "remarks")
-        {
+        // Look for remarks field (case-insensitive)
+        let Some(remark) = extract_field_value(line, "remarks") {
             log_debug!("Found remarks: {}", remark);
             fields.push(DescField {
                 field_type: "remarks".to_string(),
                 value: remark,
             });
         } else if
-            // Also check for "description" field (some registries use this)
-            let Some(desc) = extract_field_value(line, "description")
-        {
+        // Also check for "description" field (some registries use this)
+        let Some(desc) = extract_field_value(line, "description") {
             log_debug!("Found description: {}", desc);
             fields.push(DescField {
                 field_type: "description".to_string(),
@@ -127,9 +128,10 @@ fn extract_field_value(line: &str, field_name: &str) -> Option<String> {
 /// Format description response
 fn format_desc_response(query: &str, fields: &[DescField]) -> Result<String> {
     if fields.is_empty() {
-        return Ok(
-            format!("% Description Query Results for: {}\n% No description or remarks fields found\n", query)
-        );
+        return Ok(format!(
+            "% Description Query Results for: {}\n% No description or remarks fields found\n",
+            query
+        ));
     }
 
     let mut response = format!("% Description Query Results for: {}\n", query);
@@ -139,15 +141,13 @@ fn format_desc_response(query: &str, fields: &[DescField]) -> Result<String> {
         .iter()
         .filter(|f| f.field_type == "descr" || f.field_type == "description")
         .count();
-    let remarks_count = fields
-        .iter()
-        .filter(|f| f.field_type == "remarks")
-        .count();
+    let remarks_count = fields.iter().filter(|f| f.field_type == "remarks").count();
 
     if descr_count > 0 && remarks_count > 0 {
-        response.push_str(
-            &format!("% {} description(s) and {} remarks found\n\n", descr_count, remarks_count)
-        );
+        response.push_str(&format!(
+            "% {} description(s) and {} remarks found\n\n",
+            descr_count, remarks_count
+        ));
     } else if descr_count > 0 {
         response.push_str(&format!("% {} description(s) found\n\n", descr_count));
     } else {
@@ -156,18 +156,19 @@ fn format_desc_response(query: &str, fields: &[DescField]) -> Result<String> {
 
     // Add each field in original order, preserving the exact field name from the original response
     for field in fields {
-        response.push_str(&format!("{}:             {}\n", field.field_type, field.value));
+        response.push_str(&format!(
+            "{}:             {}\n",
+            field.field_type, field.value
+        ));
     }
 
     // Add a summary line
-    response.push_str(
-        &format!(
-            "\n% Total fields: {} (descriptions: {}, remarks: {})\n",
-            fields.len(),
-            descr_count,
-            remarks_count
-        )
-    );
+    response.push_str(&format!(
+        "\n% Total fields: {} (descriptions: {}, remarks: {})\n",
+        fields.len(),
+        descr_count,
+        remarks_count
+    ));
 
     Ok(response)
 }
@@ -178,8 +179,7 @@ mod tests {
 
     #[test]
     fn test_extract_desc_and_remarks() {
-        let whois_data =
-            r#"
+        let whois_data = r#"
 aut-num:        AS64512
 as-name:        TEST-AS
 descr:          Test Autonomous System
@@ -225,7 +225,10 @@ source:         DN42
             extract_field_value("description:    Alternative field", "description"),
             Some("Alternative field".to_string())
         );
-        assert_eq!(extract_field_value("other-field:    Some value", "descr"), None);
+        assert_eq!(
+            extract_field_value("other-field:    Some value", "descr"),
+            None
+        );
     }
 
     #[test]
@@ -242,12 +245,11 @@ source:         DN42
             DescField {
                 field_type: "descr".to_string(),
                 value: "Example AS for testing".to_string(),
-            }
+            },
         ];
 
-        let response = format_desc_response("AS64512", &fields).expect(
-            "Failed to format desc response in test"
-        );
+        let response = format_desc_response("AS64512", &fields)
+            .expect("Failed to format desc response in test");
         println!("Formatted response:\n{}", response);
 
         assert!(response.contains("Description Query Results for: AS64512"));
@@ -265,9 +267,8 @@ source:         DN42
             value: "Single description".to_string(),
         }];
 
-        let response = format_desc_response("example.com", &fields).expect(
-            "Failed to format desc response for domain test"
-        );
+        let response = format_desc_response("example.com", &fields)
+            .expect("Failed to format desc response for domain test");
         println!("Single description response:\n{}", response);
 
         assert!(response.contains("Description Query Results for: example.com"));
@@ -280,9 +281,8 @@ source:         DN42
     fn test_format_empty_desc_response() {
         let fields = vec![];
 
-        let response = format_desc_response("test.example", &fields).expect(
-            "Failed to format desc response for subdomain test"
-        );
+        let response = format_desc_response("test.example", &fields)
+            .expect("Failed to format desc response for subdomain test");
         println!("Empty description response:\n{}", response);
 
         assert!(response.contains("Description Query Results for: test.example"));

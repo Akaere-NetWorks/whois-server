@@ -2,6 +2,7 @@
 // Copyright (C) 2025 Akaere Networks
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+use crate::{log_debug, log_info, log_warn};
 use anyhow::{Context, Result};
 use chrono::{DateTime, Duration, Utc};
 use lmdb::{Cursor, Database, DatabaseFlags, Environment, Transaction, WriteFlags};
@@ -9,7 +10,6 @@ use serde::{Deserialize, Serialize};
 use std::net::IpAddr;
 use std::path::Path;
 use std::sync::Arc;
-use crate::{log_debug, log_info, log_warn};
 /// Maximum number of history records to keep per IP address
 const MAX_RECORDS_PER_IP: usize = 100;
 
@@ -129,7 +129,8 @@ impl SshConnectionHistory {
         if let Err(e) = self.cleanup_ip_records(&record.ip_address) {
             log_warn!(
                 "Failed to cleanup records for IP {}: {}",
-                record.ip_address, e
+                record.ip_address,
+                e
             );
         }
 
@@ -163,7 +164,7 @@ impl SshConnectionHistory {
         }
 
         // Sort by timestamp (newest first)
-        records.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
+        records.sort_by_key(|b| std::cmp::Reverse(b.timestamp));
 
         Ok(records)
     }

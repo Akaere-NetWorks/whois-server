@@ -20,7 +20,7 @@ use anyhow::Result;
 // Use the pure Rust implementation from the current module
 use super::pixiv_impl::*;
 
-use crate::{log_info};
+use crate::log_info;
 /// Query Pixiv artwork information by ID (returns formatted text)
 pub async fn query_pixiv_artwork(artwork_id: &str) -> Result<String> {
     log_info!("Querying Pixiv artwork: {}", artwork_id);
@@ -65,7 +65,11 @@ pub async fn query_pixiv_ranking(mode: Option<&str>, limit: Option<i32>) -> Resu
 
 /// Get Pixiv ranking (returns JSON)
 pub async fn query_pixiv_ranking_json(mode: Option<&str>, limit: Option<i32>) -> Result<String> {
-    log_info!("Querying Pixiv ranking (JSON): mode={:?}, limit={:?}", mode, limit);
+    log_info!(
+        "Querying Pixiv ranking (JSON): mode={:?}, limit={:?}",
+        mode,
+        limit
+    );
     query_pixiv_ranking_json_rust(mode, limit).await
 }
 

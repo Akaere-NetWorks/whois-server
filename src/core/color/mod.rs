@@ -16,13 +16,13 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-pub mod scheme;
-pub mod protocol;
 pub mod colorizer;
+pub mod protocol;
+pub mod scheme;
 
 #[cfg(test)]
 mod tests;
 
-pub use scheme::ColorScheme;
-pub use protocol::ColorProtocol;
 pub use colorizer::Colorizer;
+pub use protocol::ColorProtocol;
+pub use scheme::ColorScheme;

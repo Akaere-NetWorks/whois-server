@@ -7,9 +7,9 @@
 pub mod api;
 pub mod auth;
 pub mod client;
+pub mod endpoints;
 pub mod error;
 pub mod models;
-pub mod endpoints;
 pub mod pixiv_impl;
 
 // Re-export main components
@@ -19,5 +19,5 @@ pub use error::{PixivError, PixivResult};
 pub use models::*;
 
 // Re-export the implementation functions and API
-pub use pixiv_impl::*;
 pub use api::*;
+pub use pixiv_impl::*;

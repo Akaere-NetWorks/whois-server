@@ -1,5 +1,3 @@
-use anyhow::Result;
-use std::time::Duration;
 use super::bilibili::query_bilibili;
 use super::formatters::{
     format_prefixes_response, format_rir_geo_response, format_ultimate_geo_response,
@@ -8,8 +6,10 @@ use super::ipapi::query_ipapi;
 use super::ipinfo_api::query_ipinfo_api;
 use super::meituan::query_meituan;
 use super::ripe_api::{query_prefixes_api, query_ripe_api, query_rir_geo_api};
+use anyhow::Result;
+use std::time::Duration;
 
-use crate::{log_debug};
+use crate::log_debug;
 /// Process geo location queries ending with -GEO
 pub async fn process_geo_query(resource: &str) -> Result<String> {
     log_debug!("Processing ultimate geo query for: {}", resource);

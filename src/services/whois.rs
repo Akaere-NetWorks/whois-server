@@ -1,13 +1,14 @@
 #![allow(non_snake_case)]
 
+use crate::config::{
+    DEFAULT_WHOIS_PORT, DEFAULT_WHOIS_SERVER, RADB_WHOIS_PORT, RADB_WHOIS_SERVER, RIPE_WHOIS_PORT,
+    RIPE_WHOIS_SERVER, TIMEOUT_SECONDS,
+};
+use crate::services::iana_cache::IanaCache;
 use anyhow::Result;
 use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream as AsyncTcpStream;
-use crate::config::{
-    DEFAULT_WHOIS_PORT, DEFAULT_WHOIS_SERVER, RADB_WHOIS_PORT, RADB_WHOIS_SERVER, RIPE_WHOIS_PORT, RIPE_WHOIS_SERVER, TIMEOUT_SECONDS,
-};
-use crate::services::iana_cache::IanaCache;
 
 use crate::{log_debug, log_warn};
 
@@ -81,7 +82,8 @@ pub async fn query_with_iana_referral(query: &str) -> Result<String> {
         Err(e) => {
             log_warn!(
                 "Query failed on {}, attempting to refresh IANA cache: {}",
-                whois_server, e
+                whois_server,
+                e
             );
 
             // Query failed, try to refresh IANA cache
@@ -100,8 +102,14 @@ pub async fn query_with_iana_referral(query: &str) -> Result<String> {
                             Ok(radb_resp) => Ok(radb_resp),
                             Err(_) => {
                                 // Final fallback to default server (RIPE), use flag
-                                let prepared_query = prepare_ripe_query(query, DEFAULT_WHOIS_SERVER);
-                                query_whois(&prepared_query, DEFAULT_WHOIS_SERVER, DEFAULT_WHOIS_PORT).await
+                                let prepared_query =
+                                    prepare_ripe_query(query, DEFAULT_WHOIS_SERVER);
+                                query_whois(
+                                    &prepared_query,
+                                    DEFAULT_WHOIS_SERVER,
+                                    DEFAULT_WHOIS_PORT,
+                                )
+                                .await
                             }
                         }
                     }

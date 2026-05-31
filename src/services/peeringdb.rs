@@ -1,6 +1,6 @@
 use crate::config::{PEERINGDB_CACHE_TTL, PEERINGDB_LMDB_PATH};
+use crate::log_debug;
 use crate::storage::lmdb::LmdbStorage;
-use crate::{log_debug};
 use anyhow::Result;
 use reqwest;
 use serde::{Deserialize, Serialize};
@@ -443,28 +443,28 @@ fn format_network_info(network: &NetworkInfo) -> String {
         ));
     }
 
-    if let Some(looking_glass) = &network.looking_glass {
-        if !looking_glass.trim().is_empty() {
-            info.push_str(&format!("Looking Glass:      {}\n", looking_glass.trim()));
-        }
+    if let Some(looking_glass) = &network.looking_glass
+        && !looking_glass.trim().is_empty()
+    {
+        info.push_str(&format!("Looking Glass:      {}\n", looking_glass.trim()));
     }
 
-    if let Some(route_server) = &network.route_server {
-        if !route_server.trim().is_empty() {
-            info.push_str(&format!("Route Server:       {}\n", route_server.trim()));
-        }
+    if let Some(route_server) = &network.route_server
+        && !route_server.trim().is_empty()
+    {
+        info.push_str(&format!("Route Server:       {}\n", route_server.trim()));
     }
 
-    if let Some(irr_as_set) = &network.irr_as_set {
-        if !irr_as_set.trim().is_empty() {
-            info.push_str(&format!("IRR AS-SET:         {}\n", irr_as_set.trim()));
-        }
+    if let Some(irr_as_set) = &network.irr_as_set
+        && !irr_as_set.trim().is_empty()
+    {
+        info.push_str(&format!("IRR AS-SET:         {}\n", irr_as_set.trim()));
     }
 
-    if let Some(notes) = &network.notes {
-        if !notes.trim().is_empty() {
-            info.push_str(&format!("Notes:              {}\n", notes.trim()));
-        }
+    if let Some(notes) = &network.notes
+        && !notes.trim().is_empty()
+    {
+        info.push_str(&format!("Notes:              {}\n", notes.trim()));
     }
 
     // Show exchange and facility counts if available
@@ -477,68 +477,68 @@ fn format_network_info(network: &NetworkInfo) -> String {
     }
 
     // Show detailed IX information if available
-    if let Some(netixlan_set) = &network.netixlan_set {
-        if !netixlan_set.is_empty() {
-            info.push_str("\nInternet Exchange Connections:\n");
-            info.push_str(&format!("{:-<60}\n", ""));
+    if let Some(netixlan_set) = &network.netixlan_set
+        && !netixlan_set.is_empty()
+    {
+        info.push_str("\nInternet Exchange Connections:\n");
+        info.push_str(&format!("{:-<60}\n", ""));
 
-            for (i, ix_connection) in netixlan_set.iter().enumerate() {
-                info.push_str(&format!(
-                    "IX #{}: {}\n",
-                    i + 1,
-                    ix_connection
-                        .name
-                        .as_ref()
-                        .unwrap_or(&format!("IX ID {}", ix_connection.ix_id))
-                ));
-                info.push_str(&format!("  IX ID:            {}\n", ix_connection.ix_id));
-                info.push_str(&format!(
-                    "  Speed:            {} Mbps\n",
-                    ix_connection.speed
-                ));
+        for (i, ix_connection) in netixlan_set.iter().enumerate() {
+            info.push_str(&format!(
+                "IX #{}: {}\n",
+                i + 1,
+                ix_connection
+                    .name
+                    .as_ref()
+                    .unwrap_or(&format!("IX ID {}", ix_connection.ix_id))
+            ));
+            info.push_str(&format!("  IX ID:            {}\n", ix_connection.ix_id));
+            info.push_str(&format!(
+                "  Speed:            {} Mbps\n",
+                ix_connection.speed
+            ));
 
-                if let Some(ipv4) = &ix_connection.ipaddr4 {
-                    info.push_str(&format!("  IPv4 Address:     {}\n", ipv4));
+            if let Some(ipv4) = &ix_connection.ipaddr4 {
+                info.push_str(&format!("  IPv4 Address:     {}\n", ipv4));
+            }
+
+            if let Some(ipv6) = &ix_connection.ipaddr6 {
+                info.push_str(&format!("  IPv6 Address:     {}\n", ipv6));
+            }
+
+            info.push_str(&format!(
+                "  Route Server:     {}\n",
+                if ix_connection.is_rs_peer {
+                    "Yes"
+                } else {
+                    "No"
                 }
-
-                if let Some(ipv6) = &ix_connection.ipaddr6 {
-                    info.push_str(&format!("  IPv6 Address:     {}\n", ipv6));
+            ));
+            info.push_str(&format!(
+                "  BFD Support:      {}\n",
+                if ix_connection.bfd_support {
+                    "Yes"
+                } else {
+                    "No"
                 }
-
-                info.push_str(&format!(
-                    "  Route Server:     {}\n",
-                    if ix_connection.is_rs_peer {
-                        "Yes"
-                    } else {
-                        "No"
-                    }
-                ));
-                info.push_str(&format!(
-                    "  BFD Support:      {}\n",
-                    if ix_connection.bfd_support {
-                        "Yes"
-                    } else {
-                        "No"
-                    }
-                ));
-                info.push_str(&format!(
-                    "  Operational:      {}\n",
-                    if ix_connection.operational {
-                        "Yes"
-                    } else {
-                        "No"
-                    }
-                ));
-
-                if let Some(notes) = &ix_connection.notes {
-                    if !notes.trim().is_empty() {
-                        info.push_str(&format!("  Notes:            {}\n", notes.trim()));
-                    }
+            ));
+            info.push_str(&format!(
+                "  Operational:      {}\n",
+                if ix_connection.operational {
+                    "Yes"
+                } else {
+                    "No"
                 }
+            ));
 
-                if i < netixlan_set.len() - 1 {
-                    info.push('\n');
-                }
+            if let Some(notes) = &ix_connection.notes
+                && !notes.trim().is_empty()
+            {
+                info.push_str(&format!("  Notes:            {}\n", notes.trim()));
+            }
+
+            if i < netixlan_set.len() - 1 {
+                info.push('\n');
             }
         }
     }
@@ -650,10 +650,10 @@ fn format_ix_info(ix: &InternetExchangeInfo) -> String {
         info.push_str(&format!("Connected Facilities: {} facilities\n", fac_count));
     }
 
-    if let Some(notes) = &ix.notes {
-        if !notes.trim().is_empty() {
-            info.push_str(&format!("Notes:\n{}\n", notes.trim()));
-        }
+    if let Some(notes) = &ix.notes
+        && !notes.trim().is_empty()
+    {
+        info.push_str(&format!("Notes:\n{}\n", notes.trim()));
     }
 
     info.push_str(&format!("Status:             {}\n", ix.status));

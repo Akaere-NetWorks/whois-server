@@ -18,22 +18,36 @@
 
 #[cfg(test)]
 mod tests {
-    use crate::core::color::{ColorScheme, ColorProtocol, Colorizer};
-use crate::core::QueryType;
+    use crate::core::QueryType;
+    use crate::core::color::{ColorProtocol, ColorScheme, Colorizer};
 
     #[test]
     fn test_color_scheme_parsing() {
         assert_eq!(ColorScheme::from_string("ripe"), Some(ColorScheme::Ripe));
         assert_eq!(ColorScheme::from_string("RIPE"), Some(ColorScheme::Ripe));
-        assert_eq!(ColorScheme::from_string("bgptools"), Some(ColorScheme::BgpTools));
-        assert_eq!(ColorScheme::from_string("ripe-dark"), Some(ColorScheme::RipeDark));
-        assert_eq!(ColorScheme::from_string("dark-ripe"), Some(ColorScheme::RipeDark));
-        assert_eq!(ColorScheme::from_string("bgptools-dark"), Some(ColorScheme::BgpToolsDark));
-        assert_eq!(ColorScheme::from_string("dark-bgptools"), Some(ColorScheme::BgpToolsDark));
+        assert_eq!(
+            ColorScheme::from_string("bgptools"),
+            Some(ColorScheme::BgpTools)
+        );
+        assert_eq!(
+            ColorScheme::from_string("ripe-dark"),
+            Some(ColorScheme::RipeDark)
+        );
+        assert_eq!(
+            ColorScheme::from_string("dark-ripe"),
+            Some(ColorScheme::RipeDark)
+        );
+        assert_eq!(
+            ColorScheme::from_string("bgptools-dark"),
+            Some(ColorScheme::BgpToolsDark)
+        );
+        assert_eq!(
+            ColorScheme::from_string("dark-bgptools"),
+            Some(ColorScheme::BgpToolsDark)
+        );
         assert_eq!(ColorScheme::from_string("invalid"), None);
     }
 
-  
     #[test]
     fn test_protocol_header_parsing() {
         let mut protocol = ColorProtocol::new();
@@ -82,8 +96,10 @@ use crate::core::QueryType;
         let ripe_colorizer = Colorizer::new(ColorScheme::Ripe);
         let ripe_dark_colorizer = Colorizer::new(ColorScheme::RipeDark);
 
-        let light_output = ripe_colorizer.colorize_response(sample, &QueryType::IPv4("192.0.2.0".parse().unwrap()));
-        let dark_output = ripe_dark_colorizer.colorize_response(sample, &QueryType::IPv4("192.0.2.0".parse().unwrap()));
+        let light_output = ripe_colorizer
+            .colorize_response(sample, &QueryType::IPv4("192.0.2.0".parse().unwrap()));
+        let dark_output = ripe_dark_colorizer
+            .colorize_response(sample, &QueryType::IPv4("192.0.2.0".parse().unwrap()));
 
         // Colors should be different between light and dark modes
         assert_ne!(light_output, dark_output);
@@ -100,8 +116,10 @@ use crate::core::QueryType;
         let bgptools_colorizer = Colorizer::new(ColorScheme::BgpTools);
         let bgptools_dark_colorizer = Colorizer::new(ColorScheme::BgpToolsDark);
 
-        let light_output = bgptools_colorizer.colorize_response(sample, &QueryType::BGPTool("192.0.2.0/24".to_string()));
-        let dark_output = bgptools_dark_colorizer.colorize_response(sample, &QueryType::BGPTool("192.0.2.0/24".to_string()));
+        let light_output = bgptools_colorizer
+            .colorize_response(sample, &QueryType::BGPTool("192.0.2.0/24".to_string()));
+        let dark_output = bgptools_dark_colorizer
+            .colorize_response(sample, &QueryType::BGPTool("192.0.2.0/24".to_string()));
 
         // Colors should be different between light and dark modes
         assert_ne!(light_output, dark_output);

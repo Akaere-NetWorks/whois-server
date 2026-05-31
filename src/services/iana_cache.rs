@@ -190,13 +190,19 @@ impl IanaCache {
         // Cache miss or expired, query IANA
         match self.query_iana(query).await {
             Ok(Some(referral)) => {
-                let cache_key = if let (Some(start), Some(end)) = (referral.as_block_start, referral.as_block_end) {
+                let cache_key = if let (Some(start), Some(end)) =
+                    (referral.as_block_start, referral.as_block_end)
+                {
                     // Use block range as cache key for ASN blocks
                     format!("asn_block_{}_{}", start, end)
-                } else if let (Some(start), Some(end)) = (referral.ipv4_block_start, referral.ipv4_block_end) {
+                } else if let (Some(start), Some(end)) =
+                    (referral.ipv4_block_start, referral.ipv4_block_end)
+                {
                     // Use block range as cache key for IPv4 blocks
                     format!("ipv4_block_{}_{}", start, end)
-                } else if let (Some(start), Some(end)) = (referral.ipv6_block_start, referral.ipv6_block_end) {
+                } else if let (Some(start), Some(end)) =
+                    (referral.ipv6_block_start, referral.ipv6_block_end)
+                {
                     // Use block range as cache key for IPv6 blocks
                     format!("ipv6_block_{}_{}", start, end)
                 } else {
@@ -217,8 +223,8 @@ impl IanaCache {
     }
 
     fn extract_asn(&self, query: &str) -> Option<u32> {
-        if query.starts_with("AS") {
-            query[2..].parse::<u32>().ok()
+        if let Some(stripped) = query.strip_prefix("AS") {
+            stripped.parse::<u32>().ok()
         } else {
             query.parse::<u32>().ok()
         }
@@ -255,7 +261,10 @@ impl IanaCache {
                 {
                     log_debug!(
                         "IANA block cache hit for AS{}: {} (block: {:?}-{:?})",
-                        asn, referral.whois_server, referral.as_block_start, referral.as_block_end
+                        asn,
+                        referral.whois_server,
+                        referral.as_block_start,
+                        referral.as_block_end
                     );
                     return Some(referral.whois_server);
                 }
@@ -347,11 +356,17 @@ impl IanaCache {
 
         match self.query_iana(query).await {
             Ok(Some(referral)) => {
-                let cache_key = if let (Some(start), Some(end)) = (referral.as_block_start, referral.as_block_end) {
+                let cache_key = if let (Some(start), Some(end)) =
+                    (referral.as_block_start, referral.as_block_end)
+                {
                     format!("asn_block_{}_{}", start, end)
-                } else if let (Some(start), Some(end)) = (referral.ipv4_block_start, referral.ipv4_block_end) {
+                } else if let (Some(start), Some(end)) =
+                    (referral.ipv4_block_start, referral.ipv4_block_end)
+                {
                     format!("ipv4_block_{}_{}", start, end)
-                } else if let (Some(start), Some(end)) = (referral.ipv6_block_start, referral.ipv6_block_end) {
+                } else if let (Some(start), Some(end)) =
+                    (referral.ipv6_block_start, referral.ipv6_block_end)
+                {
                     format!("ipv6_block_{}_{}", start, end)
                 } else {
                     cache_key
@@ -360,7 +375,8 @@ impl IanaCache {
                 if let Err(e) = self.storage.put_json(&cache_key, &referral) {
                     log_warn!(
                         "Failed to cache refreshed IANA referral for {}: {}",
-                        query, e
+                        query,
+                        e
                     );
                 }
                 Some(referral.whois_server)
@@ -426,11 +442,13 @@ impl IanaCache {
         // Check for AS block range
         let as_block_regex = Regex::new(r"(?i)as-block:\s*(\d+)-(\d+)")?;
         if let Some(caps) = as_block_regex.captures(response) {
-            let start = caps.get(1)
+            let start = caps
+                .get(1)
                 .ok_or_else(|| anyhow::anyhow!("Invalid AS block start capture"))?
                 .as_str()
                 .parse::<u32>()?;
-            let end = caps.get(2)
+            let end = caps
+                .get(2)
                 .ok_or_else(|| anyhow::anyhow!("Invalid AS block end capture"))?
                 .as_str()
                 .parse::<u32>()?;
@@ -445,32 +463,34 @@ impl IanaCache {
 
         // Check for IPv4 inetnum block
         let ipv4_block_regex = Regex::new(r"(?i)inetnum:\s*([0-9.]+)\s*-\s*([0-9.]+)")?;
-        if let Some(caps) = ipv4_block_regex.captures(response) {
-            if let (Some(start_match), Some(end_match)) = (caps.get(1), caps.get(2)) {
-                let start_str = start_match.as_str();
-                let end_str = end_match.as_str();
-                if let (Ok(start), Ok(end)) = (
-                    start_str.parse::<std::net::Ipv4Addr>(),
-                    end_str.parse::<std::net::Ipv4Addr>(),
-                ) {
-                    log_debug!("Found IPv4 block range: {}-{}", start, end);
-                    return Ok(Some(IanaReferral::new_with_ipv4_block(
-                        whois_server,
-                        description,
-                        start,
-                        end,
-                    )));
-                }
+        if let Some(caps) = ipv4_block_regex.captures(response)
+            && let (Some(start_match), Some(end_match)) = (caps.get(1), caps.get(2))
+        {
+            let start_str = start_match.as_str();
+            let end_str = end_match.as_str();
+            if let (Ok(start), Ok(end)) = (
+                start_str.parse::<std::net::Ipv4Addr>(),
+                end_str.parse::<std::net::Ipv4Addr>(),
+            ) {
+                log_debug!("Found IPv4 block range: {}-{}", start, end);
+                return Ok(Some(IanaReferral::new_with_ipv4_block(
+                    whois_server,
+                    description,
+                    start,
+                    end,
+                )));
             }
         }
 
         // Check for IPv6 inet6num block
         let ipv6_block_regex = Regex::new(r"(?i)inet6num:\s*([0-9a-fA-F:]+)/(\d+)")?;
         if let Some(caps) = ipv6_block_regex.captures(response) {
-            let network_str = caps.get(1)
+            let network_str = caps
+                .get(1)
                 .ok_or_else(|| anyhow::anyhow!("Invalid IPv6 network capture"))?
                 .as_str();
-            let prefix_len = caps.get(2)
+            let prefix_len = caps
+                .get(2)
                 .ok_or_else(|| anyhow::anyhow!("Invalid IPv6 prefix capture"))?
                 .as_str()
                 .parse::<u8>()
@@ -481,7 +501,10 @@ impl IanaCache {
                 if let Some(end_addr) = self.calculate_ipv6_block_end(network, prefix_len) {
                     log_debug!(
                         "Found IPv6 block range: {}/{} ({}-{})",
-                        network, prefix_len, network, end_addr
+                        network,
+                        prefix_len,
+                        network,
+                        end_addr
                     );
                     return Ok(Some(IanaReferral::new_with_ipv6_block(
                         whois_server,
@@ -565,8 +588,8 @@ impl IanaCache {
             format!("ipv6_{:x}_{:x}", segments[0], segments[1])
         } else if query.starts_with("AS") || query.parse::<u32>().is_ok() {
             // For ASN, use individual ASN numbers since IANA blocks vary
-            let asn = if query.starts_with("AS") {
-                query[2..].parse::<u32>().unwrap_or(0)
+            let asn = if let Some(stripped) = query.strip_prefix("AS") {
+                stripped.parse::<u32>().unwrap_or(0)
             } else {
                 query.parse::<u32>().unwrap_or(0)
             };

@@ -16,10 +16,10 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+use crate::{log_debug, log_error};
 use anyhow::{Context, Result};
 use reqwest;
 use serde::{Deserialize, Serialize};
-use crate::{log_debug, log_error};
 const OPENSUSE_SEARCH_URL: &str = "https://software.opensuse.org/search";
 const OPENSUSE_PACKAGES_URL: &str = "https://software.opensuse.org/package/";
 

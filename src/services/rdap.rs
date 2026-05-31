@@ -1,7 +1,7 @@
-use anyhow::Result;
-use rdap::{QueryType as RdapQueryType, RdapClient, RdapRequest};
-use rdap::whois::format_whois;
 use crate::{log_debug, log_warn};
+use anyhow::Result;
+use rdap::whois::format_whois;
+use rdap::{QueryType as RdapQueryType, RdapClient, RdapRequest};
 
 /// Query using RDAP first, falling back to WHOIS if RDAP fails.
 ///
@@ -16,7 +16,11 @@ pub async fn query_rdap_with_whois_fallback(
     rdap_query_type: RdapQueryType,
     whois_fallback: impl std::future::Future<Output = Result<String>>,
 ) -> Result<String> {
-    log_debug!("RDAP-first query for: {} (type: {:?})", query, rdap_query_type);
+    log_debug!(
+        "RDAP-first query for: {} (type: {:?})",
+        query,
+        rdap_query_type
+    );
 
     // Try RDAP first
     match query_rdap_internal(query, rdap_query_type).await {
@@ -27,7 +31,8 @@ pub async fn query_rdap_with_whois_fallback(
         Err(e) => {
             log_warn!(
                 "RDAP query failed for {}, falling back to WHOIS: {}",
-                query, e
+                query,
+                e
             );
             // Fall back to traditional WHOIS
             whois_fallback.await
@@ -37,8 +42,8 @@ pub async fn query_rdap_with_whois_fallback(
 
 /// Internal RDAP query that returns Err on failure (for fallback logic)
 async fn query_rdap_internal(query: &str, query_type: RdapQueryType) -> Result<String> {
-    let client = RdapClient::new()
-        .map_err(|e| anyhow::anyhow!("Failed to create RDAP client: {}", e))?;
+    let client =
+        RdapClient::new().map_err(|e| anyhow::anyhow!("Failed to create RDAP client: {}", e))?;
 
     let request = RdapRequest::new(query_type, query);
 

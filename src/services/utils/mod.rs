@@ -10,8 +10,8 @@ pub use doh::DohClient;
 // Re-export commonly used types from globalping
 #[allow(dead_code)]
 pub use globalping::{
-    GlobalpingClient, GlobalpingRequest, GlobalpingResult,
-    MeasurementOptions, PingOptions, TracerouteOptions, MeasurementLocation
+    GlobalpingClient, GlobalpingRequest, GlobalpingResult, MeasurementLocation, MeasurementOptions,
+    PingOptions, TracerouteOptions,
 };
 
 // Re-export commonly used types from ip_info

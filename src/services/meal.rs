@@ -325,8 +325,7 @@ fn format_chinese_meal_info(category: &str, name: &str, recipe: &ChineseRecipe) 
     let _ = writeln!(
         result,
         "% Source: 程序员做饭指南 https://github.com/Anduin2017/HowToCook"
-    )
-    ;
+    );
 
     result
 }

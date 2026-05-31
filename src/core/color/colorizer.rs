@@ -43,7 +43,7 @@ impl Colorizer {
         &self,
         response: &str,
         query_type: &QueryType,
-        bold_colors: bool
+        bold_colors: bool,
     ) -> String {
         let mut colorized = String::new();
 
@@ -78,7 +78,7 @@ impl Colorizer {
         &self,
         response: &str,
         query_type: &QueryType,
-        bold_colors: bool
+        bold_colors: bool,
     ) -> String {
         let mut colorized = String::new();
 
@@ -181,9 +181,8 @@ impl Colorizer {
             }
             // Status/state - conditional colors
             "status" | "state" | "rpki-status" | "validation" => {
-                if
-                    value.trim().to_lowercase().contains("valid") &&
-                    !value.trim().to_lowercase().contains("invalid")
+                if value.trim().to_lowercase().contains("valid")
+                    && !value.trim().to_lowercase().contains("invalid")
                 {
                     format!("\x1b[1;92m{}:\x1b[0m \x1b[92m{}\x1b[0m", attr, value) // Bright green for valid
                 } else if value.trim().to_lowercase().contains("invalid") {
@@ -193,14 +192,8 @@ impl Colorizer {
                 }
             }
             // Dates
-            | "created"
-            | "changed"
-            | "last-modified"
-            | "expires"
-            | "updated"
-            | "created-at"
-            | "updated-at"
-            | "pushed-at" => {
+            "created" | "changed" | "last-modified" | "expires" | "updated" | "created-at"
+            | "updated-at" | "pushed-at" => {
                 if bold_colors {
                     format!("\x1b[35m{}:\x1b[0m \x1b[35m{}\x1b[0m", attr, value) // Magenta for dark mode
                 } else {
@@ -208,15 +201,8 @@ impl Colorizer {
                 }
             }
             // Package managers
-            | "package"
-            | "package-name"
-            | "version"
-            | "latest-version"
-            | "stable-version"
-            | "package-base"
-            | "source-package"
-            | "attribute-name"
-            | "attribute-set" => {
+            "package" | "package-name" | "version" | "latest-version" | "stable-version"
+            | "package-base" | "source-package" | "attribute-name" | "attribute-set" => {
                 if bold_colors {
                     format!("\x1b[37m{}:\x1b[0m \x1b[37m{}\x1b[0m", attr, value) // Dim white for dark
                 } else {
@@ -233,68 +219,34 @@ impl Colorizer {
             "license" | "distribution" => {
                 format!("\x1b[1;92m{}:\x1b[0m \x1b[92m{}\x1b[0m", attr, value) // Green
             }
-            | "size"
-            | "filename"
-            | "modified-time"
-            | "unpacked-size"
-            | "file-count"
-            | "total-size"
-            | "package-size"
-            | "wheel-size" => {
+            "size" | "filename" | "modified-time" | "unpacked-size" | "file-count"
+            | "total-size" | "package-size" | "wheel-size" => {
                 format!("\x1b[93m{}:\x1b[0m \x1b[93m{}\x1b[0m", attr, value) // Yellow
             }
             // Statistics and metrics
-            | "popularity"
-            | "votes"
-            | "rating"
-            | "score"
-            | "stars"
-            | "watchers"
-            | "forks"
-            | "open-issues"
-            | "downloads"
-            | "total-downloads"
-            | "recent-downloads"
-            | "followers"
-            | "following"
-            | "views"
-            | "likes"
-            | "bookmarks"
-            | "reposts" => {
+            "popularity" | "votes" | "rating" | "score" | "stars" | "watchers" | "forks"
+            | "open-issues" | "downloads" | "total-downloads" | "recent-downloads"
+            | "followers" | "following" | "views" | "likes" | "bookmarks" | "reposts" => {
                 format!("\x1b[1;95m{}:\x1b[0m \x1b[95m{}\x1b[0m", attr, value) // Bright magenta
             }
             // URLs
-            | "aur-url"
-            | "upstream-url"
-            | "url"
-            | "homepage"
-            | "ubuntu-url"
-            | "nixos-url"
-            | "opensuse-url"
-            | "npm-url"
-            | "registry-url"
-            | "pypi-url"
-            | "crates-io-url"
-            | "docs-rs-url"
-            | "api-url"
-            | "github-url"
-            | "clone-url"
-            | "ssh-url"
-            | "avatar-url"
-            | "profileurl"
-            | "steam-url"
-            | "website"
-            | "metacritic-url"
-            | "wikipedia-url"
+            "aur-url" | "upstream-url" | "url" | "homepage" | "ubuntu-url" | "nixos-url"
+            | "opensuse-url" | "npm-url" | "registry-url" | "pypi-url" | "crates-io-url"
+            | "docs-rs-url" | "api-url" | "github-url" | "clone-url" | "ssh-url" | "avatar-url"
+            | "profileurl" | "steam-url" | "website" | "metacritic-url" | "wikipedia-url"
             | "edit-url" => {
                 let url_regex = Regex::new(r"(https?://[^\s]+)").expect("Invalid regex pattern");
-                let colored_value = url_regex.replace_all(value, "\x1b[4;94m$1\x1b[0m").to_string();
+                let colored_value = url_regex
+                    .replace_all(value, "\x1b[4;94m$1\x1b[0m")
+                    .to_string();
                 format!("\x1b[1;94m{}:\x1b[0m {}", attr, colored_value)
             }
             // Gaming specific
             "app-id" | "steamid" | "game-id" | "metacritic-score" => {
                 let id_regex = Regex::new(r"(\d+)").expect("Invalid regex pattern");
-                let colored_value = id_regex.replace_all(value, "\x1b[1;93m$1\x1b[0m").to_string();
+                let colored_value = id_regex
+                    .replace_all(value, "\x1b[1;93m$1\x1b[0m")
+                    .to_string();
                 format!("\x1b[1;93m{}:\x1b[0m {}", attr, colored_value)
             }
             "price" | "original-price" => {
@@ -346,7 +298,9 @@ impl Colorizer {
             // IMDb specific
             "imdb-id" | "tt-id" => {
                 let id_regex = Regex::new(r"(tt\d+)").expect("Invalid regex pattern");
-                let colored_value = id_regex.replace_all(value, "\x1b[1;93m$1\x1b[0m").to_string();
+                let colored_value = id_regex
+                    .replace_all(value, "\x1b[1;93m$1\x1b[0m")
+                    .to_string();
                 format!("\x1b[1;93m{}:\x1b[0m {}", attr, colored_value)
             }
             "movie-title" | "series-title" | "game-title" => {
@@ -410,7 +364,9 @@ impl Colorizer {
             // Wikipedia specific
             "page-id" | "article-id" => {
                 let id_regex = Regex::new(r"(\d+)").expect("Invalid regex pattern");
-                let colored_value = id_regex.replace_all(value, "\x1b[1;93m$1\x1b[0m").to_string();
+                let colored_value = id_regex
+                    .replace_all(value, "\x1b[1;93m$1\x1b[0m")
+                    .to_string();
                 format!("\x1b[1;93m{}:\x1b[0m {}", attr, colored_value)
             }
             "article-length" | "page-length" => {
@@ -433,12 +389,16 @@ impl Colorizer {
             // Pixiv specific
             "artwork-id" | "illust-id" => {
                 let id_regex = Regex::new(r"(\d+)").expect("Invalid regex pattern");
-                let colored_value = id_regex.replace_all(value, "\x1b[1;94m$1\x1b[0m").to_string();
+                let colored_value = id_regex
+                    .replace_all(value, "\x1b[1;94m$1\x1b[0m")
+                    .to_string();
                 format!("\x1b[1;94m{}:\x1b[0m {}", attr, colored_value) // Bright blue
             }
             "user-id" | "artist-id" => {
                 let id_regex = Regex::new(r"(\d+)").expect("Invalid regex pattern");
-                let colored_value = id_regex.replace_all(value, "\x1b[1;95m$1\x1b[0m").to_string();
+                let colored_value = id_regex
+                    .replace_all(value, "\x1b[1;95m$1\x1b[0m")
+                    .to_string();
                 format!("\x1b[1;95m{}:\x1b[0m {}", attr, colored_value) // Bright magenta
             }
             "artwork-title" => {
@@ -446,15 +406,16 @@ impl Colorizer {
             }
             "artwork-url" | "profile-url" => {
                 let url_regex = Regex::new(r"(https?://[^\s]+)").expect("Invalid regex pattern");
-                let colored_value = url_regex.replace_all(value, "\x1b[4;94m$1\x1b[0m").to_string();
+                let colored_value = url_regex
+                    .replace_all(value, "\x1b[4;94m$1\x1b[0m")
+                    .to_string();
                 format!("\x1b[1;94m{}:\x1b[0m {}", attr, colored_value)
             }
             "content-rating" => {
                 if value.to_lowercase().contains("safe") {
                     format!("\x1b[92m{}:\x1b[0m \x1b[92m{}\x1b[0m", attr, value) // Green for safe
-                } else if
-                    value.to_lowercase().contains("r-18") ||
-                    value.to_lowercase().contains("r18")
+                } else if value.to_lowercase().contains("r-18")
+                    || value.to_lowercase().contains("r18")
                 {
                     format!("\x1b[91m{}:\x1b[0m \x1b[91m{}\x1b[0m", attr, value) // Red for R-18
                 } else {
@@ -491,9 +452,8 @@ impl Colorizer {
                 format!("\x1b[95m{}:\x1b[0m {}", attr, colored_value)
             }
             "height" | "weight" | "bwh" => {
-                let measurement_regex = Regex::new(r"(\d+[\.\d]*\s*(cm|kg|m|ft|in))").expect(
-                    "Invalid regex pattern"
-                );
+                let measurement_regex =
+                    Regex::new(r"(\d+[\.\d]*\s*(cm|kg|m|ft|in))").expect("Invalid regex pattern");
                 let colored_value = measurement_regex
                     .replace_all(value, "\x1b[1;92m$1\x1b[0m")
                     .to_string();
@@ -545,10 +505,11 @@ impl Colorizer {
                 format!("\x1b[96m{}:\x1b[0m \x1b[96m{}\x1b[0m", attr, value) // Cyan
             }
             "cooking-time" | "prep-time" => {
-                let time_regex = Regex::new(r"(\d+\s*min|\d+\s*hours?)").expect(
-                    "Invalid regex pattern"
-                );
-                let colored_value = time_regex.replace_all(value, "\x1b[93m$1\x1b[0m").to_string();
+                let time_regex =
+                    Regex::new(r"(\d+\s*min|\d+\s*hours?)").expect("Invalid regex pattern");
+                let colored_value = time_regex
+                    .replace_all(value, "\x1b[93m$1\x1b[0m")
+                    .to_string();
                 format!("\x1b[93m{}:\x1b[0m {}", attr, colored_value)
             }
             // Network and routing
@@ -604,12 +565,12 @@ impl Colorizer {
             }
             // Default - rainbow gradient effect for unknown attributes
             _ => {
-                let hash = attr
-                    .chars()
-                    .map(|c| c as u32)
-                    .sum::<u32>();
+                let hash = attr.chars().map(|c| c as u32).sum::<u32>();
                 let color_code = 31 + (hash % 6); // Rotate through 31-36 (red to cyan)
-                format!("\x1b[{}m{}:\x1b[0m \x1b[{}m{}\x1b[0m", color_code, attr, color_code, value)
+                format!(
+                    "\x1b[{}m{}:\x1b[0m \x1b[{}m{}\x1b[0m",
+                    color_code, attr, color_code, value
+                )
             }
         }
     }
@@ -626,16 +587,15 @@ impl Colorizer {
 
         // Apply regex patterns to value for network elements
         let asn_regex = Regex::new(r"(AS\d+)").expect("Invalid regex pattern");
-        let ip_regex = Regex::new(
-            r"(\d+\.\d+\.\d+\.\d+(?:/\d+)?|[0-9a-fA-F:]+::[0-9a-fA-F:]*(?:/\d+)?)"
-        ).unwrap();
-        let domain_regex = Regex::new(
-            r"([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}"
-        ).unwrap();
+        let ip_regex =
+            Regex::new(r"(\d+\.\d+\.\d+\.\d+(?:/\d+)?|[0-9a-fA-F:]+::[0-9a-fA-F:]*(?:/\d+)?)")
+                .unwrap();
+        let domain_regex =
+            Regex::new(r"([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}").unwrap();
 
-        let asn_color = if bold_colors { "\x1b[93m" } else { "\x1b[93m" }; // Yellow
-        let ip_color = if bold_colors { "\x1b[92m" } else { "\x1b[92m" }; // Green
-        let domain_color = if bold_colors { "\x1b[94m" } else { "\x1b[94m" }; // Blue
+        let asn_color = "\x1b[93m"; // Yellow
+        let ip_color = "\x1b[92m"; // Green
+        let domain_color = "\x1b[94m"; // Blue
 
         let mut styled_value = value.to_string();
         styled_value = asn_regex
@@ -663,9 +623,8 @@ impl Colorizer {
             }
             // Status/validation - conditional colors
             "status" | "rpki-status" | "validation" => {
-                if
-                    value.trim().to_lowercase().contains("valid") &&
-                    !value.trim().to_lowercase().contains("invalid")
+                if value.trim().to_lowercase().contains("valid")
+                    && !value.trim().to_lowercase().contains("invalid")
                 {
                     format!("\x1b[1;92m{}:\x1b[0m \x1b[92m{}\x1b[0m", attr, value) // Bright green
                 } else if value.trim().to_lowercase().contains("invalid") {
@@ -695,7 +654,10 @@ impl Colorizer {
                 if bold_colors {
                     format!("\x1b[97m{}:\x1b[0m \x1b[97m{}\x1b[0m", attr, styled_value) // White
                 } else {
-                    format!("\x1b[1;97m{}:\x1b[0m \x1b[1;97m{}\x1b[0m", attr, styled_value) // Bright white
+                    format!(
+                        "\x1b[1;97m{}:\x1b[0m \x1b[1;97m{}\x1b[0m",
+                        attr, styled_value
+                    ) // Bright white
                 }
             }
             // Dates - gray (non-allocation dates)
@@ -703,19 +665,9 @@ impl Colorizer {
                 format!("\x1b[90m{}:\x1b[0m \x1b[90m{}\x1b[0m", attr, styled_value)
             }
             // Package info - bright cyan
-            | "package"
-            | "package-name"
-            | "depends"
-            | "makedepends"
-            | "optdepends"
-            | "checkdepends"
-            | "provides"
-            | "conflicts"
-            | "replaces"
-            | "architecture"
-            | "license"
-            | "maintainer"
-            | "packager" => {
+            "package" | "package-name" | "depends" | "makedepends" | "optdepends"
+            | "checkdepends" | "provides" | "conflicts" | "replaces" | "architecture"
+            | "license" | "maintainer" | "packager" => {
                 if bold_colors {
                     format!("\x1b[36m{}:\x1b[0m \x1b[36m{}\x1b[0m", attr, styled_value) // Cyan
                 } else {
@@ -736,13 +688,15 @@ impl Colorizer {
             }
             // URLs - underlined blue
             "url" | "homepage" | "aur-url" | "upstream-url" => {
-                format!("\x1b[1;94m{}:\x1b[0m \x1b[4;94m{}\x1b[0m", attr, styled_value)
+                format!(
+                    "\x1b[1;94m{}:\x1b[0m \x1b[4;94m{}\x1b[0m",
+                    attr, styled_value
+                )
             }
             // Priority - conditional colors
             "priority" => {
-                if
-                    value.to_lowercase().contains("required") ||
-                    value.to_lowercase().contains("important")
+                if value.to_lowercase().contains("required")
+                    || value.to_lowercase().contains("important")
                 {
                     format!("\x1b[91m{}:\x1b[0m \x1b[91m{}\x1b[0m", attr, value) // Red for critical
                 } else if value.to_lowercase().contains("standard") {
@@ -770,14 +724,11 @@ impl Colorizer {
             }
             // Build and test status
             "build-status" | "test-status" => {
-                if
-                    value.to_lowercase().contains("pass") ||
-                    value.to_lowercase().contains("success")
+                if value.to_lowercase().contains("pass") || value.to_lowercase().contains("success")
                 {
                     format!("\x1b[92m{}:\x1b[0m \x1b[92m{}\x1b[0m", attr, value) // Green for success
-                } else if
-                    value.to_lowercase().contains("fail") ||
-                    value.to_lowercase().contains("error")
+                } else if value.to_lowercase().contains("fail")
+                    || value.to_lowercase().contains("error")
                 {
                     format!("\x1b[91m{}:\x1b[0m \x1b[91m{}\x1b[0m", attr, value) // Red for failure
                 } else {
@@ -790,10 +741,7 @@ impl Colorizer {
             }
             // Default - gradient rainbow
             _ => {
-                let hash = attr
-                    .chars()
-                    .map(|c| c as u32)
-                    .sum::<u32>();
+                let hash = attr.chars().map(|c| c as u32).sum::<u32>();
                 let color_code = if bold_colors {
                     31 + (hash % 6) // Normal colors 31-36 for dark mode
                 } else {
@@ -801,10 +749,7 @@ impl Colorizer {
                 };
                 format!(
                     "\x1b[{}m{}:\x1b[0m \x1b[{}m{}\x1b[0m",
-                    color_code,
-                    attr,
-                    color_code,
-                    styled_value
+                    color_code, attr, color_code, styled_value
                 )
             }
         }
@@ -816,32 +761,26 @@ impl Colorizer {
         line: &str,
         query_type: &QueryType,
         bold_colors: bool,
-        _is_bgptools: bool
+        _is_bgptools: bool,
     ) -> String {
         let comment_color = if bold_colors { "\x1b[37m" } else { "\x1b[90m" }; // Dim white vs bright black
 
         match query_type {
             QueryType::Geo(_) | QueryType::RirGeo(_) => {
-                if
-                    line.contains("latitude") ||
-                    line.contains("longitude") ||
-                    line.contains("coordinates")
+                if line.contains("latitude")
+                    || line.contains("longitude")
+                    || line.contains("coordinates")
                 {
                     if bold_colors {
                         format!("\x1b[35m{}\x1b[0m", line) // Magenta for dark
                     } else {
                         format!("\x1b[95m{}\x1b[0m", line) // Bright magenta for light
                     }
-                } else if
-                    line.contains("location") ||
-                    line.contains("city") ||
-                    line.contains("region")
+                } else if line.contains("location")
+                    || line.contains("city")
+                    || line.contains("region")
                 {
-                    if bold_colors {
-                        format!("\x1b[94m{}\x1b[0m", line) // Blue for dark
-                    } else {
-                        format!("\x1b[94m{}\x1b[0m", line) // Blue for light
-                    }
+                    format!("\x1b[94m{}\x1b[0m", line) // Blue
                 } else {
                     line.to_string()
                 }
@@ -849,10 +788,13 @@ impl Colorizer {
             QueryType::BGPTool(_) | QueryType::Prefixes(_) => {
                 let asn_regex = Regex::new(r"(AS\d+)").expect("Invalid regex pattern");
                 let ip_regex = Regex::new(
-                    r"(\d+\.\d+\.\d+\.\d+(?:/\d+)?|[0-9a-fA-F:]+::[0-9a-fA-F:]*(?:/\d+)?)"
-                ).unwrap();
+                    r"(\d+\.\d+\.\d+\.\d+(?:/\d+)?|[0-9a-fA-F:]+::[0-9a-fA-F:]*(?:/\d+)?)",
+                )
+                .unwrap();
                 let mut result = asn_regex.replace_all(line, "\x1b[93m$1\x1b[0m").to_string();
-                result = ip_regex.replace_all(&result, "\x1b[92m$1\x1b[0m").to_string();
+                result = ip_regex
+                    .replace_all(&result, "\x1b[92m$1\x1b[0m")
+                    .to_string();
                 result
             }
             QueryType::Dns(_) => {
@@ -867,10 +809,11 @@ impl Colorizer {
                         Regex::new(r"(\d+\.\d+\.\d+\.\d+)").expect("Invalid regex pattern");
                     ip_regex.replace_all(line, "\x1b[92m$1\x1b[0m").to_string()
                 } else if line.contains(" AAAA ") {
-                    let ipv6_regex = Regex::new(r"([0-9a-fA-F:]+::[0-9a-fA-F:]*)").expect(
-                        "Invalid regex pattern"
-                    );
-                    ipv6_regex.replace_all(line, "\x1b[92m$1\x1b[0m").to_string()
+                    let ipv6_regex = Regex::new(r"([0-9a-fA-F:]+::[0-9a-fA-F:]*)")
+                        .expect("Invalid regex pattern");
+                    ipv6_regex
+                        .replace_all(line, "\x1b[92m$1\x1b[0m")
+                        .to_string()
                 } else if line.contains(" CNAME ") || line.contains(" DNAME ") {
                     format!("\x1b[94m{}\x1b[0m", line) // Blue for aliases
                 } else if line.contains(" MX ") {
@@ -917,9 +860,8 @@ impl Colorizer {
                 }
             }
             QueryType::Steam(_) | QueryType::SteamSearch(_) => {
-                if
-                    line.contains("Steam Application Information") ||
-                    line.contains("Steam Game Search Results")
+                if line.contains("Steam Application Information")
+                    || line.contains("Steam Game Search Results")
                 {
                     if bold_colors {
                         format!("\x1b[36m{}\x1b[0m", line) // Cyan for dark
@@ -935,15 +877,21 @@ impl Colorizer {
                         let colored = price_regex
                             .replace_all(line, "\x1b[1;92m$1\x1b[0m")
                             .to_string();
-                        discount_regex.replace_all(&colored, "\x1b[1;92m$1\x1b[0m").to_string()
+                        discount_regex
+                            .replace_all(&colored, "\x1b[1;92m$1\x1b[0m")
+                            .to_string()
                     } else {
                         // White/Red for full-price games
                         let price_regex =
                             Regex::new(r"(\$[\d,]+\.?\d*)").expect("Invalid regex pattern");
                         if bold_colors {
-                            price_regex.replace_all(line, "\x1b[91m$1\x1b[0m").to_string() // Red for dark mode
+                            price_regex
+                                .replace_all(line, "\x1b[91m$1\x1b[0m")
+                                .to_string() // Red for dark mode
                         } else {
-                            price_regex.replace_all(line, "\x1b[97m$1\x1b[0m").to_string() // White for light mode
+                            price_regex
+                                .replace_all(line, "\x1b[97m$1\x1b[0m")
+                                .to_string() // White for light mode
                         }
                     }
                 } else if line.contains("Status:") {
@@ -968,11 +916,17 @@ impl Colorizer {
                 } else if line.contains("imdb-rating:") {
                     let rating_regex = Regex::new(r"(\d+\.\d+/10)").expect("Invalid regex pattern");
                     if line.contains("8.") || line.contains("9.") {
-                        rating_regex.replace_all(line, "\x1b[1;92m$1\x1b[0m").to_string() // Green for high ratings
+                        rating_regex
+                            .replace_all(line, "\x1b[1;92m$1\x1b[0m")
+                            .to_string() // Green for high ratings
                     } else if line.contains("7.") {
-                        rating_regex.replace_all(line, "\x1b[1;93m$1\x1b[0m").to_string() // Yellow for good ratings
+                        rating_regex
+                            .replace_all(line, "\x1b[1;93m$1\x1b[0m")
+                            .to_string() // Yellow for good ratings
                     } else {
-                        rating_regex.replace_all(line, "\x1b[1;91m$1\x1b[0m").to_string() // Red for low ratings
+                        rating_regex
+                            .replace_all(line, "\x1b[1;91m$1\x1b[0m")
+                            .to_string() // Red for low ratings
                     }
                 } else if line.starts_with("%") {
                     format!("{}{}\x1b[0m", comment_color, line)
@@ -983,10 +937,9 @@ impl Colorizer {
             QueryType::Desc(_) => {
                 if line.starts_with("%") {
                     format!("{}{}\x1b[0m", comment_color, line)
-                } else if
-                    line.contains("descr:") ||
-                    line.contains("description:") ||
-                    line.contains("remarks:")
+                } else if line.contains("descr:")
+                    || line.contains("description:")
+                    || line.contains("remarks:")
                 {
                     if bold_colors {
                         format!("\x1b[37m{}\x1b[0m", line) // Dim white for dark mode
@@ -1012,7 +965,9 @@ impl Colorizer {
                     }
                 } else if line.contains("players:") || line.contains("Players:") {
                     let player_regex = Regex::new(r"(\d+)").expect("Invalid regex pattern");
-                    player_regex.replace_all(line, "\x1b[1;95m$1\x1b[0m").to_string()
+                    player_regex
+                        .replace_all(line, "\x1b[1;95m$1\x1b[0m")
+                        .to_string()
                 } else if line.contains("latency:") || line.contains("ms") {
                     let ms_regex = Regex::new(r"(\d+)\s*ms").expect("Invalid regex pattern");
                     ms_regex
@@ -1046,13 +1001,14 @@ impl Colorizer {
                     } else {
                         format!("\x1b[91m{}\x1b[0m", line) // Red for private
                     }
-                } else if
-                    line.contains("stars:") ||
-                    line.contains("watchers:") ||
-                    line.contains("forks:")
+                } else if line.contains("stars:")
+                    || line.contains("watchers:")
+                    || line.contains("forks:")
                 {
                     let stats_regex = Regex::new(r"(\d+)").expect("Invalid regex pattern");
-                    stats_regex.replace_all(line, "\x1b[1;95m$1\x1b[0m").to_string()
+                    stats_regex
+                        .replace_all(line, "\x1b[1;95m$1\x1b[0m")
+                        .to_string()
                 } else if line.starts_with("%") {
                     format!("{}{}\x1b[0m", comment_color, line)
                 } else {
@@ -1068,7 +1024,9 @@ impl Colorizer {
                     }
                 } else if line.contains("article-length:") {
                     let size_regex = Regex::new(r"(\d+)\s*bytes").expect("Invalid regex pattern");
-                    size_regex.replace_all(line, "\x1b[1;93m$1 bytes\x1b[0m").to_string()
+                    size_regex
+                        .replace_all(line, "\x1b[1;93m$1 bytes\x1b[0m")
+                        .to_string()
                 } else if line.starts_with("%") {
                     format!("{}{}\x1b[0m", comment_color, line)
                 } else {
@@ -1090,13 +1048,14 @@ impl Colorizer {
                     } else {
                         format!("\x1b[93m{}\x1b[0m", line) // Yellow for other
                     }
-                } else if
-                    line.contains("views:") ||
-                    line.contains("likes:") ||
-                    line.contains("bookmarks:")
+                } else if line.contains("views:")
+                    || line.contains("likes:")
+                    || line.contains("bookmarks:")
                 {
                     let stats_regex = Regex::new(r"(\d+)").expect("Invalid regex pattern");
-                    stats_regex.replace_all(line, "\x1b[1;95m$1\x1b[0m").to_string()
+                    stats_regex
+                        .replace_all(line, "\x1b[1;95m$1\x1b[0m")
+                        .to_string()
                 } else if line.starts_with("%") {
                     format!("{}{}\x1b[0m", comment_color, line)
                 } else {
@@ -1225,15 +1184,20 @@ impl Colorizer {
                 // General network highlighting for all other query types
                 let asn_regex = Regex::new(r"(AS\d+)").expect("Invalid regex pattern");
                 let ip_regex = Regex::new(
-                    r"(\d+\.\d+\.\d+\.\d+(?:/\d+)?|[0-9a-fA-F:]+::[0-9a-fA-F:]*(?:/\d+)?)"
-                ).unwrap();
-                let domain_regex = Regex::new(
-                    r"([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}"
-                ).unwrap();
+                    r"(\d+\.\d+\.\d+\.\d+(?:/\d+)?|[0-9a-fA-F:]+::[0-9a-fA-F:]*(?:/\d+)?)",
+                )
+                .unwrap();
+                let domain_regex =
+                    Regex::new(r"([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}")
+                        .unwrap();
 
                 let mut result = asn_regex.replace_all(line, "\x1b[93m$1\x1b[0m").to_string();
-                result = ip_regex.replace_all(&result, "\x1b[92m$1\x1b[0m").to_string();
-                result = domain_regex.replace_all(&result, "\x1b[94m$1\x1b[0m").to_string();
+                result = ip_regex
+                    .replace_all(&result, "\x1b[92m$1\x1b[0m")
+                    .to_string();
+                result = domain_regex
+                    .replace_all(&result, "\x1b[94m$1\x1b[0m")
+                    .to_string();
 
                 if line.starts_with("%") {
                     format!("{}{}\x1b[0m", comment_color, result)
