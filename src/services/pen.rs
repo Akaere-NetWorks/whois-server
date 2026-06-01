@@ -201,7 +201,7 @@ impl PenService {
                     || email_lower.contains(&query_lower)
                 {
                     results.push(entry.to_whois_format());
-                    if results.len() >= max_results + 1 {
+                    if results.len() > max_results {
                         return false; // Stop iteration
                     }
                 }
