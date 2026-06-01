@@ -25,11 +25,11 @@ use crate::config::{
 };
 
 // Core service imports (always compiled)
+#[cfg(feature = "bgp-irr")]
+use crate::services::query_whois;
 use crate::services::{
     process_desc_query, query_with_iana_referral, rdap::query_rdap_with_whois_fallback,
 };
-#[cfg(feature = "bgp-irr")]
-use crate::services::query_whois;
 
 #[cfg(feature = "bgp")]
 use crate::services::{
@@ -109,7 +109,7 @@ use crate::services::process_rdap_query;
 use crate::services::pixiv::process_pixiv_query;
 
 #[cfg(feature = "meal")]
-use crate::services::{query_random_meal, query_random_chinese_meal};
+use crate::services::{query_random_chinese_meal, query_random_meal};
 
 #[cfg(feature = "pkg-alma")]
 use crate::services::process_alma_query;
@@ -117,28 +117,28 @@ use crate::services::process_alma_query;
 use crate::services::process_aosc_query;
 #[cfg(feature = "pkg-aur")]
 use crate::services::process_aur_query;
+#[cfg(feature = "pkg-cargo")]
+use crate::services::process_cargo_query;
 #[cfg(feature = "pkg-debian")]
 use crate::services::process_debian_query;
 #[cfg(feature = "pkg-epel")]
 use crate::services::process_epel_query;
-#[cfg(feature = "pkg-ubuntu")]
-use crate::services::process_ubuntu_query;
 #[cfg(feature = "pkg-nixos")]
 use crate::services::process_nixos_query;
+#[cfg(feature = "pkg-npm")]
+use crate::services::process_npm_query;
 #[cfg(feature = "pkg-opensuse")]
 use crate::services::process_opensuse_query;
 #[cfg(feature = "pkg-openwrt")]
 use crate::services::process_openwrt_query;
-#[cfg(feature = "pkg-npm")]
-use crate::services::process_npm_query;
 #[cfg(feature = "pkg-pypi")]
 use crate::services::process_pypi_query;
-#[cfg(feature = "pkg-cargo")]
-use crate::services::process_cargo_query;
-#[cfg(feature = "pkg-modrinth")]
-use crate::services::query_modrinth;
+#[cfg(feature = "pkg-ubuntu")]
+use crate::services::process_ubuntu_query;
 #[cfg(feature = "pkg-curseforge")]
 use crate::services::query_curseforge;
+#[cfg(feature = "pkg-modrinth")]
+use crate::services::query_modrinth;
 
 /// Process a WHOIS query and return the response (for use by SSH server and other modules)
 pub async fn process_query(
@@ -161,11 +161,10 @@ pub async fn process_query(
                 log_debug!("Detected .dn42 domain, using DN42 query");
                 return process_dn42_query_managed(domain).await;
             }
-            let domain_clone = domain.clone();
             query_rdap_with_whois_fallback(
                 domain,
                 RdapQueryType::Domain,
-                query_with_iana_referral(&domain_clone),
+                query_with_iana_referral(domain),
             )
             .await
         }
@@ -176,11 +175,10 @@ pub async fn process_query(
                 log_debug!("Detected private IPv4 address, using DN42 query");
                 return process_dn42_query_managed(query).await;
             }
-            let query_str = query.to_string();
             query_rdap_with_whois_fallback(
                 query,
                 RdapQueryType::Ip,
-                query_with_iana_referral(&query_str),
+                query_with_iana_referral(query),
             )
             .await
         }
@@ -191,11 +189,10 @@ pub async fn process_query(
                 log_debug!("Detected private IPv6 address, using DN42 query");
                 return process_dn42_query_managed(query).await;
             }
-            let query_str = query.to_string();
             query_rdap_with_whois_fallback(
                 query,
                 RdapQueryType::Ip,
-                query_with_iana_referral(&query_str),
+                query_with_iana_referral(query),
             )
             .await
         }
@@ -206,11 +203,10 @@ pub async fn process_query(
                 log_debug!("Detected DN42 ASN, using DN42 query");
                 return process_dn42_query_managed(asn).await;
             }
-            let asn_clone = asn.clone();
             query_rdap_with_whois_fallback(
                 asn,
                 RdapQueryType::Autnum,
-                query_with_iana_referral(&asn_clone),
+                query_with_iana_referral(asn),
             )
             .await
         }
@@ -234,11 +230,10 @@ pub async fn process_query(
                     }
                 }
             }
-            let asn_clone = asn_query.clone();
             query_rdap_with_whois_fallback(
                 &asn_query,
                 RdapQueryType::Autnum,
-                query_with_iana_referral(&asn_clone),
+                query_with_iana_referral(&asn_query),
             )
             .await
         }
@@ -593,11 +588,10 @@ pub async fn process_query(
             #[cfg(not(feature = "rdap-explicit"))]
             {
                 use rdap::QueryType as RdapQueryType;
-                let q_clone = base_query.clone();
                 crate::services::rdap::query_rdap_with_whois_fallback(
                     base_query,
                     RdapQueryType::Domain,
-                    crate::services::query_with_iana_referral(&q_clone),
+                    crate::services::query_with_iana_referral(base_query),
                 )
                 .await
             }
@@ -661,13 +655,7 @@ pub async fn process_query(
             // RDAP-first with WHOIS fallback, then DN42 if still not found
             let rdap_whois_result = match crate::services::rdap::detect_rdap_query_type(q) {
                 Some(rdap_qt) => {
-                    let q_clone = q.to_string();
-                    query_rdap_with_whois_fallback(
-                        q,
-                        rdap_qt,
-                        query_with_iana_referral(&q_clone),
-                    )
-                    .await
+                    query_rdap_with_whois_fallback(q, rdap_qt, query_with_iana_referral(q)).await
                 }
                 None => query_with_iana_referral(q).await,
             };

@@ -10,9 +10,17 @@ use crate::storage::lmdb::LmdbStorage;
 use crate::{log_debug, log_error};
 use anyhow::Result;
 use regex::Regex;
-use std::sync::LazyLock;
 use serde::{Deserialize, Serialize};
+use std::sync::{Arc, LazyLock, OnceLock};
 use std::time::{SystemTime, UNIX_EPOCH};
+
+static HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
+    reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36")
+        .build()
+        .unwrap_or_default()
+});
 
 const MAX_RETRIES: u32 = 3;
 
@@ -146,8 +154,7 @@ struct DNSPodBeian {
 }
 
 static DOMAIN_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^[\w\-]+(\.[\w\-]+)+[\w\-]*$")
-        .expect("Invalid ICP domain regex pattern")
+    Regex::new(r"^[\w\-]+(\.[\w\-]+)+[\w\-]*$").expect("Invalid ICP domain regex pattern")
 });
 
 /// Clean and validate domain input
@@ -182,11 +189,10 @@ async fn query_baidu_icp(domain: &str) -> Result<String> {
         domain: domain.to_string(),
     };
 
-    let client = reqwest::Client::new();
     let mut last_error = None;
 
     for attempt in 1..=MAX_RETRIES {
-        let response = client
+        let response = HTTP_CLIENT
             .post(BAIDU_ICP_URL)
             .header("Host", "cloud.baidu.com")
             .header("Origin", "https://cloud.baidu.com")
@@ -196,10 +202,6 @@ async fn query_baidu_icp(domain: &str) -> Result<String> {
             )
             .header("Accept", "application/json")
             .header("Content-Type", "application/json")
-            .header(
-                "User-Agent",
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
-            )
             .json(&req_body)
             .send()
             .await;
@@ -266,17 +268,12 @@ async fn query_dnspod_icp(domain: &str) -> Result<String> {
         api: "Tools.Check.Website".to_string(),
     };
 
-    let client = reqwest::Client::new();
-    let response = client
+    let response = HTTP_CLIENT
         .post(DNSPOD_URL)
         .header("Origin", "https://tool.dnspod.cn")
         .header("Referer", "https://tool.dnspod.cn")
         .header("Accept", "application/json")
         .header("Content-Type", "application/json")
-        .header(
-            "User-Agent",
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
-        )
         .json(&req_body)
         .send()
         .await
@@ -361,6 +358,17 @@ fn format_icp_result(
     result
 }
 
+static ICP_CACHE_INSTANCE: OnceLock<Arc<ICPCache>> = OnceLock::new();
+
+fn get_icp_cache() -> Result<Arc<ICPCache>> {
+    if let Some(cache) = ICP_CACHE_INSTANCE.get() {
+        return Ok(cache.clone());
+    }
+    let cache = Arc::new(ICPCache::new()?);
+    ICP_CACHE_INSTANCE.set(cache.clone()).ok();
+    Ok(cache)
+}
+
 /// Process ICP query (public interface)
 pub async fn process_icp_query(domain: &str) -> String {
     // Clean domain input
@@ -378,7 +386,7 @@ pub async fn process_icp_query(domain: &str) -> String {
     log_debug!("Querying ICP information for domain: {}", clean_domain);
 
     // Check cache first
-    let cache = match ICPCache::new() {
+    let cache = match get_icp_cache() {
         Ok(c) => c,
         Err(e) => {
             log_error!("Failed to initialize ICP cache: {}", e);

@@ -154,67 +154,144 @@ async fn process_whois_query(
 }
 
 fn detect_query_type(query: &str) -> String {
-    let query_lower = query.to_lowercase();
-    let query_trimmed = query.trim();
-
-    // 域名检测
-    if query_trimmed.contains('.') && query_trimmed.parse::<std::net::IpAddr>().is_err() {
-        if query_lower.ends_with("-geo") {
-            return "domain-geo".to_string();
-        }
-        return "domain".to_string();
+    use crate::core::QueryType;
+    let qt = crate::core::analyze_query(query);
+    match qt {
+        QueryType::Domain(_) => "Domain",
+        QueryType::IPv4(_) => "IPv4",
+        QueryType::IPv6(_) => "IPv6",
+        QueryType::ASN(_) => "ASN",
+        QueryType::BareASN(_) => "ASN",
+        QueryType::Help => "Help",
+        QueryType::UpdatePatch => "Update-Patch",
+        QueryType::Desc(_) => "Description",
+        QueryType::Rdap(_) => "RDAP",
+        QueryType::Unknown(_) => "Unknown",
+        // Feature-gated variants
+        #[cfg(feature = "bgp")]
+        QueryType::BGPTool(_) => "BGP Tool",
+        #[cfg(feature = "bgp")]
+        QueryType::Irr(_) => "IRR Explorer",
+        #[cfg(feature = "bgp")]
+        QueryType::LookingGlass(_) => "Looking Glass",
+        #[cfg(feature = "bgp")]
+        QueryType::Rpki(_, _) => "RPKI",
+        #[cfg(feature = "bgp-prefixes")]
+        QueryType::Prefixes(_) => "BGP Prefixes",
+        #[cfg(feature = "bgp-manrs")]
+        QueryType::Manrs(_) => "MANRS",
+        #[cfg(feature = "peeringdb")]
+        QueryType::PeeringDB(_) => "PeeringDB",
+        #[cfg(feature = "geo")]
+        QueryType::Geo(_) => "Geo",
+        #[cfg(feature = "geo")]
+        QueryType::RirGeo(_) => "RIR Geo",
+        #[cfg(feature = "dns")]
+        QueryType::Dns(_) => "DNS",
+        #[cfg(feature = "ntp")]
+        QueryType::Ntp(_) => "NTP",
+        #[cfg(feature = "ping")]
+        QueryType::Ping(_) => "Ping",
+        #[cfg(feature = "traceroute")]
+        QueryType::Trace(_) => "Traceroute",
+        #[cfg(feature = "ssl")]
+        QueryType::Ssl(_) => "SSL",
+        #[cfg(feature = "crt")]
+        QueryType::Crt(_) => "Certificate Transparency",
+        #[cfg(feature = "cfstatus")]
+        QueryType::CfStatus(_) => "Cloudflare Status",
+        #[cfg(feature = "email")]
+        QueryType::EmailSearch(_) => "Email Search",
+        #[cfg(feature = "minecraft")]
+        QueryType::Minecraft(_) => "Minecraft",
+        #[cfg(feature = "minecraft")]
+        QueryType::MinecraftUser(_) => "Minecraft User",
+        #[cfg(feature = "steam")]
+        QueryType::Steam(_) => "Steam",
+        #[cfg(feature = "steam")]
+        QueryType::SteamSearch(_) => "Steam Search",
+        #[cfg(feature = "imdb")]
+        QueryType::Imdb(_) => "IMDb",
+        #[cfg(feature = "imdb")]
+        QueryType::ImdbSearch(_) => "IMDb Search",
+        #[cfg(feature = "acgc")]
+        QueryType::Acgc(_) => "ACGC",
+        #[cfg(feature = "github")]
+        QueryType::GitHub(_) => "GitHub",
+        #[cfg(feature = "wikipedia")]
+        QueryType::Wikipedia(_) => "Wikipedia",
+        #[cfg(feature = "lyric")]
+        QueryType::Lyric(_) => "Lyric",
+        #[cfg(feature = "pen")]
+        QueryType::Pen(_) => "PEN",
+        #[cfg(feature = "pixiv")]
+        QueryType::Pixiv(_) => "Pixiv",
+        #[cfg(feature = "icp")]
+        QueryType::Icp(_) => "ICP",
+        #[cfg(feature = "meal")]
+        QueryType::Meal => "Meal",
+        #[cfg(feature = "meal")]
+        QueryType::MealCN => "Meal (CN)",
+        #[cfg(feature = "plugins")]
+        QueryType::Plugin(suffix, _) => return format!("Plugin ({})", suffix),
+        // bgp-irr variants
+        #[cfg(feature = "bgp-irr")]
+        QueryType::Radb(_) => "RADB",
+        #[cfg(feature = "bgp-irr")]
+        QueryType::Altdb(_) => "ALTDB",
+        #[cfg(feature = "bgp-irr")]
+        QueryType::Afrinic(_) => "AFRINIC",
+        #[cfg(feature = "bgp-irr")]
+        QueryType::Apnic(_) => "APNIC",
+        #[cfg(feature = "bgp-irr")]
+        QueryType::ArinIrr(_) => "ARIN",
+        #[cfg(feature = "bgp-irr")]
+        QueryType::Bell(_) => "BELL",
+        #[cfg(feature = "bgp-irr")]
+        QueryType::Jpirr(_) => "JPIRR",
+        #[cfg(feature = "bgp-irr")]
+        QueryType::Lacnic(_) => "LACNIC",
+        #[cfg(feature = "bgp-irr")]
+        QueryType::Level3(_) => "Level3",
+        #[cfg(feature = "bgp-irr")]
+        QueryType::Nttcom(_) => "NTTCOM",
+        #[cfg(feature = "bgp-irr")]
+        QueryType::RipeIrr(_) => "RIPE",
+        #[cfg(feature = "bgp-irr")]
+        QueryType::Ris(_) => "RIS",
+        #[cfg(feature = "bgp-irr")]
+        QueryType::Tc(_) => "TC",
+        // pkg variants
+        #[cfg(feature = "pkg-alma")]
+        QueryType::Alma(_) => "AlmaLinux",
+        #[cfg(feature = "pkg-aosc")]
+        QueryType::Aosc(_) => "AOSC",
+        #[cfg(feature = "pkg-aur")]
+        QueryType::Aur(_) => "AUR",
+        #[cfg(feature = "pkg-debian")]
+        QueryType::Debian(_) => "Debian",
+        #[cfg(feature = "pkg-epel")]
+        QueryType::Epel(_) => "EPEL",
+        #[cfg(feature = "pkg-ubuntu")]
+        QueryType::Ubuntu(_) => "Ubuntu",
+        #[cfg(feature = "pkg-nixos")]
+        QueryType::NixOs(_) => "NixOS",
+        #[cfg(feature = "pkg-opensuse")]
+        QueryType::OpenSuse(_) => "OpenSUSE",
+        #[cfg(feature = "pkg-openwrt")]
+        QueryType::OpenWrt(_) => "OpenWrt",
+        #[cfg(feature = "pkg-npm")]
+        QueryType::Npm(_) => "NPM",
+        #[cfg(feature = "pkg-pypi")]
+        QueryType::Pypi(_) => "PyPI",
+        #[cfg(feature = "pkg-cargo")]
+        QueryType::Cargo(_) => "Cargo",
+        #[cfg(feature = "pkg-modrinth")]
+        QueryType::Modrinth(_) => "Modrinth",
+        #[cfg(feature = "pkg-curseforge")]
+        QueryType::CurseForge(_) => "CurseForge",
     }
-
-    // IP地址检测
-    if query_trimmed.parse::<std::net::IpAddr>().is_ok() {
-        if query_lower.ends_with("-geo") {
-            return "ip-geo".to_string();
-        }
-        return "ip".to_string();
-    }
-
-    // CIDR检测
-    if query_trimmed.contains('/') {
-        return "cidr".to_string();
-    }
-
-    // ASN检测
-    if query_lower.starts_with("as")
-        && query_trimmed.len() > 2
-        && query_trimmed[2..].parse::<u32>().is_ok()
-    {
-        return "asn".to_string();
-    }
-
-    // DN42相关检测
-    if query_lower.ends_with("-dn42") || query_lower.ends_with("-mnt") {
-        return "dn42".to_string();
-    }
-
-    // 邮箱检测
-    if query_trimmed.contains('@') {
-        return "email".to_string();
-    }
-
-    // 特殊服务检测
-    if query_lower.starts_with("steam:") {
-        return "steam".to_string();
-    }
-
-    if query_lower.starts_with("github:") {
-        return "github".to_string();
-    }
-
-    if query_lower.starts_with("package:") {
-        return "package".to_string();
-    }
-
-    if query_lower.starts_with("minecraft:") {
-        return "minecraft".to_string();
-    }
-
-    // 其他
-    "generic".to_string()
+    .to_string()
 }
 
 // API文档页面

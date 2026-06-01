@@ -2,7 +2,16 @@ use crate::storage::lmdb::LmdbStorage;
 use crate::{log_debug, log_info, log_warn};
 use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
+use std::sync::{Arc, LazyLock, OnceLock};
 use std::time::{SystemTime, UNIX_EPOCH};
+
+static HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
+    reqwest::Client::builder()
+        .user_agent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36")
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .unwrap_or_default()
+});
 /// IANA Private Enterprise Number entry
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PenEntry {
@@ -180,13 +189,8 @@ impl PenService {
         let mut results = Vec::new();
         let max_results = 20; // Limit results to avoid overwhelming output
 
-        let keys = self.storage.list_keys()?;
-        for key in keys {
-            if !key.starts_with("pen_") {
-                continue;
-            }
-
-            if let Ok(Some(entry)) = self.storage.get_json::<PenEntry>(&key) {
+        self.storage.iter_prefix("pen_", |_key, value_json| {
+            if let Ok(entry) = serde_json::from_str::<PenEntry>(value_json) {
                 let org_lower = entry.organization.to_lowercase();
                 let contact_lower = entry.contact.to_lowercase();
                 let email_lower = entry.email.to_lowercase();
@@ -197,16 +201,21 @@ impl PenService {
                     || email_lower.contains(&query_lower)
                 {
                     results.push(entry.to_whois_format());
-
-                    if results.len() >= max_results {
-                        results.push(format!(
-                            "\n% Search limited to {} results. Please refine your query for more specific results.",
-                            max_results
-                        ));
-                        break;
+                    if results.len() >= max_results + 1 {
+                        return false; // Stop iteration
                     }
                 }
             }
+            true
+        })?;
+
+        // Trim to max_results and add notice if needed
+        if results.len() > max_results {
+            results.truncate(max_results);
+            results.push(format!(
+                "\n% Search limited to {} results. Please refine your query for more specific results.",
+                max_results
+            ));
         }
 
         if results.is_empty() {
@@ -304,11 +313,7 @@ impl PenService {
             self.data_url
         );
 
-        let client = reqwest::Client::builder()
-            .user_agent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36")
-            .build()?;
-
-        let response = client.get(&self.data_url).send().await?;
+        let response = HTTP_CLIENT.get(&self.data_url).send().await?;
 
         if !response.status().is_success() {
             return Err(anyhow!(
@@ -451,15 +456,26 @@ impl PenService {
     }
 }
 
+static PEN_SERVICE_INSTANCE: OnceLock<Arc<PenService>> = OnceLock::new();
+
+fn get_pen_service() -> Result<Arc<PenService>> {
+    if let Some(service) = PEN_SERVICE_INSTANCE.get() {
+        return Ok(service.clone());
+    }
+    let service = Arc::new(PenService::new()?);
+    PEN_SERVICE_INSTANCE.set(service.clone()).ok();
+    Ok(service)
+}
+
 /// Process PEN query (public function for use in query_processor)
 pub async fn process_pen_query(query: &str) -> Result<String> {
-    let service = PenService::new()?;
+    let service = get_pen_service()?;
     service.handle_query(query).await
 }
 
 /// Check if PEN cache needs update (for periodic maintenance)
 pub async fn pen_needs_update() -> Result<bool> {
-    let service = PenService::new()?;
+    let service = get_pen_service()?;
     service.needs_update()
 }
 
@@ -480,7 +496,7 @@ pub async fn pen_update_cache() -> Result<()> {
     }
 
     let result = async {
-        let service = PenService::new()?;
+        let service = get_pen_service()?;
         service.force_update().await
     }
     .await;

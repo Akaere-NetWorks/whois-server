@@ -5,7 +5,17 @@ use anyhow::Result;
 use reqwest;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::sync::{Arc, LazyLock, OnceLock};
 use std::time::{SystemTime, UNIX_EPOCH};
+
+static HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
+    reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .pool_max_idle_per_host(10)
+        .user_agent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36")
+        .build()
+        .unwrap_or_default()
+});
 #[derive(Debug, Deserialize, Serialize)]
 pub struct PeeringDBResponse<T> {
     pub data: Vec<T>,
@@ -178,6 +188,17 @@ pub struct InternetExchangeInfo {
     pub ixfac_set: Option<Vec<Value>>,
 }
 
+static PEERINGDB_CACHE_INSTANCE: OnceLock<Arc<PeeringDBCache>> = OnceLock::new();
+
+fn get_peeringdb_cache() -> Result<Arc<PeeringDBCache>> {
+    if let Some(cache) = PEERINGDB_CACHE_INSTANCE.get() {
+        return Ok(cache.clone());
+    }
+    let cache = Arc::new(PeeringDBCache::new()?);
+    PEERINGDB_CACHE_INSTANCE.set(cache.clone()).ok();
+    Ok(cache)
+}
+
 /// Query PeeringDB API for ASN information
 pub async fn query_peeringdb_asn(asn: &str) -> Result<String> {
     // Parse ASN number (remove AS prefix if present)
@@ -195,23 +216,18 @@ pub async fn query_peeringdb_asn(asn: &str) -> Result<String> {
 
     // Check cache first
     let cache_key = format!("asn:{}", asn_num);
-    let cache = PeeringDBCache::new()?;
+    let cache = get_peeringdb_cache()?;
 
     if let Some(cached_response) = cache.get(&cache_key)? {
         log_debug!("Returning cached PeeringDB response for ASN: {}", asn_num);
         return Ok(cached_response);
     }
 
-    let client = reqwest::Client::new();
     let url = format!("https://www.peeringdb.com/api/net?asn={}&depth=2", asn_num);
 
     log_debug!("PeeringDB API URL: {}", url);
 
-    let response = client
-        .get(&url)
-        .header("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36")
-        .send()
-        .await?;
+    let response = HTTP_CLIENT.get(&url).send().await?;
 
     log_debug!("PeeringDB API response status: {}", response.status());
 
@@ -279,23 +295,18 @@ pub async fn query_peeringdb_ix(ix_id: &str) -> Result<String> {
 
     // Check cache first
     let cache_key = format!("ix:{}", ix_num);
-    let cache = PeeringDBCache::new()?;
+    let cache = get_peeringdb_cache()?;
 
     if let Some(cached_response) = cache.get(&cache_key)? {
         log_debug!("Returning cached PeeringDB response for IX: {}", ix_num);
         return Ok(cached_response);
     }
 
-    let client = reqwest::Client::new();
     let url = format!("https://www.peeringdb.com/api/ix?id={}&depth=2", ix_num);
 
     log_debug!("PeeringDB API URL: {}", url);
 
-    let response = client
-        .get(&url)
-        .header("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36")
-        .send()
-        .await?;
+    let response = HTTP_CLIENT.get(&url).send().await?;
 
     log_debug!("PeeringDB API response status: {}", response.status());
 

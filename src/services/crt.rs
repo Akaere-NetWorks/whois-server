@@ -2,6 +2,7 @@ use crate::{log_debug, log_error, log_warn};
 use anyhow::Result;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::{Deserialize, Serialize};
+use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 /// Certificate entry from crt.sh API
 #[derive(Debug, Deserialize, Serialize)]
@@ -343,9 +344,17 @@ impl CrtService {
     }
 }
 
+static CRT_SERVICE_INSTANCE: OnceLock<Arc<CrtService>> = OnceLock::new();
+
+fn get_crt_service() -> Arc<CrtService> {
+    CRT_SERVICE_INSTANCE
+        .get_or_init(|| Arc::new(CrtService::new()))
+        .clone()
+}
+
 /// Process Certificate Transparency query with -CRT suffix
 pub async fn process_crt_query(query: &str) -> Result<String> {
-    let crt_service = CrtService::new();
+    let crt_service = get_crt_service();
 
     if let Some(domain) = CrtService::parse_crt_query(query) {
         log_debug!("Processing CRT query for domain: {}", domain);

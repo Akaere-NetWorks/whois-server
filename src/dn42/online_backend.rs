@@ -170,14 +170,39 @@ impl DN42OnlineFetcher {
         );
         let ip_int = u32::from(ip);
 
-        // Search from the query mask down to /0
-        for mask in (0..=query_mask).rev() {
+        // Try common prefix lengths first (most likely matches in DN42)
+        let common_masks: Vec<u8> = [24, 16, 32, 28, 8, 0]
+            .into_iter()
+            .filter(|&m| m <= query_mask)
+            .collect();
+
+        for &mask in &common_masks {
             let network_int = if mask > 0 {
                 ip_int & (0xffffffff << (32 - mask))
             } else {
                 0
             };
+            let network_ip = std::net::Ipv4Addr::from(network_int);
+            let network_str = format!("{},{}", network_ip, mask);
 
+            log_debug!("DN42 Online: Checking common IPv4 network: {}", network_str);
+            if let Some(content) = self.fetch_file(object_type, &network_str).await? {
+                log_debug!("DN42 Online: Found matching IPv4 network: {}", network_str);
+                return Ok(Some(content));
+            }
+        }
+
+        // Fallback to remaining masks
+        let common_set: std::collections::HashSet<u8> = common_masks.into_iter().collect();
+        for mask in (0..=query_mask).rev() {
+            if common_set.contains(&mask) {
+                continue;
+            }
+            let network_int = if mask > 0 {
+                ip_int & (0xffffffff << (32 - mask))
+            } else {
+                0
+            };
             let network_ip = std::net::Ipv4Addr::from(network_int);
             let network_str = format!("{},{}", network_ip, mask);
 
@@ -211,14 +236,39 @@ impl DN42OnlineFetcher {
         );
         let ip_int = u128::from(ip);
 
-        // Search from the query mask down to /0
-        for mask in (0..=query_mask).rev() {
+        // Try common prefix lengths first (most likely matches in DN42)
+        let common_masks: Vec<u8> = [48, 32, 64, 24, 16, 128, 96, 80, 112, 56, 40, 8, 0]
+            .into_iter()
+            .filter(|&m| m <= query_mask)
+            .collect();
+
+        for &mask in &common_masks {
             let network_int = if mask > 0 {
                 ip_int & (0xffffffffffffffffffffffffffffffff << (128 - mask))
             } else {
                 0
             };
+            let network_ip = std::net::Ipv6Addr::from(network_int);
+            let network_str = format!("{},{}", network_ip, mask);
 
+            log_debug!("DN42 Online: Checking common IPv6 network: {}", network_str);
+            if let Some(content) = self.fetch_file(object_type, &network_str).await? {
+                log_debug!("DN42 Online: Found matching IPv6 network: {}", network_str);
+                return Ok(Some(content));
+            }
+        }
+
+        // If common masks didn't match, try remaining masks (exclude already-tried ones)
+        let common_set: std::collections::HashSet<u8> = common_masks.into_iter().collect();
+        for mask in (0..=query_mask).rev() {
+            if common_set.contains(&mask) {
+                continue; // Already tried
+            }
+            let network_int = if mask > 0 {
+                ip_int & (0xffffffffffffffffffffffffffffffff << (128 - mask))
+            } else {
+                0
+            };
             let network_ip = std::net::Ipv6Addr::from(network_int);
             let network_str = format!("{},{}", network_ip, mask);
 

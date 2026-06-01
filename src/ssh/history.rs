@@ -105,11 +105,12 @@ impl SshConnectionHistory {
             .begin_rw_txn()
             .with_context(|| "Failed to begin write transaction")?;
 
-        // Generate key: IP address + timestamp (for uniqueness and sorting)
+        // Generate key: IP address + timestamp + random suffix (for uniqueness and sorting)
         let key = format!(
-            "{}_{}",
+            "{}_{}_{}",
             record.ip_address,
-            record.timestamp.timestamp_nanos_opt().unwrap_or(0)
+            record.timestamp.timestamp_nanos_opt().unwrap_or(0),
+            rand::random::<u16>()
         );
 
         // Serialize record
@@ -172,7 +173,7 @@ impl SshConnectionHistory {
     /// Clean up old records (older than MAX_RECORD_AGE_DAYS)
     fn cleanup_old_records(&self) -> Result<()> {
         let cutoff_time = Utc::now() - Duration::days(MAX_RECORD_AGE_DAYS);
-        let txn = self
+        let mut txn = self
             .env
             .begin_rw_txn()
             .with_context(|| "Failed to begin write transaction for cleanup")?;
@@ -203,9 +204,9 @@ impl SshConnectionHistory {
 
         // Delete old records
         let deleted_count = keys_to_delete.len();
-        for _key in keys_to_delete {
-            // Note: We'd need to implement proper deletion here
-            // For now, we'll skip deletion to avoid complexity
+        for key in &keys_to_delete {
+            // Use ok() to ignore NotFound errors
+            let _ = txn.del(self.db, key, None);
         }
 
         txn.commit()

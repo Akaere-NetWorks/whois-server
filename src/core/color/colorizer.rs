@@ -23,24 +23,47 @@ use std::sync::LazyLock;
 
 // Pre-compiled regex patterns for colorization
 // These are hardcoded patterns validated at compile time by tests
-static ASN_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(AS\d+)").expect("Invalid ASN regex"));
-static IP_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(\d+\.\d+\.\d+\.\d+(?:/\d+)?|[0-9a-fA-F:]+::[0-9a-fA-F:]*(?:/\d+)?)").expect("Invalid IP regex"));
-static DOMAIN_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}").expect("Invalid domain regex"));
-static ID_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(\d+)").expect("Invalid ID regex"));
-static URL_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(https?://[^\s]+)").expect("Invalid URL regex"));
-static SIZE_BYTES_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(\d+)\s*bytes").expect("Invalid size bytes regex"));
-static MS_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(\d+)\s*ms").expect("Invalid ms regex"));
-static NEGATIVE_MS_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(-?\d+\.?\d*)\s*ms").expect("Invalid negative ms regex"));
-static PRICE_DISCOUNT_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(\$[\d,]+\.?\d*|Free)").expect("Invalid price discount regex"));
-static PRICE_ONLY_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(\$[\d,]+\.?\d*)").expect("Invalid price-only regex"));
-static DISCOUNT_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(\d+%↓)").expect("Invalid discount regex"));
-static IMDB_ID_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(tt\d+)").expect("Invalid IMDB ID regex"));
-static YEAR_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(\d{4})").expect("Invalid year regex"));
-static MEASUREMENT_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(\d+[\.\d]*\s*(cm|kg|m|ft|in))").expect("Invalid measurement regex"));
-static DURATION_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(\d+\s*min|\d+\s*hours?)").expect("Invalid duration regex"));
-static RATING_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(\d+\.\d+/10)").expect("Invalid rating regex"));
-static IPV4_ONLY_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(\d+\.\d+\.\d+\.\d+)").expect("Invalid IPv4 regex"));
-static IPV6_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"([0-9a-fA-F:]+::[0-9a-fA-F:]*)").expect("Invalid IPv6 regex"));
+static ASN_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(AS\d+)").expect("Invalid ASN regex"));
+static IP_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(\d+\.\d+\.\d+\.\d+(?:/\d+)?|[0-9a-fA-F:]+::[0-9a-fA-F:]*(?:/\d+)?)")
+        .expect("Invalid IP regex")
+});
+static DOMAIN_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}")
+        .expect("Invalid domain regex")
+});
+static ID_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(\d+)").expect("Invalid ID regex"));
+static URL_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(https?://[^\s]+)").expect("Invalid URL regex"));
+static SIZE_BYTES_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(\d+)\s*bytes").expect("Invalid size bytes regex"));
+static MS_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(\d+)\s*ms").expect("Invalid ms regex"));
+static NEGATIVE_MS_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(-?\d+\.?\d*)\s*ms").expect("Invalid negative ms regex"));
+static PRICE_DISCOUNT_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(\$[\d,]+\.?\d*|Free)").expect("Invalid price discount regex"));
+static PRICE_ONLY_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(\$[\d,]+\.?\d*)").expect("Invalid price-only regex"));
+static DISCOUNT_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(\d+%↓)").expect("Invalid discount regex"));
+static IMDB_ID_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(tt\d+)").expect("Invalid IMDB ID regex"));
+static YEAR_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(\d{4})").expect("Invalid year regex"));
+static MEASUREMENT_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(\d+[\.\d]*\s*(cm|kg|m|ft|in))").expect("Invalid measurement regex")
+});
+static DURATION_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(\d+\s*min|\d+\s*hours?)").expect("Invalid duration regex"));
+static RATING_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(\d+\.\d+/10)").expect("Invalid rating regex"));
+static IPV4_ONLY_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(\d+\.\d+\.\d+\.\d+)").expect("Invalid IPv4 regex"));
+static IPV6_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"([0-9a-fA-F:]+::[0-9a-fA-F:]*)").expect("Invalid IPv6 regex"));
 
 pub struct Colorizer {
     scheme: ColorScheme,
@@ -203,11 +226,10 @@ impl Colorizer {
             }
             // Status/state - conditional colors
             "status" | "state" | "rpki-status" | "validation" => {
-                if value.trim().to_lowercase().contains("valid")
-                    && !value.trim().to_lowercase().contains("invalid")
-                {
+                let value_lower = value.trim().to_lowercase();
+                if value_lower.contains("valid") && !value_lower.contains("invalid") {
                     format!("\x1b[1;92m{}:\x1b[0m \x1b[92m{}\x1b[0m", attr, value) // Bright green for valid
-                } else if value.trim().to_lowercase().contains("invalid") {
+                } else if value_lower.contains("invalid") {
                     format!("\x1b[1;91m{}:\x1b[0m \x1b[91m{}\x1b[0m", attr, value) // Bright red for invalid
                 } else {
                     format!("\x1b[1;93m{}:\x1b[0m \x1b[93m{}\x1b[0m", attr, value) // Bright yellow for unknown
@@ -418,11 +440,10 @@ impl Colorizer {
                 format!("\x1b[1;94m{}:\x1b[0m {}", attr, colored_value)
             }
             "content-rating" => {
-                if value.to_lowercase().contains("safe") {
+                let value_lower = value.to_lowercase();
+                if value_lower.contains("safe") {
                     format!("\x1b[92m{}:\x1b[0m \x1b[92m{}\x1b[0m", attr, value) // Green for safe
-                } else if value.to_lowercase().contains("r-18")
-                    || value.to_lowercase().contains("r18")
-                {
+                } else if value_lower.contains("r-18") || value_lower.contains("r18") {
                     format!("\x1b[91m{}:\x1b[0m \x1b[91m{}\x1b[0m", attr, value) // Red for R-18
                 } else {
                     format!("\x1b[93m{}:\x1b[0m \x1b[93m{}\x1b[0m", attr, value) // Yellow for other ratings
@@ -466,9 +487,10 @@ impl Colorizer {
                 format!("\x1b[93m{}:\x1b[0m \x1b[93m{}\x1b[0m", attr, value) // Yellow
             }
             "gender" => {
-                if value.contains("女") || value.to_lowercase().contains("female") {
+                let value_lower = value.to_lowercase();
+                if value.contains("女") || value_lower.contains("female") {
                     format!("\x1b[1;95m{}:\x1b[0m \x1b[95m{}\x1b[0m", attr, value) // Bright magenta for female
-                } else if value.contains("男") || value.to_lowercase().contains("male") {
+                } else if value.contains("男") || value_lower.contains("male") {
                     format!("\x1b[1;94m{}:\x1b[0m \x1b[94m{}\x1b[0m", attr, value) // Bright blue for male
                 } else {
                     format!("\x1b[1;96m{}:\x1b[0m \x1b[96m{}\x1b[0m", attr, value) // Bright cyan for other
@@ -613,11 +635,10 @@ impl Colorizer {
             }
             // Status/validation - conditional colors
             "status" | "rpki-status" | "validation" => {
-                if value.trim().to_lowercase().contains("valid")
-                    && !value.trim().to_lowercase().contains("invalid")
-                {
+                let value_lower = value.trim().to_lowercase();
+                if value_lower.contains("valid") && !value_lower.contains("invalid") {
                     format!("\x1b[1;92m{}:\x1b[0m \x1b[92m{}\x1b[0m", attr, value) // Bright green
-                } else if value.trim().to_lowercase().contains("invalid") {
+                } else if value_lower.contains("invalid") {
                     format!("\x1b[1;91m{}:\x1b[0m \x1b[91m{}\x1b[0m", attr, value) // Bright red
                 } else {
                     format!("\x1b[1;93m{}:\x1b[0m \x1b[93m{}\x1b[0m", attr, value) // Bright yellow
@@ -685,11 +706,10 @@ impl Colorizer {
             }
             // Priority - conditional colors
             "priority" => {
-                if value.to_lowercase().contains("required")
-                    || value.to_lowercase().contains("important")
-                {
+                let value_lower = value.to_lowercase();
+                if value_lower.contains("required") || value_lower.contains("important") {
                     format!("\x1b[91m{}:\x1b[0m \x1b[91m{}\x1b[0m", attr, value) // Red for critical
-                } else if value.to_lowercase().contains("standard") {
+                } else if value_lower.contains("standard") {
                     format!("\x1b[93m{}:\x1b[0m \x1b[93m{}\x1b[0m", attr, value) // Yellow for standard
                 } else {
                     format!("\x1b[94m{}:\x1b[0m \x1b[94m{}\x1b[0m", attr, value) // Blue for optional
@@ -714,12 +734,10 @@ impl Colorizer {
             }
             // Build and test status
             "build-status" | "test-status" => {
-                if value.to_lowercase().contains("pass") || value.to_lowercase().contains("success")
-                {
+                let value_lower = value.to_lowercase();
+                if value_lower.contains("pass") || value_lower.contains("success") {
                     format!("\x1b[92m{}:\x1b[0m \x1b[92m{}\x1b[0m", attr, value) // Green for success
-                } else if value.to_lowercase().contains("fail")
-                    || value.to_lowercase().contains("error")
-                {
+                } else if value_lower.contains("fail") || value_lower.contains("error") {
                     format!("\x1b[91m{}:\x1b[0m \x1b[91m{}\x1b[0m", attr, value) // Red for failure
                 } else {
                     format!("\x1b[93m{}:\x1b[0m \x1b[93m{}\x1b[0m", attr, value) // Yellow for unknown/pending
@@ -756,7 +774,12 @@ impl Colorizer {
         let comment_color = if bold_colors { "\x1b[37m" } else { "\x1b[90m" }; // Dim white vs bright black
 
         match query_type {
-            QueryType::Domain(_) | QueryType::IPv4(_) | QueryType::IPv6(_) | QueryType::ASN(_) | QueryType::BareASN(_) | QueryType::Unknown(_) => {
+            QueryType::Domain(_)
+            | QueryType::IPv4(_)
+            | QueryType::IPv6(_)
+            | QueryType::ASN(_)
+            | QueryType::BareASN(_)
+            | QueryType::Unknown(_) => {
                 // General network highlighting for domain/IP/ASN queries
                 let mut result = ASN_REGEX.replace_all(line, "\x1b[93m$1\x1b[0m").to_string();
                 result = IP_REGEX
@@ -846,7 +869,10 @@ impl Colorizer {
             }
 
             #[cfg(feature = "bgp")]
-            QueryType::BGPTool(_) | QueryType::Irr(_) | QueryType::LookingGlass(_) | QueryType::Rpki(_, _) => {
+            QueryType::BGPTool(_)
+            | QueryType::Irr(_)
+            | QueryType::LookingGlass(_)
+            | QueryType::Rpki(_, _) => {
                 let mut result = ASN_REGEX.replace_all(line, "\x1b[93m$1\x1b[0m").to_string();
                 result = IP_REGEX
                     .replace_all(&result, "\x1b[92m$1\x1b[0m")
@@ -872,7 +898,9 @@ impl Colorizer {
                         format!("\x1b[1;96m{}\x1b[0m", line)
                     }
                 } else if line.contains(" A ") && !line.contains("AAAA") {
-                    IPV4_ONLY_REGEX.replace_all(line, "\x1b[92m$1\x1b[0m").to_string()
+                    IPV4_ONLY_REGEX
+                        .replace_all(line, "\x1b[92m$1\x1b[0m")
+                        .to_string()
                 } else if line.contains(" AAAA ") {
                     IPV6_REGEX
                         .replace_all(line, "\x1b[92m$1\x1b[0m")
@@ -1090,9 +1118,10 @@ impl Colorizer {
                         format!("\x1b[1;96m{}\x1b[0m", line)
                     }
                 } else if line.contains("rating:") {
-                    if line.to_lowercase().contains("safe") {
+                    let line_lower = line.to_lowercase();
+                    if line_lower.contains("safe") {
                         format!("\x1b[92m{}\x1b[0m", line)
-                    } else if line.to_lowercase().contains("r-18") {
+                    } else if line_lower.contains("r-18") {
                         format!("\x1b[91m{}\x1b[0m", line)
                     } else {
                         format!("\x1b[93m{}\x1b[0m", line)
@@ -1218,15 +1247,31 @@ impl Colorizer {
             }
 
             #[cfg(any(
-                feature = "email", feature = "bgp-irr", feature = "bgp-manrs",
-                feature = "peeringdb", feature = "bgp-prefixes", feature = "ping",
-                feature = "traceroute", feature = "crt", feature = "cfstatus",
-                feature = "pkg-alma", feature = "pkg-aosc", feature = "pkg-aur",
-                feature = "pkg-cargo", feature = "pkg-debian", feature = "pkg-epel",
-                feature = "pkg-modrinth", feature = "pkg-nixos", feature = "pkg-npm",
-                feature = "pkg-opensuse", feature = "pkg-openwrt", feature = "pkg-pypi",
-                feature = "pkg-ubuntu", feature = "pkg-curseforge",
-                feature = "icp", feature = "rdap-explicit",
+                feature = "email",
+                feature = "bgp-irr",
+                feature = "bgp-manrs",
+                feature = "peeringdb",
+                feature = "bgp-prefixes",
+                feature = "ping",
+                feature = "traceroute",
+                feature = "crt",
+                feature = "cfstatus",
+                feature = "pkg-alma",
+                feature = "pkg-aosc",
+                feature = "pkg-aur",
+                feature = "pkg-cargo",
+                feature = "pkg-debian",
+                feature = "pkg-epel",
+                feature = "pkg-modrinth",
+                feature = "pkg-nixos",
+                feature = "pkg-npm",
+                feature = "pkg-opensuse",
+                feature = "pkg-openwrt",
+                feature = "pkg-pypi",
+                feature = "pkg-ubuntu",
+                feature = "pkg-curseforge",
+                feature = "icp",
+                feature = "rdap-explicit",
             ))]
             _ => {
                 // General network highlighting for feature-gated query types

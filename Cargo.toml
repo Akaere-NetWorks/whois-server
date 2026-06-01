@@ -102,7 +102,17 @@ full = [
 [dependencies]
 # ── Core (always compiled) ─────────────────────────────────────
 rdap = "0.2.0"
-tokio = { version = "1.48.0", features = ["full"] }
+tokio = { version = "1.48.0", features = [
+    "rt-multi-thread",
+    "net",
+    "time",
+    "sync",
+    "io-util",
+    "macros",
+    "signal",
+    "process",
+    "fs",
+] }
 anyhow = "1.0.100"
 clap = { version = "4.5.51", features = ["derive"] }
 regex = "1.12.2"
@@ -127,6 +137,7 @@ sysinfo = "0.32"
 dotenv = "0.15"
 once_cell = "1.21"
 lazy_static = "1.4"
+lru = "0.12"
 url = "2.2"
 toml = "0.8"
 
@@ -151,6 +162,7 @@ rustls = { version = "0.21", optional = true }
 x509-parser = { version = "0.15", optional = true }
 der-parser = { version = "9.0", optional = true }
 sha1 = "0.10"
+tikv-jemallocator = "0.6"
 sha2 = { version = "0.10", optional = true }
 
 # ── Optional: pixiv ────────────────────────────────────────────
@@ -161,3 +173,14 @@ md5 = { version = "0.7", optional = true }
 
 [dev-dependencies]
 tempfile = "3.8"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = "debuginfo"
+
+[profile.release-fast]
+inherits = "release"
+lto = "fat"
+panic = "abort"

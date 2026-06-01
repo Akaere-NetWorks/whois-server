@@ -132,8 +132,14 @@ pub async fn send_telemetry(data: TelemetryData) {
 async fn send_telemetry_internal(data: TelemetryData) -> Result<(), anyhow::Error> {
     let config = get_config();
 
-    let endpoint = config.endpoint.as_ref().ok_or_else(|| anyhow::anyhow!("Telemetry endpoint not configured"))?;
-    let bearer_token = config.bearer_token.as_ref().ok_or_else(|| anyhow::anyhow!("Telemetry bearer token not configured"))?;
+    let endpoint = config
+        .endpoint
+        .as_ref()
+        .ok_or_else(|| anyhow::anyhow!("Telemetry endpoint not configured"))?;
+    let bearer_token = config
+        .bearer_token
+        .as_ref()
+        .ok_or_else(|| anyhow::anyhow!("Telemetry bearer token not configured"))?;
 
     log_debug!(
         "Sending telemetry: query={}, type={}, ip={}, time={}ms",

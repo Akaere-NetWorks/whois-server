@@ -65,8 +65,11 @@ pub fn generate_help_response() -> String {
 
     #[cfg(feature = "peeringdb")]
     {
-        output.push_str("AS15169-PEERINGDB   - PeeringDB network information (ASN with AS prefix)\n");
-        output.push_str("4718-PEERINGDB      - PeeringDB Internet Exchange info (pure number = IX ID)\n");
+        output
+            .push_str("AS15169-PEERINGDB   - PeeringDB network information (ASN with AS prefix)\n");
+        output.push_str(
+            "4718-PEERINGDB      - PeeringDB Internet Exchange info (pure number = IX ID)\n",
+        );
         output.push_str("example: AS15169-PEERINGDB, 4718-PEERINGDB\n");
         output.push('\n');
     }
@@ -211,7 +214,13 @@ pub fn generate_help_response() -> String {
         }
     }
 
-    #[cfg(any(feature = "imdb", feature = "lyric", feature = "wikipedia", feature = "meal", feature = "acgc"))]
+    #[cfg(any(
+        feature = "imdb",
+        feature = "lyric",
+        feature = "wikipedia",
+        feature = "meal",
+        feature = "acgc"
+    ))]
     {
         output.push_str("MEDIA & ENTERTAINMENT:\n");
         output.push_str(&"-".repeat(40));
@@ -261,11 +270,20 @@ pub fn generate_help_response() -> String {
     }
 
     #[cfg(any(
-        feature = "pkg-cargo", feature = "pkg-pypi", feature = "pkg-npm",
-        feature = "pkg-aur", feature = "pkg-debian", feature = "pkg-ubuntu",
-        feature = "pkg-nixos", feature = "pkg-opensuse", feature = "pkg-aosc",
-        feature = "pkg-modrinth", feature = "pkg-curseforge", feature = "pkg-alma",
-        feature = "pkg-epel", feature = "pkg-openwrt",
+        feature = "pkg-cargo",
+        feature = "pkg-pypi",
+        feature = "pkg-npm",
+        feature = "pkg-aur",
+        feature = "pkg-debian",
+        feature = "pkg-ubuntu",
+        feature = "pkg-nixos",
+        feature = "pkg-opensuse",
+        feature = "pkg-aosc",
+        feature = "pkg-modrinth",
+        feature = "pkg-curseforge",
+        feature = "pkg-alma",
+        feature = "pkg-epel",
+        feature = "pkg-openwrt",
     ))]
     {
         output.push_str("PACKAGE REPOSITORIES:\n");

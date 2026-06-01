@@ -6,6 +6,7 @@ use crate::config::{
 };
 use crate::services::iana_cache::IanaCache;
 use anyhow::Result;
+use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream as AsyncTcpStream;
@@ -21,11 +22,22 @@ fn prepare_ripe_query(query: &str, server: &str) -> String {
         query.to_string()
     }
 }
+static IANA_CACHE_INSTANCE: OnceLock<Arc<IanaCache>> = OnceLock::new();
+
+fn get_iana_cache() -> Result<Arc<IanaCache>> {
+    if let Some(cache) = IANA_CACHE_INSTANCE.get() {
+        return Ok(cache.clone());
+    }
+    let cache = Arc::new(IanaCache::new()?);
+    IANA_CACHE_INSTANCE.set(cache.clone()).ok();
+    Ok(cache)
+}
+
 pub async fn query_with_iana_referral(query: &str) -> Result<String> {
     log_debug!("Querying with IANA referral: {}", query);
 
     // Try to get WHOIS server from cache
-    let iana_cache = IanaCache::new()?;
+    let iana_cache = get_iana_cache()?;
     let whois_server = match iana_cache.get_whois_server(query).await {
         Some(server) => server,
         None => {

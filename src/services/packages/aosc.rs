@@ -50,21 +50,17 @@ static UPSTREAM_REGEX_SOURCE: LazyLock<Regex> = LazyLock::new(|| {
         .expect("Invalid AOSC regex pattern")
 });
 static UPSTREAM_REGEX_TARBALL: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r#"<a href="([^"]+)"\s*>\(tarball\)[^<]*</a>"#)
-        .expect("Invalid AOSC regex pattern")
+    Regex::new(r#"<a href="([^"]+)"\s*>\(tarball\)[^<]*</a>"#).expect("Invalid AOSC regex pattern")
 });
 static UPSTREAM_VER_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r#"<a href="[^"]+"\s*\(git\)\s*([^<]+)</a>"#)
-        .expect("Invalid AOSC regex pattern")
+    Regex::new(r#"<a href="[^"]+"\s*\(git\)\s*([^<]+)</a>"#).expect("Invalid AOSC regex pattern")
 });
 static ARCH_SIZE_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r#"([a-z0-9]+):\s+(\d+\.\d+\s+[KMGT]?iB)"#).expect("Invalid AOSC regex pattern")
 });
 static DOWNLOAD_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(
-        r#"<a[^>]+href="/files/([a-z0-9]+)/[^"]*"[^>]*>\s*([0-9.]+\s*[KMGT]?iB)\s*</a>"#,
-    )
-    .expect("Invalid AOSC regex pattern")
+    Regex::new(r#"<a[^>]+href="/files/([a-z0-9]+)/[^"]*"[^>]*>\s*([0-9.]+\s*[KMGT]?iB)\s*</a>"#)
+        .expect("Invalid AOSC regex pattern")
 });
 static SIZE_CONTEXT_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(

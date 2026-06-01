@@ -98,13 +98,6 @@ impl LmdbStorage {
         Ok(())
     }
 
-    /// Store file metadata
-    fn put_metadata(&self, key: &str, metadata: &FileMetadata) -> Result<()> {
-        let metadata_key = format!("__meta__{}", key);
-        let metadata_json = serde_json::to_string(metadata)?;
-        self.put(&metadata_key, &metadata_json)
-    }
-
     /// Get file metadata
     fn get_metadata(&self, key: &str) -> Result<Option<FileMetadata>> {
         let metadata_key = format!("__meta__{}", key);
@@ -175,14 +168,6 @@ impl LmdbStorage {
         }
     }
 
-    /// Delete a key and its metadata
-    fn delete_with_metadata(&self, key: &str) -> Result<()> {
-        let metadata_key = format!("__meta__{}", key);
-        self.delete(key)?;
-        self.delete(&metadata_key)?;
-        Ok(())
-    }
-
     /// Clear all data from the database
     #[allow(dead_code)]
     pub fn clear(&self) -> Result<()> {
@@ -220,6 +205,7 @@ impl LmdbStorage {
         let mut updated_files = 0;
         let mut skipped_files = 0;
         let mut current_keys = std::collections::HashSet::new();
+        let mut batch: Vec<(String, String, FileMetadata)> = Vec::new();
 
         // Process each subdirectory in the data folder
         for entry in fs::read_dir(&data_path)? {
@@ -293,21 +279,19 @@ impl LmdbStorage {
                         };
 
                         if needs_update {
-                            // Read file content and update
+                            // Read file content
                             match fs::read_to_string(&file_path) {
                                 Ok(content) => {
-                                    // Store content and metadata
-                                    if let Err(e) = self.put(&key, &content) {
-                                        log_warn!("Failed to store content for {}: {}", key, e);
-                                    } else if let Err(e) =
-                                        self.put_metadata(&key, &current_metadata)
-                                    {
-                                        log_warn!("Failed to store metadata for {}: {}", key, e);
-                                    } else {
-                                        updated_files += 1;
-                                        if updated_files % 1000 == 0 {
-                                            log_debug!("Updated {} files...", updated_files);
+                                    // Collect for batch write
+                                    batch.push((key.clone(), content, current_metadata.clone()));
+                                    updated_files += 1;
+                                    if batch.len() >= 1000 {
+                                        if let Err(e) = self.write_batch(&batch) {
+                                            log_warn!("Batch write failed: {}", e);
+                                        } else {
+                                            log_debug!("Batch wrote {} files...", updated_files);
                                         }
+                                        batch.clear();
                                     }
                                 }
                                 Err(e) => {
@@ -320,6 +304,13 @@ impl LmdbStorage {
                     }
                 }
             }
+        }
+
+        // Flush remaining batch
+        if !batch.is_empty()
+            && let Err(e) = self.write_batch(&batch)
+        {
+            log_warn!("Final batch write failed: {}", e);
         }
 
         // Clean up deleted files from LMDB
@@ -363,13 +354,16 @@ impl LmdbStorage {
         drop(cursor);
         drop(txn);
 
-        // Delete the keys
+        // Batch delete in a single transaction
         let deleted_count = keys_to_delete.len();
-        for key in keys_to_delete {
-            log_debug!("Deleting removed file from LMDB: {}", key);
-            if let Err(e) = self.delete_with_metadata(&key) {
-                log_warn!("Failed to delete key {}: {}", key, e);
+        if !keys_to_delete.is_empty() {
+            let mut txn = self.env.begin_rw_txn()?;
+            for key in &keys_to_delete {
+                let _ = txn.del(self.db, &key, None);
+                let metadata_key = format!("__meta__{}", key);
+                let _ = txn.del(self.db, &metadata_key, None);
             }
+            txn.commit()?;
         }
 
         if deleted_count > 0 {
@@ -387,20 +381,62 @@ impl LmdbStorage {
         let txn = self.env.begin_ro_txn()?;
         let mut cursor = txn.open_ro_cursor(self.db)?;
 
-        for (key_bytes, _) in cursor.iter() {
+        for (key_bytes, _) in cursor.iter_from(prefix.as_bytes()) {
             let key_str = std::str::from_utf8(key_bytes)?;
+
+            // Past the prefix range, stop scanning
+            if !key_str.starts_with(prefix) {
+                break;
+            }
 
             // Skip metadata keys
             if key_str.starts_with("__meta__") {
                 continue;
             }
 
-            // Check if key starts with prefix
-            if key_str.starts_with(prefix) && !callback(key_str) {
+            if !callback(key_str) {
                 break;
             }
         }
 
+        Ok(())
+    }
+
+    /// Iterate over key-value pairs with a specific prefix
+    pub fn iter_prefix<F>(&self, prefix: &str, mut callback: F) -> Result<()>
+    where
+        F: FnMut(&str, &str) -> bool, // Return false to stop iteration
+    {
+        let txn = self.env.begin_ro_txn()?;
+        let mut cursor = txn.open_ro_cursor(self.db)?;
+
+        for (key_bytes, value_bytes) in cursor.iter_from(prefix.as_bytes()) {
+            let key_str = std::str::from_utf8(key_bytes)?;
+            if !key_str.starts_with(prefix) {
+                break;
+            }
+            if key_str.starts_with("__meta__") {
+                continue;
+            }
+            let value_str = std::str::from_utf8(value_bytes)?;
+            if !callback(key_str, value_str) {
+                break;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Write a batch of content + metadata in a single transaction
+    fn write_batch(&self, batch: &[(String, String, FileMetadata)]) -> Result<()> {
+        let mut txn = self.env.begin_rw_txn()?;
+        for (key, content, metadata) in batch {
+            txn.put(self.db, &key, &content.as_str(), WriteFlags::empty())?;
+            let metadata_key = format!("__meta__{}", key);
+            let metadata_json = serde_json::to_string(metadata)?;
+            txn.put(self.db, &metadata_key, &metadata_json, WriteFlags::empty())?;
+        }
+        txn.commit()?;
         Ok(())
     }
 
@@ -423,9 +459,13 @@ impl LmdbStorage {
         let mut cursor = txn.open_ro_cursor(self.db)?;
         let mut keys = Vec::new();
 
-        for (key, _) in cursor.iter() {
+        // Use iter_from to start at the prefix position for efficient scanning
+        for (key, _) in cursor.iter_from(prefix.as_bytes()) {
             let key_str = std::str::from_utf8(key)?;
-            if key_str.starts_with(prefix) && !key_str.starts_with("__meta__") {
+            if !key_str.starts_with(prefix) {
+                break; // Past the prefix range, stop scanning
+            }
+            if !key_str.starts_with("__meta__") {
                 keys.push(key_str.to_string());
             }
         }

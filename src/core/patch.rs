@@ -18,9 +18,8 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::sync::RwLock;
 
-static ANSI_REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"\x1b\[[0-9;]*m").expect("Invalid ANSI regex pattern")
-});
+static ANSI_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\x1b\[[0-9;]*m").expect("Invalid ANSI regex pattern"));
 
 /// Strip ANSI color codes from a string
 fn strip_ansi_codes(s: &str) -> String {
@@ -1110,9 +1109,7 @@ pub async fn process_update_patch_query() -> Result<String, Box<dyn std::error::
 /// Apply patches to a WHOIS response
 pub fn apply_response_patches(query: &str, response: String) -> String {
     log_debug!("Applying patches for query: {}", query);
-    let manager = PATCH_MANAGER
-        .read()
-        .unwrap_or_else(|e| e.into_inner());
+    let manager = PATCH_MANAGER.read().unwrap_or_else(|e| e.into_inner());
     let result = manager.apply_patches(query, response);
     log_debug!("Patch application completed");
     result
@@ -1129,9 +1126,7 @@ pub fn reload_patches(_patches_dir: &str) -> Result<usize, Box<dyn std::error::E
 
 /// Get the number of loaded patches
 pub fn get_patches_count() -> (usize, usize) {
-    let manager = PATCH_MANAGER
-        .read()
-        .unwrap_or_else(|e| e.into_inner());
+    let manager = PATCH_MANAGER.read().unwrap_or_else(|e| e.into_inner());
     let files = manager.patch_files.len();
     let patches = manager.patch_files.iter().map(|pf| pf.patches.len()).sum();
     (files, patches)

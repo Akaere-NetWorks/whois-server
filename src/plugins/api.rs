@@ -87,20 +87,21 @@ pub fn register_http_api(lua: &Lua, permissions: &PluginPermissions) -> mlua::Re
 /// Note: For now, cache operations are simplified and stored in-memory.
 /// Future implementation will integrate with LMDB.
 pub fn register_cache_api(lua: &Lua, permissions: &PluginPermissions) -> mlua::Result<()> {
+    use lru::LruCache;
     use once_cell::sync::Lazy;
-    use std::collections::HashMap;
+    use std::num::NonZeroUsize;
     use std::sync::Mutex;
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    // Simple in-memory cache for plugins
+    // Simple in-memory LRU cache for plugins (max 1000 entries)
     // TODO: Integrate with LMDB storage
-    static CACHE: Lazy<Mutex<HashMap<String, (String, u64)>>> =
-        Lazy::new(|| Mutex::new(HashMap::new()));
+    static CACHE: Lazy<Mutex<LruCache<String, (String, u64)>>> =
+        Lazy::new(|| Mutex::new(LruCache::new(NonZeroUsize::new(1000).unwrap())));
 
     // Register cache_get if read permission is granted
     if permissions.cache_read {
         let cache_get = lua.create_function(move |_lua, key: String| {
-            let cache = CACHE.lock().unwrap_or_else(|e| e.into_inner());
+            let mut cache = CACHE.lock().unwrap_or_else(|e| e.into_inner());
             let now = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap_or_default()
@@ -129,7 +130,7 @@ pub fn register_cache_api(lua: &Lua, permissions: &PluginPermissions) -> mlua::R
                 let expiry = now + ttl;
 
                 let mut cache = CACHE.lock().unwrap_or_else(|e| e.into_inner());
-                cache.insert(key, (value, expiry));
+                cache.put(key, (value, expiry));
                 Ok(())
             },
         )?;

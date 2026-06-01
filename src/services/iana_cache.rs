@@ -3,7 +3,32 @@ use crate::{log_debug, log_error, log_warn};
 use anyhow::Result;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use std::sync::LazyLock;
 use std::time::{SystemTime, UNIX_EPOCH};
+
+static REFER_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?i)refer:\s*([^\r\n\s]+)").expect("Invalid refer regex"));
+static WHOIS_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?i)whois:\s*([^\r\n\s]+)").expect("Invalid whois regex"));
+static AS_BLOCK_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?i)as-block:\s*(\d+)-(\d+)").expect("Invalid AS block regex"));
+static IPV4_BLOCK_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?i)inetnum:\s*([0-9.]+)\s*-\s*([0-9.]+)").expect("Invalid IPv4 block regex")
+});
+static IPV6_BLOCK_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?i)inet6num:\s*([0-9a-fA-F:]+)/(\d+)").expect("Invalid IPv6 block regex")
+});
+static ORGANISATION_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?i)organisation:\s*([^\r\n]+)").expect("Invalid organisation regex")
+});
+static ORGANIZATION_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?i)organization:\s*([^\r\n]+)").expect("Invalid organization regex")
+});
+static DESCR_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?i)descr:\s*([^\r\n]+)").expect("Invalid descr regex"));
+static DESCRIPTION_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?i)description:\s*([^\r\n]+)").expect("Invalid description regex")
+});
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IanaReferral {
     pub whois_server: String,
@@ -416,10 +441,10 @@ impl IanaCache {
 
     fn parse_iana_response(&self, response: &str) -> Result<Option<IanaReferral>> {
         // Look for "refer: whois.server.net" pattern
-        let refer_regex = Regex::new(r"(?i)refer:\s*([^\r\n\s]+)")?;
+        let refer_regex = &*REFER_REGEX;
 
         // Look for "whois: whois.server.net" pattern as fallback
-        let whois_regex = Regex::new(r"(?i)whois:\s*([^\r\n\s]+)")?;
+        let whois_regex = &*WHOIS_REGEX;
 
         let whois_server = if let Some(caps) = refer_regex.captures(response) {
             caps.get(1)
@@ -440,8 +465,7 @@ impl IanaCache {
         let description = self.extract_description(response);
 
         // Check for AS block range
-        let as_block_regex = Regex::new(r"(?i)as-block:\s*(\d+)-(\d+)")?;
-        if let Some(caps) = as_block_regex.captures(response) {
+        if let Some(caps) = AS_BLOCK_REGEX.captures(response) {
             let start = caps
                 .get(1)
                 .ok_or_else(|| anyhow::anyhow!("Invalid AS block start capture"))?
@@ -462,8 +486,7 @@ impl IanaCache {
         }
 
         // Check for IPv4 inetnum block
-        let ipv4_block_regex = Regex::new(r"(?i)inetnum:\s*([0-9.]+)\s*-\s*([0-9.]+)")?;
-        if let Some(caps) = ipv4_block_regex.captures(response)
+        if let Some(caps) = IPV4_BLOCK_REGEX.captures(response)
             && let (Some(start_match), Some(end_match)) = (caps.get(1), caps.get(2))
         {
             let start_str = start_match.as_str();
@@ -483,8 +506,7 @@ impl IanaCache {
         }
 
         // Check for IPv6 inet6num block
-        let ipv6_block_regex = Regex::new(r"(?i)inet6num:\s*([0-9a-fA-F:]+)/(\d+)")?;
-        if let Some(caps) = ipv6_block_regex.captures(response) {
+        if let Some(caps) = IPV6_BLOCK_REGEX.captures(response) {
             let network_str = caps
                 .get(1)
                 .ok_or_else(|| anyhow::anyhow!("Invalid IPv6 network capture"))?
@@ -520,23 +542,18 @@ impl IanaCache {
     }
 
     fn extract_description(&self, response: &str) -> String {
-        // Try to extract organization or description
-        let patterns = [
-            r"(?i)organisation:\s*([^\r\n]+)",
-            r"(?i)organization:\s*([^\r\n]+)",
-            r"(?i)descr:\s*([^\r\n]+)",
-            r"(?i)description:\s*([^\r\n]+)",
-        ];
-
-        for pattern in &patterns {
-            if let Ok(regex) = Regex::new(pattern)
-                && let Some(caps) = regex.captures(response)
+        for regex in [
+            &*ORGANISATION_REGEX,
+            &*ORGANIZATION_REGEX,
+            &*DESCR_REGEX,
+            &*DESCRIPTION_REGEX,
+        ] {
+            if let Some(caps) = regex.captures(response)
                 && let Some(match_str) = caps.get(1)
             {
                 return match_str.as_str().trim().to_string();
             }
         }
-
         "IANA referral".to_string()
     }
 

@@ -274,9 +274,9 @@ async fn get_manrs_checker() -> Result<&'static ManrsChecker> {
             .map_err(|e| anyhow::anyhow!("Failed to create MANRS LMDB storage: {}", e))?;
         let checker = ManrsChecker::new(storage);
         match MANRS_CHECKER_INSTANCE.set(checker) {
-            Ok(_) => MANRS_CHECKER_INSTANCE
-                .get()
-                .ok_or_else(|| anyhow::anyhow!("Failed to get MANRS checker instance after initialization")),
+            Ok(_) => MANRS_CHECKER_INSTANCE.get().ok_or_else(|| {
+                anyhow::anyhow!("Failed to get MANRS checker instance after initialization")
+            }),
             Err(_) => MANRS_CHECKER_INSTANCE
                 .get()
                 .ok_or_else(|| anyhow::anyhow!("Failed to get MANRS checker instance after set")),

@@ -564,32 +564,45 @@ impl DN42Registry {
         );
         let ip_int = u32::from(ip);
 
-        // Search from the query mask down to /0
-        for mask in (0..=query_mask).rev() {
-            let network_int = if mask > 0 {
-                ip_int & (0xffffffff << (32 - mask))
-            } else {
-                0
-            };
+        // Pre-generate all candidate keys
+        let candidates: Vec<(String, String)> = (0..=query_mask)
+            .rev()
+            .map(|mask| {
+                let network_int = if mask > 0 {
+                    ip_int & (0xffffffff << (32 - mask))
+                } else {
+                    0
+                };
+                let network_ip = Ipv4Addr::from(network_int);
+                let network_str = format!("{}_{}", network_ip, mask);
+                let key = format!("{}/{}", subdir, network_str);
+                (key, network_str)
+            })
+            .collect();
 
-            let network_ip = Ipv4Addr::from(network_int);
-            // LMDB stores keys with underscore format: IP_MASK (e.g., 172.20.0.0_24)
-            let network_str = format!("{}_{}", network_ip, mask);
-            let key = format!("{}/{}", subdir, network_str);
-
-            log_debug!("DN42: Checking IPv4 network: {}", network_str);
-            if self.key_exists(&key).await? {
-                log_debug!("DN42: Found matching IPv4 network: {}", network_str);
-                return Ok(Some(network_str));
+        // Check all candidates in a single spawn_blocking call to minimize tokio overhead
+        let storage = self.storage.clone();
+        let result = tokio::task::spawn_blocking(move || -> Result<Option<String>> {
+            for (key, network_str) in &candidates {
+                if storage.exists(key).unwrap_or(false) {
+                    return Ok(Some(network_str.clone()));
+                }
             }
+            Ok(None)
+        })
+        .await??;
+
+        if let Some(ref network_str) = result {
+            log_debug!("DN42: Found matching IPv4 network: {}", network_str);
+        } else {
+            log_debug!(
+                "DN42: No matching IPv4 network found in '{}' for IP {}",
+                subdir,
+                ip
+            );
         }
 
-        log_debug!(
-            "DN42: No matching IPv4 network found in '{}' for IP {}",
-            subdir,
-            ip
-        );
-        Ok(None)
+        Ok(result)
     }
 
     /// Find the best matching IPv6 network in LMDB storage
@@ -607,32 +620,45 @@ impl DN42Registry {
         );
         let ip_int = u128::from(ip);
 
-        // Search from the query mask down to /0
-        for mask in (0..=query_mask).rev() {
-            let network_int = if mask > 0 {
-                ip_int & (0xffffffffffffffffffffffffffffffff << (128 - mask))
-            } else {
-                0
-            };
+        // Pre-generate all candidate keys
+        let candidates: Vec<(String, String)> = (0..=query_mask)
+            .rev()
+            .map(|mask| {
+                let network_int = if mask > 0 {
+                    ip_int & (0xffffffffffffffffffffffffffffffff << (128 - mask))
+                } else {
+                    0
+                };
+                let network_ip = Ipv6Addr::from(network_int);
+                let network_str = format!("{}_{}", network_ip, mask);
+                let key = format!("{}/{}", subdir, network_str);
+                (key, network_str)
+            })
+            .collect();
 
-            let network_ip = Ipv6Addr::from(network_int);
-            // LMDB stores keys with underscore format: IP_MASK (e.g., fd00::_48)
-            let network_str = format!("{}_{}", network_ip, mask);
-            let key = format!("{}/{}", subdir, network_str);
-
-            log_debug!("DN42: Checking IPv6 network: {}", network_str);
-            if self.key_exists(&key).await? {
-                log_debug!("DN42: Found matching IPv6 network: {}", network_str);
-                return Ok(Some(network_str));
+        // Check all candidates in a single spawn_blocking call to minimize tokio overhead
+        let storage = self.storage.clone();
+        let result = tokio::task::spawn_blocking(move || -> Result<Option<String>> {
+            for (key, network_str) in &candidates {
+                if storage.exists(key).unwrap_or(false) {
+                    return Ok(Some(network_str.clone()));
+                }
             }
+            Ok(None)
+        })
+        .await??;
+
+        if let Some(ref network_str) = result {
+            log_debug!("DN42: Found matching IPv6 network: {}", network_str);
+        } else {
+            log_debug!(
+                "DN42: No matching IPv6 network found in '{}' for IP {}",
+                subdir,
+                ip
+            );
         }
 
-        log_debug!(
-            "DN42: No matching IPv6 network found in '{}' for IP {}",
-            subdir,
-            ip
-        );
-        Ok(None)
+        Ok(result)
     }
 
     /// Get data from LMDB storage
@@ -653,28 +679,6 @@ impl DN42Registry {
             Ok(None) => log_debug!("DN42: No data found in LMDB for key: {}", key_for_log),
             Err(e) => log_warn!(
                 "DN42: Failed to retrieve data from LMDB for key '{}': {}",
-                key_for_log,
-                e
-            ),
-        }
-
-        result
-    }
-
-    /// Check if key exists in LMDB storage
-    async fn key_exists(&self, key: &str) -> Result<bool> {
-        log_debug!("DN42: Checking if key exists in LMDB: {}", key);
-        let storage = self.storage.clone();
-        let key_copy = key.to_string();
-        let key_for_log = key.to_string();
-
-        let result = tokio::task::spawn_blocking(move || storage.exists(&key_copy)).await?;
-
-        match &result {
-            Ok(true) => log_debug!("DN42: Key exists in LMDB: {}", key_for_log),
-            Ok(false) => log_debug!("DN42: Key does not exist in LMDB: {}", key_for_log),
-            Err(e) => log_warn!(
-                "DN42: Error checking key existence in LMDB for '{}': {}",
                 key_for_log,
                 e
             ),
@@ -880,9 +884,9 @@ async fn get_dn42_registry() -> Result<&'static DN42Registry> {
     } else {
         let registry = DN42Registry::new().await?;
         match DN42_REGISTRY_INSTANCE.set(registry) {
-            Ok(_) => DN42_REGISTRY_INSTANCE
-                .get()
-                .ok_or_else(|| anyhow::anyhow!("Failed to get DN42 registry instance after initialization")),
+            Ok(_) => DN42_REGISTRY_INSTANCE.get().ok_or_else(|| {
+                anyhow::anyhow!("Failed to get DN42 registry instance after initialization")
+            }),
             Err(_) => DN42_REGISTRY_INSTANCE
                 .get()
                 .ok_or_else(|| anyhow::anyhow!("Failed to get DN42 registry instance after set")),

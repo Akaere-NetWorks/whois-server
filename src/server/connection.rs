@@ -2,9 +2,7 @@ use std::net::SocketAddr;
 use std::time::Duration;
 
 use crate::config::SERVER_BANNER;
-use crate::core::{
-    ColorProtocol, ColorScheme, QueryType, StatsState, analyze_query, dump_to_file,
-};
+use crate::core::{ColorProtocol, ColorScheme, QueryType, StatsState, analyze_query, dump_to_file};
 use crate::{log_debug, log_error, log_warn};
 use anyhow::Result;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -25,8 +23,8 @@ pub async fn handle_connection(
     }
 
     // Read request
-    let mut buffer = [0u8; 1024];
-    let mut request = String::new();
+    let mut buffer = [0u8; 8192];
+    let mut request = String::with_capacity(512);
 
     let read_future = async {
         let mut total_read = 0;
@@ -118,9 +116,13 @@ pub async fn handle_connection(
     } else {
         None
     };
-    let result =
-        crate::core::process_query(&query, &query_type, color_scheme, Some(addr.ip().to_string()))
-            .await;
+    let result = crate::core::process_query(
+        &query,
+        &query_type,
+        color_scheme,
+        Some(addr.ip().to_string()),
+    )
+    .await;
 
     // Format the response with proper WHOIS format
     let formatted_response = match result {
