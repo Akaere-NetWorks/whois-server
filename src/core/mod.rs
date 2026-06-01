@@ -4,6 +4,7 @@ pub mod patch;
 pub mod query;
 pub mod query_processor;
 pub mod stats;
+#[cfg(feature = "telemetry")]
 pub mod telemetry;
 pub mod utils;
 

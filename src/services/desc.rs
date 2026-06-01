@@ -1,4 +1,5 @@
 use crate::core::{QueryType, analyze_query};
+#[cfg(feature = "dn42")]
 use crate::dn42::process_dn42_query_managed;
 use crate::services::query_with_iana_referral;
 use anyhow::Result;
@@ -24,12 +25,18 @@ pub async fn process_desc_query(base_query: &str) -> Result<String> {
                     response
                 }
                 _ => {
-                    // Fall back to DN42 if public query fails
                     log_debug!(
                         "Public query failed or returned no results, trying DN42 for: {}",
                         base_query
                     );
-                    process_dn42_query_managed(base_query).await?
+                    #[cfg(feature = "dn42")]
+                    {
+                        process_dn42_query_managed(base_query).await?
+                    }
+                    #[cfg(not(feature = "dn42"))]
+                    {
+                        query_with_iana_referral(base_query).await?
+                    }
                 }
             }
         }
@@ -44,9 +51,15 @@ pub async fn process_desc_query(base_query: &str) -> Result<String> {
                     response
                 }
                 _ => {
-                    // Fall back to DN42
                     log_debug!("Public query failed, trying DN42 for: {}", base_query);
-                    process_dn42_query_managed(base_query).await?
+                    #[cfg(feature = "dn42")]
+                    {
+                        process_dn42_query_managed(base_query).await?
+                    }
+                    #[cfg(not(feature = "dn42"))]
+                    {
+                        query_with_iana_referral(base_query).await?
+                    }
                 }
             }
         }

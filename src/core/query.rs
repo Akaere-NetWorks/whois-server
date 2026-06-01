@@ -2,83 +2,212 @@ use crate::config::{PRIVATE_IPV4_RANGES, PRIVATE_IPV6_RANGES};
 use cidr::{Ipv4Cidr, Ipv6Cidr};
 use regex::Regex;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
-use std::sync::{LazyLock, RwLock};
+use std::sync::LazyLock;
+#[cfg(feature = "plugins")]
+use std::sync::RwLock;
 
 // WHOIS query types
 #[derive(Debug, Clone)]
 #[allow(clippy::upper_case_acronyms)]
 pub enum QueryType {
+    // Core (always compiled)
     Domain(String),
     IPv4(Ipv4Addr),
     IPv6(Ipv6Addr),
     ASN(String),
-    BareASN(String), // Pure number ASN (e.g., "213605"), DN42 first then public fallback
-    EmailSearch(String), // For queries ending with -EMAIL
-    BGPTool(String), // For queries ending with -BGPTOOL
-    Geo(String),     // For queries ending with -GEO
-    RirGeo(String),  // For queries ending with -RIRGEO
-    Prefixes(String), // For queries ending with -PREFIXES
-    // Internet Routing Registry (IRR) databases
-    Radb(String),           // For queries ending with -RADB
-    Altdb(String),          // For queries ending with -ALTDB
-    Afrinic(String),        // For queries ending with -AFRINIC
-    Apnic(String),          // For queries ending with -APNIC
-    ArinIrr(String),        // For queries ending with -ARIN (IRR, not regular ARIN WHOIS)
-    Bell(String),           // For queries ending with -BELL
-    Jpirr(String),          // For queries ending with -JPIRR
-    Lacnic(String),         // For queries ending with -LACNIC
-    Level3(String),         // For queries ending with -LEVEL3
-    Nttcom(String),         // For queries ending with -NTTCOM
-    RipeIrr(String),        // For queries ending with -RIPE (IRR)
-    Ris(String),            // For queries ending with -RIS (RIPE RIS)
-    Tc(String),             // For queries ending with -TC
-    Irr(String),            // For queries ending with -IRR (general IRR Explorer)
-    LookingGlass(String),   // For queries ending with -LG
-    Rpki(String, String),   // For queries in format prefix-asn-RPKI (prefix, asn)
-    Manrs(String),          // For queries ending with -MANRS
-    Dns(String),            // For queries ending with -DNS
-    Trace(String),          // For queries ending with -TRACE
-    Ssl(String),            // For queries ending with -SSL
-    Crt(String),            // For queries ending with -CRT (Certificate Transparency)
-    CfStatus(String),       // For queries ending with -CFSTATUS (Cloudflare Status)
-    Minecraft(String),      // For queries ending with -MINECRAFT or -MC
-    MinecraftUser(String),  // For queries ending with -MCU (Minecraft user info)
-    Steam(String),          // For queries ending with -STEAM (Steam games/users)
-    SteamSearch(String),    // For queries ending with -STEAMSEARCH (Steam game search)
-    Imdb(String),           // For queries ending with -IMDB (IMDb movies/TV shows)
-    ImdbSearch(String),     // For queries ending with -IMDBSEARCH (IMDb title search)
-    Acgc(String),           // For queries ending with -ACGC (Anime/Comic/Game Characters)
-    Alma(String),           // For queries ending with -ALMA (AlmaLinux packages)
-    Aosc(String),           // For queries ending with -AOSC (AOSC packages)
-    Aur(String),            // For queries ending with -AUR (Arch User Repository)
-    Debian(String),         // For queries ending with -DEBIAN (Debian packages)
-    Epel(String),           // For queries ending with -EPEL (EPEL packages)
-    Ubuntu(String),         // For queries ending with -UBUNTU (Ubuntu packages)
-    NixOs(String),          // For queries ending with -NIXOS (NixOS packages)
-    OpenSuse(String),       // For queries ending with -OPENSUSE (OpenSUSE packages)
-    OpenWrt(String),        // For queries ending with -OPENWRT (OpenWrt packages)
-    Npm(String),            // For queries ending with -NPM (NPM packages)
-    Pypi(String),           // For queries ending with -PYPI (PyPI packages)
-    Cargo(String),          // For queries ending with -CARGO (Rust crates)
-    Modrinth(String),       // For queries ending with -MODRINTH (Modrinth mods/resource packs)
-    CurseForge(String),     // For queries ending with -CURSEFORGE (CurseForge mods)
-    GitHub(String),         // For queries ending with -GITHUB (GitHub users/repos)
-    Wikipedia(String),      // For queries ending with -WIKIPEDIA (Wikipedia articles)
-    Lyric(String),          // For queries ending with -LYRIC (Luotianyi random lyrics)
-    Desc(String),           // For queries ending with -DESC (show only descr fields)
-    PeeringDB(String),      // For queries ending with -PEERINGDB (PeeringDB ASN/IX information)
-    Pen(String),            // For queries ending with -PEN (IANA Private Enterprise Numbers)
-    Rdap(String),           // For queries ending with -RDAP (RDAP protocol queries)
-    Pixiv(String),          // For queries ending with -PIXIV (Pixiv artworks/users)
-    Icp(String),            // For queries ending with -ICP (ICP filing for Chinese domains)
-    Meal,                   // For meal suggestions (今天吃什么 or -MEAL)
-    MealCN,                 // For Chinese meal suggestions (今天吃什么中国 or -MEAL-CN)
-    Ntp(String),            // For NTP time synchronization test (-NTP)
-    Ping(String),           // For ICMP ping test (-PING)
-    Help,                   // For HELP queries (show available query types)
-    UpdatePatch,            // For UPDATE-PATCH queries (update patches from remote repository)
-    Plugin(String, String), // For plugin-handled queries (suffix, base_query)
+    BareASN(String),
+    Desc(String),
+    Rdap(String),
+    Help,
+    UpdatePatch,
     Unknown(String),
+
+    // feature = "email"
+    #[cfg(feature = "email")]
+    EmailSearch(String),
+
+    // feature = "bgp"
+    #[cfg(feature = "bgp")]
+    BGPTool(String),
+    #[cfg(feature = "bgp")]
+    Irr(String),
+    #[cfg(feature = "bgp")]
+    LookingGlass(String),
+    #[cfg(feature = "bgp")]
+    Rpki(String, String),
+
+    // feature = "bgp-prefixes" (depends on bgp)
+    #[cfg(feature = "bgp-prefixes")]
+    Prefixes(String),
+
+    // feature = "bgp-irr"
+    #[cfg(feature = "bgp-irr")]
+    Radb(String),
+    #[cfg(feature = "bgp-irr")]
+    Altdb(String),
+    #[cfg(feature = "bgp-irr")]
+    Afrinic(String),
+    #[cfg(feature = "bgp-irr")]
+    Apnic(String),
+    #[cfg(feature = "bgp-irr")]
+    ArinIrr(String),
+    #[cfg(feature = "bgp-irr")]
+    Bell(String),
+    #[cfg(feature = "bgp-irr")]
+    Jpirr(String),
+    #[cfg(feature = "bgp-irr")]
+    Lacnic(String),
+    #[cfg(feature = "bgp-irr")]
+    Level3(String),
+    #[cfg(feature = "bgp-irr")]
+    Nttcom(String),
+    #[cfg(feature = "bgp-irr")]
+    RipeIrr(String),
+    #[cfg(feature = "bgp-irr")]
+    Ris(String),
+    #[cfg(feature = "bgp-irr")]
+    Tc(String),
+
+    // feature = "bgp-manrs"
+    #[cfg(feature = "bgp-manrs")]
+    Manrs(String),
+
+    // feature = "peeringdb"
+    #[cfg(feature = "peeringdb")]
+    PeeringDB(String),
+
+    // feature = "geo"
+    #[cfg(feature = "geo")]
+    Geo(String),
+    #[cfg(feature = "geo")]
+    RirGeo(String),
+
+    // feature = "dns"
+    #[cfg(feature = "dns")]
+    Dns(String),
+
+    // feature = "ntp"
+    #[cfg(feature = "ntp")]
+    Ntp(String),
+
+    // feature = "ping"
+    #[cfg(feature = "ping")]
+    Ping(String),
+
+    // feature = "traceroute"
+    #[cfg(feature = "traceroute")]
+    Trace(String),
+
+    // feature = "ssl"
+    #[cfg(feature = "ssl")]
+    Ssl(String),
+
+    // feature = "crt"
+    #[cfg(feature = "crt")]
+    Crt(String),
+
+    // feature = "cfstatus"
+    #[cfg(feature = "cfstatus")]
+    CfStatus(String),
+
+    // feature = "minecraft"
+    #[cfg(feature = "minecraft")]
+    Minecraft(String),
+    #[cfg(feature = "minecraft")]
+    MinecraftUser(String),
+
+    // feature = "steam"
+    #[cfg(feature = "steam")]
+    Steam(String),
+    #[cfg(feature = "steam")]
+    SteamSearch(String),
+
+    // feature = "imdb"
+    #[cfg(feature = "imdb")]
+    Imdb(String),
+    #[cfg(feature = "imdb")]
+    ImdbSearch(String),
+
+    // feature = "acgc"
+    #[cfg(feature = "acgc")]
+    Acgc(String),
+
+    // feature = "pkg-alma"
+    #[cfg(feature = "pkg-alma")]
+    Alma(String),
+    // feature = "pkg-aosc"
+    #[cfg(feature = "pkg-aosc")]
+    Aosc(String),
+    // feature = "pkg-aur"
+    #[cfg(feature = "pkg-aur")]
+    Aur(String),
+    // feature = "pkg-debian"
+    #[cfg(feature = "pkg-debian")]
+    Debian(String),
+    // feature = "pkg-epel"
+    #[cfg(feature = "pkg-epel")]
+    Epel(String),
+    // feature = "pkg-ubuntu"
+    #[cfg(feature = "pkg-ubuntu")]
+    Ubuntu(String),
+    // feature = "pkg-nixos"
+    #[cfg(feature = "pkg-nixos")]
+    NixOs(String),
+    // feature = "pkg-opensuse"
+    #[cfg(feature = "pkg-opensuse")]
+    OpenSuse(String),
+    // feature = "pkg-openwrt"
+    #[cfg(feature = "pkg-openwrt")]
+    OpenWrt(String),
+    // feature = "pkg-npm"
+    #[cfg(feature = "pkg-npm")]
+    Npm(String),
+    // feature = "pkg-pypi"
+    #[cfg(feature = "pkg-pypi")]
+    Pypi(String),
+    // feature = "pkg-cargo"
+    #[cfg(feature = "pkg-cargo")]
+    Cargo(String),
+    // feature = "pkg-modrinth"
+    #[cfg(feature = "pkg-modrinth")]
+    Modrinth(String),
+    // feature = "pkg-curseforge"
+    #[cfg(feature = "pkg-curseforge")]
+    CurseForge(String),
+
+    // feature = "github"
+    #[cfg(feature = "github")]
+    GitHub(String),
+
+    // feature = "wikipedia"
+    #[cfg(feature = "wikipedia")]
+    Wikipedia(String),
+
+    // feature = "lyric"
+    #[cfg(feature = "lyric")]
+    Lyric(String),
+
+    // feature = "pen"
+    #[cfg(feature = "pen")]
+    Pen(String),
+
+    // feature = "pixiv"
+    #[cfg(feature = "pixiv")]
+    Pixiv(String),
+
+    // feature = "icp"
+    #[cfg(feature = "icp")]
+    Icp(String),
+
+    // feature = "meal"
+    #[cfg(feature = "meal")]
+    Meal,
+    #[cfg(feature = "meal")]
+    MealCN,
+
+    // feature = "plugins"
+    #[cfg(feature = "plugins")]
+    Plugin(String, String),
 }
 
 static DOMAIN_REGEX: LazyLock<Regex> = LazyLock::new(|| {
@@ -88,11 +217,13 @@ static DOMAIN_REGEX: LazyLock<Regex> = LazyLock::new(|| {
 
 pub fn analyze_query(query: &str) -> QueryType {
     // Check if it's a Chinese meal suggestion query
+    #[cfg(feature = "meal")]
     if query == "今天吃什么中国" || query.to_uppercase().ends_with("-MEAL-CN") {
         return QueryType::MealCN;
     }
 
     // Check if it's a meal suggestion query (Chinese phrase or -MEAL suffix)
+    #[cfg(feature = "meal")]
     if query == "今天吃什么" || query.to_uppercase().ends_with("-MEAL") {
         return QueryType::Meal;
     }
@@ -108,6 +239,7 @@ pub fn analyze_query(query: &str) -> QueryType {
     }
 
     // Check if it's an RPKI query in format PREFIX-ASN-RPKI
+    #[cfg(feature = "bgp")]
     if query.to_uppercase().ends_with("-RPKI") {
         let base_query = &query[..query.len() - 5]; // Remove "-RPKI" suffix
 
@@ -150,294 +282,343 @@ pub fn analyze_query(query: &str) -> QueryType {
     }
 
     // Check if it's a Looking Glass query
+    #[cfg(feature = "bgp")]
     if query.to_uppercase().ends_with("-LG") {
         let base_query = &query[..query.len() - 3]; // Remove "-LG" suffix
         return QueryType::LookingGlass(base_query.to_string());
     }
 
     // Check if it's an IRR Explorer query
+    #[cfg(feature = "bgp")]
     if query.to_uppercase().ends_with("-IRR") {
         let base_query = &query[..query.len() - 4]; // Remove "-IRR" suffix
         return QueryType::Irr(base_query.to_string());
     }
 
     // Check if it's a RADB query
+    #[cfg(feature = "bgp-irr")]
     if query.to_uppercase().ends_with("-RADB") {
         let base_query = &query[..query.len() - 5]; // Remove "-RADB" suffix
         return QueryType::Radb(base_query.to_string());
     }
 
     // Check if it's an ALTDB query
+    #[cfg(feature = "bgp-irr")]
     if query.to_uppercase().ends_with("-ALTDB") {
         let base_query = &query[..query.len() - 6]; // Remove "-ALTDB" suffix
         return QueryType::Altdb(base_query.to_string());
     }
 
     // Check if it's an AFRINIC IRR query
+    #[cfg(feature = "bgp-irr")]
     if query.to_uppercase().ends_with("-AFRINIC") {
         let base_query = &query[..query.len() - 8]; // Remove "-AFRINIC" suffix
         return QueryType::Afrinic(base_query.to_string());
     }
 
     // Check if it's an APNIC IRR query
+    #[cfg(feature = "bgp-irr")]
     if query.to_uppercase().ends_with("-APNIC") {
         let base_query = &query[..query.len() - 6]; // Remove "-APNIC" suffix
         return QueryType::Apnic(base_query.to_string());
     }
 
     // Check if it's an ARIN IRR query
+    #[cfg(feature = "bgp-irr")]
     if query.to_uppercase().ends_with("-ARIN") {
         let base_query = &query[..query.len() - 5]; // Remove "-ARIN" suffix
         return QueryType::ArinIrr(base_query.to_string());
     }
 
     // Check if it's a BELL IRR query
+    #[cfg(feature = "bgp-irr")]
     if query.to_uppercase().ends_with("-BELL") {
         let base_query = &query[..query.len() - 5]; // Remove "-BELL" suffix
         return QueryType::Bell(base_query.to_string());
     }
 
     // Check if it's a JPIRR query
+    #[cfg(feature = "bgp-irr")]
     if query.to_uppercase().ends_with("-JPIRR") {
         let base_query = &query[..query.len() - 6]; // Remove "-JPIRR" suffix
         return QueryType::Jpirr(base_query.to_string());
     }
 
     // Check if it's a LACNIC IRR query
+    #[cfg(feature = "bgp-irr")]
     if query.to_uppercase().ends_with("-LACNIC") {
         let base_query = &query[..query.len() - 7]; // Remove "-LACNIC" suffix
         return QueryType::Lacnic(base_query.to_string());
     }
 
     // Check if it's a LEVEL3 IRR query
+    #[cfg(feature = "bgp-irr")]
     if query.to_uppercase().ends_with("-LEVEL3") {
         let base_query = &query[..query.len() - 7]; // Remove "-LEVEL3" suffix
         return QueryType::Level3(base_query.to_string());
     }
 
     // Check if it's an NTTCOM IRR query
+    #[cfg(feature = "bgp-irr")]
     if query.to_uppercase().ends_with("-NTTCOM") {
         let base_query = &query[..query.len() - 7]; // Remove "-NTTCOM" suffix
         return QueryType::Nttcom(base_query.to_string());
     }
 
     // Check if it's a RIPE IRR query
+    #[cfg(feature = "bgp-irr")]
     if query.to_uppercase().ends_with("-RIPE") {
         let base_query = &query[..query.len() - 5]; // Remove "-RIPE" suffix
         return QueryType::RipeIrr(base_query.to_string());
     }
 
     // Check if it's a RIS query
+    #[cfg(feature = "bgp-irr")]
     if query.to_uppercase().ends_with("-RIS") {
         let base_query = &query[..query.len() - 4]; // Remove "-RIS" suffix
         return QueryType::Ris(base_query.to_string());
     }
 
     // Check if it's a TC IRR query
+    #[cfg(feature = "bgp-irr")]
     if query.to_uppercase().ends_with("-TC") {
         let base_query = &query[..query.len() - 3]; // Remove "-TC" suffix
         return QueryType::Tc(base_query.to_string());
     }
 
     // Check if it's a MANRS query
+    #[cfg(feature = "bgp-manrs")]
     if query.to_uppercase().ends_with("-MANRS") {
         let base_query = &query[..query.len() - 6]; // Remove "-MANRS" suffix
         return QueryType::Manrs(base_query.to_string());
     }
 
     // Check if it's a DNS query
+    #[cfg(feature = "dns")]
     if query.to_uppercase().ends_with("-DNS") {
         let base_query = &query[..query.len() - 4]; // Remove "-DNS" suffix
         return QueryType::Dns(base_query.to_string());
     }
 
     // Check if it's an NTP query
+    #[cfg(feature = "ntp")]
     if query.to_uppercase().ends_with("-NTP") {
         let base_query = &query[..query.len() - 4]; // Remove "-NTP" suffix
         return QueryType::Ntp(base_query.to_string());
     }
 
     // Check if it's a ping query
+    #[cfg(feature = "ping")]
     if query.to_uppercase().ends_with("-PING") {
         let base_query = &query[..query.len() - 5]; // Remove "-PING" suffix
         return QueryType::Ping(base_query.to_string());
     }
 
     // Check if it's a traceroute query (long form)
+    #[cfg(feature = "traceroute")]
     if query.to_uppercase().ends_with("-TRACEROUTE") {
         let base_query = &query[..query.len() - 11]; // Remove "-TRACEROUTE" suffix
         return QueryType::Trace(base_query.to_string());
     }
 
     // Check if it's a traceroute query (short form)
+    #[cfg(feature = "traceroute")]
     if query.to_uppercase().ends_with("-TRACE") {
         let base_query = &query[..query.len() - 6]; // Remove "-TRACE" suffix
         return QueryType::Trace(base_query.to_string());
     }
 
     // Check if it's an SSL certificate query
+    #[cfg(feature = "ssl")]
     if query.to_uppercase().ends_with("-SSL") {
         let base_query = &query[..query.len() - 4]; // Remove "-SSL" suffix
         return QueryType::Ssl(base_query.to_string());
     }
 
     // Check if it's a Certificate Transparency query
+    #[cfg(feature = "crt")]
     if query.to_uppercase().ends_with("-CRT") {
         let base_query = &query[..query.len() - 4]; // Remove "-CRT" suffix
         return QueryType::Crt(base_query.to_string());
     }
 
     // Check if it's a Cloudflare Status query
+    #[cfg(feature = "cfstatus")]
     if query.to_uppercase().ends_with("-CFSTATUS") {
         let base_query = &query[..query.len() - 9]; // Remove "-CFSTATUS" suffix
         return QueryType::CfStatus(base_query.to_string());
     }
 
     // Check if it's a Minecraft server query
+    #[cfg(feature = "minecraft")]
     if query.to_uppercase().ends_with("-MINECRAFT") {
         let base_query = &query[..query.len() - 10]; // Remove "-MINECRAFT" suffix
         return QueryType::Minecraft(base_query.to_string());
     }
 
     // Check if it's a Minecraft user query
+    #[cfg(feature = "minecraft")]
     if query.to_uppercase().ends_with("-MCU") {
         let base_query = &query[..query.len() - 4]; // Remove "-MCU" suffix
         return QueryType::MinecraftUser(base_query.to_string());
     }
 
     // Check if it's a Minecraft server query (short form)
+    #[cfg(feature = "minecraft")]
     if query.to_uppercase().ends_with("-MC") {
         let base_query = &query[..query.len() - 3]; // Remove "-MC" suffix
         return QueryType::Minecraft(base_query.to_string());
     }
 
     // Check if it's a Steam search query (must be checked before regular Steam query)
+    #[cfg(feature = "steam")]
     if query.to_uppercase().ends_with("-STEAMSEARCH") {
         let base_query = &query[..query.len() - 12]; // Remove "-STEAMSEARCH" suffix
         return QueryType::SteamSearch(base_query.to_string());
     }
 
     // Check if it's a Steam game/user query
+    #[cfg(feature = "steam")]
     if query.to_uppercase().ends_with("-STEAM") {
         let base_query = &query[..query.len() - 6]; // Remove "-STEAM" suffix
         return QueryType::Steam(base_query.to_string());
     }
 
     // Check if it's an IMDb search query (must be checked before regular IMDb query)
+    #[cfg(feature = "imdb")]
     if query.to_uppercase().ends_with("-IMDBSEARCH") {
         let base_query = &query[..query.len() - 11]; // Remove "-IMDBSEARCH" suffix
         return QueryType::ImdbSearch(base_query.to_string());
     }
 
     // Check if it's an IMDb movie/TV show query
+    #[cfg(feature = "imdb")]
     if query.to_uppercase().ends_with("-IMDB") {
         let base_query = &query[..query.len() - 5]; // Remove "-IMDB" suffix
         return QueryType::Imdb(base_query.to_string());
     }
 
     // Check if it's an ACGC character query
+    #[cfg(feature = "acgc")]
     if query.to_uppercase().ends_with("-ACGC") {
         let base_query = &query[..query.len() - 5]; // Remove "-ACGC" suffix
         return QueryType::Acgc(base_query.to_string());
     }
 
     // Check if it's an AlmaLinux package query
+    #[cfg(feature = "pkg-alma")]
     if query.to_uppercase().ends_with("-ALMA") {
         let base_query = &query[..query.len() - 5]; // Remove "-ALMA" suffix
         return QueryType::Alma(base_query.to_string());
     }
 
     // Check if it's an AOSC package query
+    #[cfg(feature = "pkg-aosc")]
     if query.to_uppercase().ends_with("-AOSC") {
         let base_query = &query[..query.len() - 5]; // Remove "-AOSC" suffix
         return QueryType::Aosc(base_query.to_string());
     }
 
     // Check if it's an AUR package query
+    #[cfg(feature = "pkg-aur")]
     if query.to_uppercase().ends_with("-AUR") {
         let base_query = &query[..query.len() - 4]; // Remove "-AUR" suffix
         return QueryType::Aur(base_query.to_string());
     }
 
     // Check if it's a Debian package query
+    #[cfg(feature = "pkg-debian")]
     if query.to_uppercase().ends_with("-DEBIAN") {
         let base_query = &query[..query.len() - 7]; // Remove "-DEBIAN" suffix
         return QueryType::Debian(base_query.to_string());
     }
 
     // Check if it's an EPEL package query
+    #[cfg(feature = "pkg-epel")]
     if query.to_uppercase().ends_with("-EPEL") {
         let base_query = &query[..query.len() - 5]; // Remove "-EPEL" suffix
         return QueryType::Epel(base_query.to_string());
     }
 
     // Check if it's an Ubuntu package query
+    #[cfg(feature = "pkg-ubuntu")]
     if query.to_uppercase().ends_with("-UBUNTU") {
         let base_query = &query[..query.len() - 7]; // Remove "-UBUNTU" suffix
         return QueryType::Ubuntu(base_query.to_string());
     }
 
     // Check if it's a NixOS package query
+    #[cfg(feature = "pkg-nixos")]
     if query.to_uppercase().ends_with("-NIXOS") {
         let base_query = &query[..query.len() - 6]; // Remove "-NIXOS" suffix
         return QueryType::NixOs(base_query.to_string());
     }
 
     // Check if it's an OpenSUSE package query
+    #[cfg(feature = "pkg-opensuse")]
     if query.to_uppercase().ends_with("-OPENSUSE") {
         let base_query = &query[..query.len() - 9]; // Remove "-OPENSUSE" suffix
         return QueryType::OpenSuse(base_query.to_string());
     }
 
     // Check if it's an OpenWrt package query
+    #[cfg(feature = "pkg-openwrt")]
     if query.to_uppercase().ends_with("-OPENWRT") {
         let base_query = &query[..query.len() - 8]; // Remove "-OPENWRT" suffix
         return QueryType::OpenWrt(base_query.to_string());
     }
 
     // Check if it's an NPM package query
+    #[cfg(feature = "pkg-npm")]
     if query.to_uppercase().ends_with("-NPM") {
         let base_query = &query[..query.len() - 4]; // Remove "-NPM" suffix
         return QueryType::Npm(base_query.to_string());
     }
 
     // Check if it's a PyPI package query
+    #[cfg(feature = "pkg-pypi")]
     if query.to_uppercase().ends_with("-PYPI") {
         let base_query = &query[..query.len() - 5]; // Remove "-PYPI" suffix
         return QueryType::Pypi(base_query.to_string());
     }
 
     // Check if it's a Cargo (Rust crates) package query
+    #[cfg(feature = "pkg-cargo")]
     if query.to_uppercase().ends_with("-CARGO") {
         let base_query = &query[..query.len() - 6]; // Remove "-CARGO" suffix
         return QueryType::Cargo(base_query.to_string());
     }
 
     // Check if it's a Modrinth mod/resource pack query
+    #[cfg(feature = "pkg-modrinth")]
     if query.to_uppercase().ends_with("-MODRINTH") {
         let base_query = &query[..query.len() - 9]; // Remove "-MODRINTH" suffix
         return QueryType::Modrinth(base_query.to_string());
     }
 
     // Check if it's a CurseForge mod query
+    #[cfg(feature = "pkg-curseforge")]
     if query.to_uppercase().ends_with("-CURSEFORGE") {
         let base_query = &query[..query.len() - 11]; // Remove "-CURSEFORGE" suffix
         return QueryType::CurseForge(base_query.to_string());
     }
 
     // Check if it's a GitHub user/repository query
+    #[cfg(feature = "github")]
     if query.to_uppercase().ends_with("-GITHUB") {
         let base_query = &query[..query.len() - 7]; // Remove "-GITHUB" suffix
         return QueryType::GitHub(base_query.to_string());
     }
 
     // Check if it's a Wikipedia article query
+    #[cfg(feature = "wikipedia")]
     if query.to_uppercase().ends_with("-WIKIPEDIA") {
         let base_query = &query[..query.len() - 10]; // Remove "-WIKIPEDIA" suffix
         return QueryType::Wikipedia(base_query.to_string());
     }
 
     // Check if it's a Luotianyi lyric query
+    #[cfg(feature = "lyric")]
     if query.to_uppercase().ends_with("-LYRIC") {
         let base_query = &query[..query.len() - 6]; // Remove "-LYRIC" suffix
         return QueryType::Lyric(base_query.to_string());
@@ -450,71 +631,83 @@ pub fn analyze_query(query: &str) -> QueryType {
     }
 
     // Check if it's a PeeringDB query
+    #[cfg(feature = "peeringdb")]
     if query.to_uppercase().ends_with("-PEERINGDB") {
         let base_query = &query[..query.len() - 10]; // Remove "-PEERINGDB" suffix
         return QueryType::PeeringDB(base_query.to_string());
     }
 
     // Check if it's a IANA Private Enterprise Numbers query
+    #[cfg(feature = "pen")]
     if query.to_uppercase().ends_with("-PEN") {
         let base_query = &query[..query.len() - 4]; // Remove "-PEN" suffix
         return QueryType::Pen(base_query.to_string());
     }
 
     // Check if it's a RDAP query
+    #[cfg(feature = "rdap-explicit")]
     if query.to_uppercase().ends_with("-RDAP") {
         let base_query = &query[..query.len() - 5]; // Remove "-RDAP" suffix
         return QueryType::Rdap(base_query.to_string());
     }
 
     // Check if it's a Pixiv query
+    #[cfg(feature = "pixiv")]
     if query.to_uppercase().ends_with("-PIXIV") {
         let base_query = &query[..query.len() - 6]; // Remove "-PIXIV" suffix
         return QueryType::Pixiv(base_query.to_string());
     }
 
     // Check if it's an ICP filing query
+    #[cfg(feature = "icp")]
     if query.to_uppercase().ends_with("-ICP") {
         let base_query = &query[..query.len() - 4]; // Remove "-ICP" suffix
         return QueryType::Icp(base_query.to_string());
     }
 
     // Check if it's a BGP Tools query
+    #[cfg(feature = "bgp")]
     if query.to_uppercase().ends_with("-BGPTOOL") {
         let base_query = &query[..query.len() - 8]; // Remove "-BGPTOOL" suffix
         return QueryType::BGPTool(base_query.to_string());
     }
 
     // Check if it's a prefixes query
+    #[cfg(feature = "bgp-prefixes")]
     if query.to_uppercase().ends_with("-PREFIXES") {
         let base_query = &query[..query.len() - 9]; // Remove "-PREFIXES" suffix
         return QueryType::Prefixes(base_query.to_string());
     }
 
     // Check if it's a RIR geo query
+    #[cfg(feature = "geo")]
     if query.to_uppercase().ends_with("-RIRGEO") {
         let base_query = &query[..query.len() - 7]; // Remove "-RIRGEO" suffix
         return QueryType::RirGeo(base_query.to_string());
     }
 
     // Check if it's a geo query
+    #[cfg(feature = "geo")]
     if query.to_uppercase().ends_with("-GEO") {
         let base_query = &query[..query.len() - 4]; // Remove "-GEO" suffix
         return QueryType::Geo(base_query.to_string());
     }
 
     // Check if it's an email search query
+    #[cfg(feature = "email")]
     if query.to_uppercase().ends_with("-EMAIL") {
         let base_query = &query[..query.len() - 6]; // Remove "-EMAIL" suffix
         return QueryType::EmailSearch(base_query.to_string());
     }
 
     // Check if it's a .dn42 domain
+    #[cfg(feature = "dn42")]
     if query.to_lowercase().ends_with(".dn42") {
         return QueryType::Domain(query.to_string());
     }
 
     // Check if it has -DN42 suffix or ends with -MNT
+    #[cfg(feature = "dn42")]
     if query.to_uppercase().ends_with("-DN42") || query.to_uppercase().ends_with("-MNT") {
         return QueryType::Unknown(query.to_string());
     }
@@ -557,6 +750,7 @@ pub fn analyze_query(query: &str) -> QueryType {
     }
 
     // Check for plugin-registered suffixes (before Unknown)
+    #[cfg(feature = "plugins")]
     if let Some(plugin_registry) = get_plugin_registry() {
         let query_upper = query.to_uppercase();
         for suffix in plugin_registry.get_all_suffixes() {
@@ -594,18 +788,23 @@ pub fn is_private_ipv6(ip: Ipv6Addr) -> bool {
 }
 
 // Global plugin registry (shared across all threads)
+#[cfg(feature = "plugins")]
 use crate::plugins::PluginRegistry;
+#[cfg(feature = "plugins")]
 use std::sync::Arc;
 
+#[cfg(feature = "plugins")]
 static PLUGIN_REGISTRY: RwLock<Option<Arc<PluginRegistry>>> = RwLock::new(None);
 
 /// Set the global plugin registry
+#[cfg(feature = "plugins")]
 pub fn set_plugin_registry(registry: Arc<PluginRegistry>) {
     let mut guard = PLUGIN_REGISTRY.write().unwrap_or_else(|e| e.into_inner());
     *guard = Some(registry);
 }
 
 /// Get the global plugin registry
+#[cfg(feature = "plugins")]
 pub fn get_plugin_registry() -> Option<Arc<PluginRegistry>> {
     let guard = PLUGIN_REGISTRY.read().unwrap_or_else(|e| e.into_inner());
     guard.clone()

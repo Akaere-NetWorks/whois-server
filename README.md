@@ -26,6 +26,11 @@
   - [🚀 Installation](#-installation)
     - [As a Standalone Server](#as-a-standalone-server)
     - [As a Rust Library](#as-a-rust-library)
+  - [🧩 Feature Flags (Compile-time Trimming)](#-feature-flags-compile-time-trimming)
+    - [Atomic Features](#atomic-features)
+    - [Preset Groups](#preset-groups)
+    - [Typical Scenarios](#typical-scenarios)
+    - [As a Dependency](#as-a-dependency)
   - [🔧 Usage](#-usage)
     - [Running the server](#running-the-server)
     - [Configuration](#configuration)
@@ -53,6 +58,7 @@
 ## ✨ Features
 
 - **🚀 High Performance** - Asynchronous Rust implementation with configurable connection limits
+- **🧩 Feature Flags** - Compile-time feature trimming: build only what you need (core WHOIS → full server)
 - **🌐 RFC 3912 Compliant** - Full WHOIS protocol support
 - **🔍 Smart Query Detection** - Automatic identification of domains, IP addresses, ASNs, and special query types
 - **🌟 Platform-Aware DN42 Integration** - Cross-platform DN42 support with automatic backend selection
@@ -86,7 +92,7 @@
 - **🌐 Web Dashboard** - Modern web interface for statistics and testing
 - **🔒 Robust Error Handling** - Graceful handling of network issues and timeouts
 - **📋 Traffic Logging** - Optional query/response dumping for debugging
-- **🌈 IPv4 & IPv6 Support** - Complete dual-stack implementation
+- **🧩 Compile-time Feature Flags** - Cargo feature flags for building minimal to full-featured binaries
 - **🎯 Intelligent Fallback** - Automatic fallback to DN42 for failed public queries
 
 ## 🌍 Public Instance
@@ -267,6 +273,104 @@ async fn main() -> anyhow::Result<()> {
 ```
 
 **📚 For detailed library usage examples and API documentation, see [LIBRARY_USAGE.md](LIBRARY_USAGE.md)**
+
+## 🧩 Feature Flags (Compile-time Trimming)
+
+All features are controlled via Cargo feature flags. Disabled features are **completely excluded** from the binary — zero code, zero dependencies, zero overhead.
+
+> **Default behavior unchanged**: `cargo build --release` still compiles everything.
+
+### Atomic Features
+
+| Feature | Flag | Description |
+|---------|------|-------------|
+| **DN42 Private Network** | `dn42` | DN42 registry queries, .dn42 domains, private IP auto-routing |
+| **BGP Tools** | `bgp` | BGPTool / IRR Explorer / Looking Glass / RPKI |
+| **IRR Direct Connect** | `bgp-irr` | RADB / ALTDB / AFRINIC / APNIC / ARIN / BELL / JPIRR / LACNIC / LEVEL3 / NTTCOM / RIPE / RIS / TC |
+| **MANRS Compliance** | `bgp-manrs` | MANRS routing security compliance checking |
+| **ASN Prefix List** | `bgp-prefixes` | `-PREFIXES` ASN prefix listing |
+| **PeeringDB** | `peeringdb` | PeeringDB ASN/IX queries |
+| **IP Geolocation** | `geo` | `-GEO` / `-RIRGEO` geolocation queries |
+| **DNS Lookup** | `dns` | DNS resolution information |
+| **Ping** | `ping` | ICMP ping test |
+| **Traceroute** | `traceroute` | Network path tracing |
+| **NTP Time** | `ntp` | NTP time synchronization test |
+| **SSL Certificate** | `ssl` | SSL/TLS certificate analysis |
+| **Certificate Transparency** | `crt` | CT log search |
+| **Cloudflare Status** | `cfstatus` | Cloudflare service status queries |
+| **Email Search** | `email` | Email address search in WHOIS data |
+| **Steam** | `steam` | Steam game/user info and search |
+| **IMDb** | `imdb` | IMDb movie/TV info and search |
+| **Minecraft** | `minecraft` | Minecraft server status and user profiles |
+| **ACGC** | `acgc` | Anime/Comic/Game character database |
+| **Luotianyi Lyrics** | `lyric` | Random lyrics |
+| **Meal Suggestions** | `meal` | Random meal suggestions (EN/CN) |
+| **Wikipedia** | `wikipedia` | Wikipedia article lookup |
+| **GitHub** | `github` | GitHub user/repository information |
+| **ICP Filing** | `icp` | Chinese domain ICP filing queries |
+| **IANA PEN** | `pen` | IANA Private Enterprise Numbers database |
+| **Pixiv** | `pixiv` | Pixiv artwork/user/ranking queries |
+| **RDAP Explicit** | `rdap-explicit` | `-RDAP` suffix for explicit RDAP queries |
+| **SSH Server** | `ssh` | SSH remote access support |
+| **Web Dashboard** | `web` | HTTP web interface and REST API |
+| **Lua Plugins** | `plugins` | Lua plugin system |
+| **Telemetry** | `telemetry` | Anonymous query statistics reporting |
+| **Package Managers** | `pkg-alma` / `pkg-aosc` / `pkg-aur` / `pkg-cargo` / `pkg-curseforge` / `pkg-debian` / `pkg-epel` / `pkg-modrinth` / `pkg-nixos` / `pkg-npm` / `pkg-opensuse` / `pkg-openwrt` / `pkg-pypi` / `pkg-ubuntu` | Individual package manager control |
+
+### Preset Groups
+
+| Preset | Includes | Use Case |
+|--------|----------|----------|
+| `packages` | All 14 package managers | Developer tooling |
+| `entertainment` | steam / imdb / minecraft / acgc / lyric / meal / wikipedia / github | Entertainment & content |
+| `network-tools` | dns / ping / traceroute / ntp / ssl / crt / cfstatus / email | Network diagnostics |
+| `bgp-full` | bgp + bgp-irr + bgp-manrs + peeringdb + bgp-prefixes | Full BGP analysis |
+| `network` | dn42 + bgp-full + geo + network-tools + pen + peeringdb + rdap-explicit | NOC / ISP operations |
+| `full` | All features (**default**) | Complete server |
+
+### Typical Scenarios
+
+```bash
+# 1. Minimal WHOIS core (domain/IP/ASN/RDAP/DESC/HELP)
+cargo build --release --no-default-features
+
+# 2. Core + DN42
+cargo build --release --no-default-features --features "dn42"
+
+# 3. NOC/ISP network operations (no entertainment)
+cargo build --release --no-default-features --features "network"
+
+# 4. Operations + SSH remote access + Web dashboard
+cargo build --release --no-default-features --features "network,ssh,web"
+
+# 5. Developer tooling server (package managers + GitHub + Web)
+cargo build --release --no-default-features --features "packages,github,web"
+
+# 6. BGP analysis only
+cargo build --release --no-default-features --features "bgp,bgp-irr"
+
+# 7. Hand-picked package managers + DNS + BGP
+cargo build --release --no-default-features --features "pkg-cargo,pkg-npm,pkg-pypi,dns,bgp"
+
+# 8. Full features (same as default, no extra flags needed)
+cargo build --release
+```
+
+### As a Dependency
+
+```toml
+# WHOIS/RDAP core only
+[dependencies]
+whois-server = { git = "https://github.com/Akaere-NetWorks/whois-server.git", default-features = false }
+
+# BGP analysis only
+[dependencies]
+whois-server = { git = "https://github.com/Akaere-NetWorks/whois-server.git", default-features = false, features = ["bgp", "bgp-irr"] }
+
+# Network operations toolkit
+[dependencies]
+whois-server = { git = "https://github.com/Akaere-NetWorks/whois-server.git", default-features = false, features = ["network"] }
+```
 
 ## 🔧 Usage
 

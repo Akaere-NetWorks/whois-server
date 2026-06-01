@@ -756,159 +756,23 @@ impl Colorizer {
         let comment_color = if bold_colors { "\x1b[37m" } else { "\x1b[90m" }; // Dim white vs bright black
 
         match query_type {
-            QueryType::Geo(_) | QueryType::RirGeo(_) => {
-                if line.contains("latitude")
-                    || line.contains("longitude")
-                    || line.contains("coordinates")
-                {
-                    if bold_colors {
-                        format!("\x1b[35m{}\x1b[0m", line) // Magenta for dark
-                    } else {
-                        format!("\x1b[95m{}\x1b[0m", line) // Bright magenta for light
-                    }
-                } else if line.contains("location")
-                    || line.contains("city")
-                    || line.contains("region")
-                {
-                    format!("\x1b[94m{}\x1b[0m", line) // Blue
-                } else {
-                    line.to_string()
-                }
-            }
-            QueryType::BGPTool(_) | QueryType::Prefixes(_) => {
+            QueryType::Domain(_) | QueryType::IPv4(_) | QueryType::IPv6(_) | QueryType::ASN(_) | QueryType::BareASN(_) | QueryType::Unknown(_) => {
+                // General network highlighting for domain/IP/ASN queries
                 let mut result = ASN_REGEX.replace_all(line, "\x1b[93m$1\x1b[0m").to_string();
                 result = IP_REGEX
                     .replace_all(&result, "\x1b[92m$1\x1b[0m")
                     .to_string();
-                result
-            }
-            QueryType::Dns(_) => {
-                if line.contains("DNS Resolution Results") || line.contains("Query:") {
-                    if bold_colors {
-                        format!("\x1b[36m{}\x1b[0m", line) // Cyan for dark
-                    } else {
-                        format!("\x1b[1;96m{}\x1b[0m", line) // Bright cyan for light
-                    }
-                } else if line.contains(" A ") && !line.contains("AAAA") {
-                    IPV4_ONLY_REGEX.replace_all(line, "\x1b[92m$1\x1b[0m").to_string()
-                } else if line.contains(" AAAA ") {
-                    IPV6_REGEX
-                        .replace_all(line, "\x1b[92m$1\x1b[0m")
-                        .to_string()
-                } else if line.contains(" CNAME ") || line.contains(" DNAME ") {
-                    format!("\x1b[94m{}\x1b[0m", line) // Blue for aliases
-                } else if line.contains(" MX ") {
-                    format!("\x1b[95m{}\x1b[0m", line) // Magenta for mail exchangers
-                } else if line.contains(" NS ") {
-                    format!("\x1b[96m{}\x1b[0m", line) // Cyan for nameservers
-                } else if line.contains(" TXT ") || line.contains(" SPF ") {
-                    format!("\x1b[93m{}\x1b[0m", line) // Yellow for text records
+                result = DOMAIN_REGEX
+                    .replace_all(&result, "\x1b[94m$1\x1b[0m")
+                    .to_string();
+
+                if line.starts_with("%") {
+                    format!("{}{}\x1b[0m", comment_color, result)
                 } else {
-                    line.to_string()
+                    result
                 }
             }
-            QueryType::Ssl(_) => {
-                if line.contains("Certificate Information") || line.contains("SSL Certificate") {
-                    if bold_colors {
-                        format!("\x1b[36m{}\x1b[0m", line) // Cyan for dark
-                    } else {
-                        format!("\x1b[1;96m{}\x1b[0m", line) // Bright cyan for light
-                    }
-                } else if line.contains("Certificate Status:") {
-                    if line.contains("Valid") {
-                        format!("\x1b[92m{}\x1b[0m", line) // Green
-                    } else if line.contains("Expired") || line.contains("Invalid") {
-                        format!("\x1b[91m{}\x1b[0m", line) // Red
-                    } else {
-                        format!("\x1b[93m{}\x1b[0m", line) // Yellow
-                    }
-                } else if line.contains("Subject:") || line.contains("Issuer:") {
-                    if bold_colors {
-                        format!("\x1b[35m{}\x1b[0m", line) // Magenta for dark
-                    } else {
-                        format!("\x1b[95m{}\x1b[0m", line) // Bright magenta for light
-                    }
-                } else if line.contains("Not Before:") || line.contains("Not After:") {
-                    if line.contains("Not After:") && line.contains("202") {
-                        format!("\x1b[93m{}\x1b[0m", line) // Yellow for expiry dates
-                    } else {
-                        format!("\x1b[90m{}\x1b[0m", line) // Gray for timestamps
-                    }
-                } else if line.contains("SHA") || line.contains("Fingerprint") {
-                    format!("\x1b[96m{}\x1b[0m", line) // Cyan for fingerprints
-                } else {
-                    line.to_string()
-                }
-            }
-            QueryType::Steam(_) | QueryType::SteamSearch(_) => {
-                if line.contains("Steam Application Information")
-                    || line.contains("Steam Game Search Results")
-                {
-                    if bold_colors {
-                        format!("\x1b[36m{}\x1b[0m", line) // Cyan for dark
-                    } else {
-                        format!("\x1b[1;96m{}\x1b[0m", line) // Bright cyan for light
-                    }
-                } else if line.contains("price:") {
-                    if line.contains("(%↓)") || line.contains("Free") {
-                        // Green for discounted games and free games
-                        let colored = PRICE_DISCOUNT_REGEX
-                            .replace_all(line, "\x1b[1;92m$1\x1b[0m")
-                            .to_string();
-                        DISCOUNT_REGEX
-                            .replace_all(&colored, "\x1b[1;92m$1\x1b[0m")
-                            .to_string()
-                    } else {
-                        // White/Red for full-price games
-                        if bold_colors {
-                            PRICE_ONLY_REGEX
-                                .replace_all(line, "\x1b[91m$1\x1b[0m")
-                                .to_string() // Red for dark mode
-                        } else {
-                            PRICE_ONLY_REGEX
-                                .replace_all(line, "\x1b[97m$1\x1b[0m")
-                                .to_string() // White for light mode
-                        }
-                    }
-                } else if line.contains("Status:") {
-                    if line.contains("Online") {
-                        format!("\x1b[1;92m{}\x1b[0m", line) // Bright green for online
-                    } else {
-                        format!("\x1b[1;91m{}\x1b[0m", line) // Bright red for offline
-                    }
-                } else if line.starts_with("%") {
-                    format!("{}{}\x1b[0m", comment_color, line)
-                } else {
-                    line.to_string()
-                }
-            }
-            QueryType::Imdb(_) | QueryType::ImdbSearch(_) => {
-                if line.contains("IMDb") {
-                    if bold_colors {
-                        format!("\x1b[36m{}\x1b[0m", line) // Cyan for dark
-                    } else {
-                        format!("\x1b[1;96m{}\x1b[0m", line) // Bright cyan for light
-                    }
-                } else if line.contains("imdb-rating:") {
-                    if line.contains("8.") || line.contains("9.") {
-                        RATING_REGEX
-                            .replace_all(line, "\x1b[1;92m$1\x1b[0m")
-                            .to_string() // Green for high ratings
-                    } else if line.contains("7.") {
-                        RATING_REGEX
-                            .replace_all(line, "\x1b[1;93m$1\x1b[0m")
-                            .to_string() // Yellow for good ratings
-                    } else {
-                        RATING_REGEX
-                            .replace_all(line, "\x1b[1;91m$1\x1b[0m")
-                            .to_string() // Red for low ratings
-                    }
-                } else if line.starts_with("%") {
-                    format!("{}{}\x1b[0m", comment_color, line)
-                } else {
-                    line.to_string()
-                }
-            }
+
             QueryType::Desc(_) => {
                 if line.starts_with("%") {
                     format!("{}{}\x1b[0m", comment_color, line)
@@ -917,26 +781,234 @@ impl Colorizer {
                     || line.contains("remarks:")
                 {
                     if bold_colors {
-                        format!("\x1b[37m{}\x1b[0m", line) // Dim white for dark mode
+                        format!("\x1b[37m{}\x1b[0m", line)
                     } else {
-                        format!("\x1b[92m{}\x1b[0m", line) // Green for light mode
+                        format!("\x1b[92m{}\x1b[0m", line)
                     }
                 } else {
                     line.to_string()
                 }
             }
+
+            QueryType::Help => {
+                if line.contains("Help Information") {
+                    if bold_colors {
+                        format!("\x1b[36m{}\x1b[0m", line)
+                    } else {
+                        format!("\x1b[1;96m{}\x1b[0m", line)
+                    }
+                } else if line.contains("Category:") {
+                    format!("\x1b[1;95m{}\x1b[0m", line)
+                } else if line.contains("Example:") || line.contains("Usage:") {
+                    format!("\x1b[92m{}\x1b[0m", line)
+                } else if line.starts_with("%") {
+                    format!("{}{}\x1b[0m", comment_color, line)
+                } else {
+                    line.to_string()
+                }
+            }
+
+            QueryType::UpdatePatch => {
+                if line.starts_with("%") {
+                    format!("{}{}\x1b[0m", comment_color, line)
+                } else {
+                    line.to_string()
+                }
+            }
+
+            QueryType::Rdap(_) => {
+                if line.starts_with("%") {
+                    format!("{}{}\x1b[0m", comment_color, line)
+                } else {
+                    line.to_string()
+                }
+            }
+
+            #[cfg(feature = "geo")]
+            QueryType::Geo(_) | QueryType::RirGeo(_) => {
+                if line.contains("latitude")
+                    || line.contains("longitude")
+                    || line.contains("coordinates")
+                {
+                    if bold_colors {
+                        format!("\x1b[35m{}\x1b[0m", line)
+                    } else {
+                        format!("\x1b[95m{}\x1b[0m", line)
+                    }
+                } else if line.contains("location")
+                    || line.contains("city")
+                    || line.contains("region")
+                {
+                    format!("\x1b[94m{}\x1b[0m", line)
+                } else {
+                    line.to_string()
+                }
+            }
+
+            #[cfg(feature = "bgp")]
+            QueryType::BGPTool(_) | QueryType::Irr(_) | QueryType::LookingGlass(_) | QueryType::Rpki(_, _) => {
+                let mut result = ASN_REGEX.replace_all(line, "\x1b[93m$1\x1b[0m").to_string();
+                result = IP_REGEX
+                    .replace_all(&result, "\x1b[92m$1\x1b[0m")
+                    .to_string();
+                result
+            }
+
+            #[cfg(feature = "bgp-prefixes")]
+            QueryType::Prefixes(_) => {
+                let mut result = ASN_REGEX.replace_all(line, "\x1b[93m$1\x1b[0m").to_string();
+                result = IP_REGEX
+                    .replace_all(&result, "\x1b[92m$1\x1b[0m")
+                    .to_string();
+                result
+            }
+
+            #[cfg(feature = "dns")]
+            QueryType::Dns(_) => {
+                if line.contains("DNS Resolution Results") || line.contains("Query:") {
+                    if bold_colors {
+                        format!("\x1b[36m{}\x1b[0m", line)
+                    } else {
+                        format!("\x1b[1;96m{}\x1b[0m", line)
+                    }
+                } else if line.contains(" A ") && !line.contains("AAAA") {
+                    IPV4_ONLY_REGEX.replace_all(line, "\x1b[92m$1\x1b[0m").to_string()
+                } else if line.contains(" AAAA ") {
+                    IPV6_REGEX
+                        .replace_all(line, "\x1b[92m$1\x1b[0m")
+                        .to_string()
+                } else if line.contains(" CNAME ") || line.contains(" DNAME ") {
+                    format!("\x1b[94m{}\x1b[0m", line)
+                } else if line.contains(" MX ") {
+                    format!("\x1b[95m{}\x1b[0m", line)
+                } else if line.contains(" NS ") {
+                    format!("\x1b[96m{}\x1b[0m", line)
+                } else if line.contains(" TXT ") || line.contains(" SPF ") {
+                    format!("\x1b[93m{}\x1b[0m", line)
+                } else {
+                    line.to_string()
+                }
+            }
+
+            #[cfg(feature = "ssl")]
+            QueryType::Ssl(_) => {
+                if line.contains("Certificate Information") || line.contains("SSL Certificate") {
+                    if bold_colors {
+                        format!("\x1b[36m{}\x1b[0m", line)
+                    } else {
+                        format!("\x1b[1;96m{}\x1b[0m", line)
+                    }
+                } else if line.contains("Certificate Status:") {
+                    if line.contains("Valid") {
+                        format!("\x1b[92m{}\x1b[0m", line)
+                    } else if line.contains("Expired") || line.contains("Invalid") {
+                        format!("\x1b[91m{}\x1b[0m", line)
+                    } else {
+                        format!("\x1b[93m{}\x1b[0m", line)
+                    }
+                } else if line.contains("Subject:") || line.contains("Issuer:") {
+                    if bold_colors {
+                        format!("\x1b[35m{}\x1b[0m", line)
+                    } else {
+                        format!("\x1b[95m{}\x1b[0m", line)
+                    }
+                } else if line.contains("Not Before:") || line.contains("Not After:") {
+                    if line.contains("Not After:") && line.contains("202") {
+                        format!("\x1b[93m{}\x1b[0m", line)
+                    } else {
+                        format!("\x1b[90m{}\x1b[0m", line)
+                    }
+                } else if line.contains("SHA") || line.contains("Fingerprint") {
+                    format!("\x1b[96m{}\x1b[0m", line)
+                } else {
+                    line.to_string()
+                }
+            }
+
+            #[cfg(feature = "steam")]
+            QueryType::Steam(_) | QueryType::SteamSearch(_) => {
+                if line.contains("Steam Application Information")
+                    || line.contains("Steam Game Search Results")
+                {
+                    if bold_colors {
+                        format!("\x1b[36m{}\x1b[0m", line)
+                    } else {
+                        format!("\x1b[1;96m{}\x1b[0m", line)
+                    }
+                } else if line.contains("price:") {
+                    if line.contains("(%↓)") || line.contains("Free") {
+                        let colored = PRICE_DISCOUNT_REGEX
+                            .replace_all(line, "\x1b[1;92m$1\x1b[0m")
+                            .to_string();
+                        DISCOUNT_REGEX
+                            .replace_all(&colored, "\x1b[1;92m$1\x1b[0m")
+                            .to_string()
+                    } else {
+                        if bold_colors {
+                            PRICE_ONLY_REGEX
+                                .replace_all(line, "\x1b[91m$1\x1b[0m")
+                                .to_string()
+                        } else {
+                            PRICE_ONLY_REGEX
+                                .replace_all(line, "\x1b[97m$1\x1b[0m")
+                                .to_string()
+                        }
+                    }
+                } else if line.contains("Status:") {
+                    if line.contains("Online") {
+                        format!("\x1b[1;92m{}\x1b[0m", line)
+                    } else {
+                        format!("\x1b[1;91m{}\x1b[0m", line)
+                    }
+                } else if line.starts_with("%") {
+                    format!("{}{}\x1b[0m", comment_color, line)
+                } else {
+                    line.to_string()
+                }
+            }
+
+            #[cfg(feature = "imdb")]
+            QueryType::Imdb(_) | QueryType::ImdbSearch(_) => {
+                if line.contains("IMDb") {
+                    if bold_colors {
+                        format!("\x1b[36m{}\x1b[0m", line)
+                    } else {
+                        format!("\x1b[1;96m{}\x1b[0m", line)
+                    }
+                } else if line.contains("imdb-rating:") {
+                    if line.contains("8.") || line.contains("9.") {
+                        RATING_REGEX
+                            .replace_all(line, "\x1b[1;92m$1\x1b[0m")
+                            .to_string()
+                    } else if line.contains("7.") {
+                        RATING_REGEX
+                            .replace_all(line, "\x1b[1;93m$1\x1b[0m")
+                            .to_string()
+                    } else {
+                        RATING_REGEX
+                            .replace_all(line, "\x1b[1;91m$1\x1b[0m")
+                            .to_string()
+                    }
+                } else if line.starts_with("%") {
+                    format!("{}{}\x1b[0m", comment_color, line)
+                } else {
+                    line.to_string()
+                }
+            }
+
+            #[cfg(feature = "minecraft")]
             QueryType::Minecraft(_) => {
                 if line.contains("Minecraft Server Information") {
                     if bold_colors {
-                        format!("\x1b[36m{}\x1b[0m", line) // Cyan for dark
+                        format!("\x1b[36m{}\x1b[0m", line)
                     } else {
-                        format!("\x1b[1;96m{}\x1b[0m", line) // Bright cyan for light
+                        format!("\x1b[1;96m{}\x1b[0m", line)
                     }
                 } else if line.contains("status:") || line.contains("Status:") {
                     if line.to_lowercase().contains("online") {
-                        format!("\x1b[1;92m{}\x1b[0m", line) // Bright green for online
+                        format!("\x1b[1;92m{}\x1b[0m", line)
                     } else {
-                        format!("\x1b[1;91m{}\x1b[0m", line) // Bright red for offline
+                        format!("\x1b[1;91m{}\x1b[0m", line)
                     }
                 } else if line.contains("players:") || line.contains("Players:") {
                     ID_REGEX
@@ -947,11 +1019,11 @@ impl Colorizer {
                         .replace_all(line, |caps: &regex::Captures| {
                             let ms: u32 = caps[1].parse().unwrap_or(0);
                             if ms < 50 {
-                                format!("\x1b[1;92m{}ms\x1b[0m", ms) // Green for good latency
+                                format!("\x1b[1;92m{}ms\x1b[0m", ms)
                             } else if ms < 150 {
-                                format!("\x1b[1;93m{}ms\x1b[0m", ms) // Yellow for moderate latency
+                                format!("\x1b[1;93m{}ms\x1b[0m", ms)
                             } else {
-                                format!("\x1b[1;91m{}ms\x1b[0m", ms) // Red for high latency
+                                format!("\x1b[1;91m{}ms\x1b[0m", ms)
                             }
                         })
                         .to_string()
@@ -961,18 +1033,20 @@ impl Colorizer {
                     line.to_string()
                 }
             }
+
+            #[cfg(feature = "github")]
             QueryType::GitHub(_) => {
                 if line.contains("GitHub Repository Information") {
                     if bold_colors {
-                        format!("\x1b[36m{}\x1b[0m", line) // Cyan for dark
+                        format!("\x1b[36m{}\x1b[0m", line)
                     } else {
-                        format!("\x1b[1;96m{}\x1b[0m", line) // Bright cyan for light
+                        format!("\x1b[1;96m{}\x1b[0m", line)
                     }
                 } else if line.contains("visibility:") {
                     if line.contains("Public") {
-                        format!("\x1b[92m{}\x1b[0m", line) // Green for public
+                        format!("\x1b[92m{}\x1b[0m", line)
                     } else {
-                        format!("\x1b[91m{}\x1b[0m", line) // Red for private
+                        format!("\x1b[91m{}\x1b[0m", line)
                     }
                 } else if line.contains("stars:")
                     || line.contains("watchers:")
@@ -987,12 +1061,14 @@ impl Colorizer {
                     line.to_string()
                 }
             }
+
+            #[cfg(feature = "wikipedia")]
             QueryType::Wikipedia(_) => {
                 if line.contains("Wikipedia Article Information") {
                     if bold_colors {
-                        format!("\x1b[36m{}\x1b[0m", line) // Cyan for dark
+                        format!("\x1b[36m{}\x1b[0m", line)
                     } else {
-                        format!("\x1b[1;96m{}\x1b[0m", line) // Bright cyan for light
+                        format!("\x1b[1;96m{}\x1b[0m", line)
                     }
                 } else if line.contains("article-length:") {
                     SIZE_BYTES_REGEX
@@ -1004,20 +1080,22 @@ impl Colorizer {
                     line.to_string()
                 }
             }
+
+            #[cfg(feature = "pixiv")]
             QueryType::Pixiv(_) => {
                 if line.contains("Pixiv Artwork Information") {
                     if bold_colors {
-                        format!("\x1b[36m{}\x1b[0m", line) // Cyan for dark
+                        format!("\x1b[36m{}\x1b[0m", line)
                     } else {
-                        format!("\x1b[1;96m{}\x1b[0m", line) // Bright cyan for light
+                        format!("\x1b[1;96m{}\x1b[0m", line)
                     }
                 } else if line.contains("rating:") {
                     if line.to_lowercase().contains("safe") {
-                        format!("\x1b[92m{}\x1b[0m", line) // Green for safe
+                        format!("\x1b[92m{}\x1b[0m", line)
                     } else if line.to_lowercase().contains("r-18") {
-                        format!("\x1b[91m{}\x1b[0m", line) // Red for R-18
+                        format!("\x1b[91m{}\x1b[0m", line)
                     } else {
-                        format!("\x1b[93m{}\x1b[0m", line) // Yellow for other
+                        format!("\x1b[93m{}\x1b[0m", line)
                     }
                 } else if line.contains("views:")
                     || line.contains("likes:")
@@ -1032,90 +1110,80 @@ impl Colorizer {
                     line.to_string()
                 }
             }
+
+            #[cfg(feature = "acgc")]
             QueryType::Acgc(_) => {
                 if line.contains("ACGC Character Information") {
                     if bold_colors {
-                        format!("\x1b[36m{}\x1b[0m", line) // Cyan for dark
+                        format!("\x1b[36m{}\x1b[0m", line)
                     } else {
-                        format!("\x1b[1;96m{}\x1b[0m", line) // Bright cyan for light
+                        format!("\x1b[1;96m{}\x1b[0m", line)
                     }
                 } else if line.contains("character-name:") {
-                    format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta
+                    format!("\x1b[1;95m{}\x1b[0m", line)
                 } else if line.contains("voice-actor:") || line.contains("cv:") {
-                    format!("\x1b[94m{}\x1b[0m", line) // Blue
+                    format!("\x1b[94m{}\x1b[0m", line)
                 } else if line.starts_with("%") {
                     format!("{}{}\x1b[0m", comment_color, line)
                 } else {
                     line.to_string()
                 }
             }
+
+            #[cfg(feature = "lyric")]
             QueryType::Lyric(_) => {
                 if line.contains("Luotianyi Random Lyric") {
                     if bold_colors {
-                        format!("\x1b[36m{}\x1b[0m", line) // Cyan for dark
+                        format!("\x1b[36m{}\x1b[0m", line)
                     } else {
-                        format!("\x1b[1;96m{}\x1b[0m", line) // Bright cyan for light
+                        format!("\x1b[1;96m{}\x1b[0m", line)
                     }
                 } else if line.contains("lyric-content:") {
-                    format!("\x1b[1;37m{}\x1b[0m", line) // Bold white
+                    format!("\x1b[1;37m{}\x1b[0m", line)
                 } else if !line.trim().is_empty() && !line.contains(":") && !line.starts_with("%") {
-                    // Actual lyric content lines
-                    format!("\x1b[1;92m{}\x1b[0m", line) // Bright green for lyrics
+                    format!("\x1b[1;92m{}\x1b[0m", line)
                 } else if line.starts_with("%") {
                     format!("{}{}\x1b[0m", comment_color, line)
                 } else {
                     line.to_string()
                 }
             }
+
+            #[cfg(feature = "meal")]
             QueryType::Meal | QueryType::MealCN => {
                 if line.contains("Meal Information") {
                     if bold_colors {
-                        format!("\x1b[36m{}\x1b[0m", line) // Cyan for dark
+                        format!("\x1b[36m{}\x1b[0m", line)
                     } else {
-                        format!("\x1b[1;96m{}\x1b[0m", line) // Bright cyan for light
+                        format!("\x1b[1;96m{}\x1b[0m", line)
                     }
                 } else if line.contains("meal-name:") {
-                    format!("\x1b[1;92m{}\x1b[0m", line) // Bright green
+                    format!("\x1b[1;92m{}\x1b[0m", line)
                 } else if line.starts_with("%") {
                     format!("{}{}\x1b[0m", comment_color, line)
                 } else {
                     line.to_string()
                 }
             }
-            QueryType::Help => {
-                if line.contains("Help Information") {
-                    if bold_colors {
-                        format!("\x1b[36m{}\x1b[0m", line) // Cyan for dark
-                    } else {
-                        format!("\x1b[1;96m{}\x1b[0m", line) // Bright cyan for light
-                    }
-                } else if line.contains("Category:") {
-                    format!("\x1b[1;95m{}\x1b[0m", line) // Bright magenta for categories
-                } else if line.contains("Example:") || line.contains("Usage:") {
-                    format!("\x1b[92m{}\x1b[0m", line) // Green for examples
-                } else if line.starts_with("%") {
-                    format!("{}{}\x1b[0m", comment_color, line)
-                } else {
-                    line.to_string()
-                }
-            }
+
+            #[cfg(feature = "ntp")]
             QueryType::Ntp(_) => {
                 if line.contains("NTP Time Information") {
                     if bold_colors {
-                        format!("\x1b[36m{}\x1b[0m", line) // Cyan for dark
+                        format!("\x1b[36m{}\x1b[0m", line)
                     } else {
-                        format!("\x1b[1;96m{}\x1b[0m", line) // Bright cyan for light
+                        format!("\x1b[1;96m{}\x1b[0m", line)
                     }
                 } else if line.contains("stratum:") {
                     ID_REGEX
                         .replace_all(line, |caps: &regex::Captures| {
                             let stratum: u32 = caps[1].parse().unwrap_or(16);
                             if stratum <= 2 {
-                                format!("\x1b[1;92m{}\x1b[0m", stratum) // Green for stratum 1-2
+                                format!("\x1b[1;92m{}\x1b[0m", stratum)
                             } else if stratum <= 4 {
-                                format!("\x1b[1;93m{}\x1b[0m", stratum) // Yellow for stratum 3-4
+                                format!("\x1b[1;93m{}\x1b[0m", stratum)
                             } else {
-                                format!("\x1b[1;37m{}\x1b[0m", stratum) // White for others
+                                format!("\x1b[1;37m{}\x1b[0m", stratum)
                             }
                         })
                         .to_string()
@@ -1125,11 +1193,11 @@ impl Colorizer {
                             let offset: f64 = caps[1].parse().unwrap_or(999.0);
                             let abs_offset = offset.abs();
                             if abs_offset < 10.0 {
-                                format!("\x1b[1;92m{}ms\x1b[0m", offset) // Green for <10ms
+                                format!("\x1b[1;92m{}ms\x1b[0m", offset)
                             } else if abs_offset < 100.0 {
-                                format!("\x1b[1;93m{}ms\x1b[0m", offset) // Yellow for 10-100ms
+                                format!("\x1b[1;93m{}ms\x1b[0m", offset)
                             } else {
-                                format!("\x1b[1;91m{}ms\x1b[0m", offset) // Red for >100ms
+                                format!("\x1b[1;91m{}ms\x1b[0m", offset)
                             }
                         })
                         .to_string()
@@ -1139,16 +1207,29 @@ impl Colorizer {
                     line.to_string()
                 }
             }
-            QueryType::UpdatePatch | QueryType::Plugin(_, _) => {
-                // Use general formatting for update patch and plugins
+
+            #[cfg(feature = "plugins")]
+            QueryType::Plugin(_, _) => {
                 if line.starts_with("%") {
                     format!("{}{}\x1b[0m", comment_color, line)
                 } else {
                     line.to_string()
                 }
             }
+
+            #[cfg(any(
+                feature = "email", feature = "bgp-irr", feature = "bgp-manrs",
+                feature = "peeringdb", feature = "bgp-prefixes", feature = "ping",
+                feature = "traceroute", feature = "crt", feature = "cfstatus",
+                feature = "pkg-alma", feature = "pkg-aosc", feature = "pkg-aur",
+                feature = "pkg-cargo", feature = "pkg-debian", feature = "pkg-epel",
+                feature = "pkg-modrinth", feature = "pkg-nixos", feature = "pkg-npm",
+                feature = "pkg-opensuse", feature = "pkg-openwrt", feature = "pkg-pypi",
+                feature = "pkg-ubuntu", feature = "pkg-curseforge",
+                feature = "icp", feature = "rdap-explicit",
+            ))]
             _ => {
-                // General network highlighting for all other query types
+                // General network highlighting for feature-gated query types
                 let mut result = ASN_REGEX.replace_all(line, "\x1b[93m$1\x1b[0m").to_string();
                 result = IP_REGEX
                     .replace_all(&result, "\x1b[92m$1\x1b[0m")

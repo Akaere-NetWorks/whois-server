@@ -63,12 +63,17 @@
 
 pub mod config;
 pub mod core;
-pub mod dn42;
-pub mod plugins;
 pub mod server;
 pub mod services;
-pub mod ssh;
 pub mod storage;
+
+#[cfg(feature = "dn42")]
+pub mod dn42;
+#[cfg(feature = "plugins")]
+pub mod plugins;
+#[cfg(feature = "ssh")]
+pub mod ssh;
+#[cfg(feature = "web")]
 pub mod web;
 
 // Re-export commonly used types for convenience

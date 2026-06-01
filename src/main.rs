@@ -18,12 +18,16 @@
 
 mod config;
 mod core;
+#[cfg(feature = "dn42")]
 mod dn42;
+#[cfg(feature = "plugins")]
 mod plugins;
 mod server;
 mod services;
+#[cfg(feature = "ssh")]
 mod ssh;
 mod storage;
+#[cfg(feature = "web")]
 mod web;
 
 use anyhow::Result;
@@ -33,14 +37,18 @@ use core::logger::init_from_args;
 
 use config::Cli;
 use core::{create_stats_state, get_patches_count, init_patches, save_stats_on_shutdown};
+#[cfg(feature = "dn42")]
 use dn42::{
     dn42_manager_maintenance, get_dn42_platform_info, initialize_dn42_manager, is_dn42_online_mode,
     start_periodic_sync,
 };
 use server::{create_dump_dir_if_needed, run_async_server};
+#[cfg(feature = "pen")]
 use services::pen::start_pen_periodic_update;
+#[cfg(feature = "ssh")]
 use ssh::{SshServer, server::SshServerConfig};
 use tokio::time::{Duration, interval};
+#[cfg(feature = "web")]
 use web::run_web_server;
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -78,26 +86,30 @@ async fn main() -> Result<()> {
     }
 
     // Initialize DN42 manager (platform-aware)
-    log_init_start!("DN42 System");
-    if let Err(e) = initialize_dn42_manager().await {
-        log_init_failed!(
-            "DN42 System",
-            &format!("manager initialization failed: {}", e)
-        );
-    } else {
-        let platform_info = get_dn42_platform_info().await.unwrap_or("Unknown");
-        let is_online = is_dn42_online_mode().await.unwrap_or(false);
-        log_init_ok_with_details!(
-            "DN42 System",
-            &format!(
-                "Platform: {}, Mode: {}",
-                platform_info,
-                if is_online { "Online" } else { "Git" }
-            )
-        );
+    #[cfg(feature = "dn42")]
+    {
+        log_init_start!("DN42 System");
+        if let Err(e) = initialize_dn42_manager().await {
+            log_init_failed!(
+                "DN42 System",
+                &format!("manager initialization failed: {}", e)
+            );
+        } else {
+            let platform_info = get_dn42_platform_info().await.unwrap_or("Unknown");
+            let is_online = is_dn42_online_mode().await.unwrap_or(false);
+            log_init_ok_with_details!(
+                "DN42 System",
+                &format!(
+                    "Platform: {}, Mode: {}",
+                    platform_info,
+                    if is_online { "Online" } else { "Git" }
+                )
+            );
+        }
     }
 
     // Start DN42 sync task (Git mode) or maintenance task (Online mode)
+    #[cfg(feature = "dn42")]
     tokio::spawn(async move {
         if let Ok(is_online) = is_dn42_online_mode().await {
             if is_online {
@@ -123,47 +135,57 @@ async fn main() -> Result<()> {
     });
 
     // Load plugins
-    log_init_start!("Plugin System");
-    let plugin_registry = match plugins::load_all_plugins().await {
-        Ok(registry) => {
-            let plugin_count = registry.len();
-            log_init_ok_with_details!(
-                "Plugin System",
-                &format!("{} plugin(s) loaded", plugin_count)
-            );
+    #[cfg(feature = "plugins")]
+    let plugin_registry = {
+        log_init_start!("Plugin System");
+        match plugins::load_all_plugins().await {
+            Ok(registry) => {
+                let plugin_count = registry.len();
+                log_init_ok_with_details!(
+                    "Plugin System",
+                    &format!("{} plugin(s) loaded", plugin_count)
+                );
 
-            // Store plugin registry for query detection (Arc for thread-safe sharing)
-            let shared_registry = std::sync::Arc::new(registry);
-            core::query::set_plugin_registry(shared_registry.clone());
+                // Store plugin registry for query detection (Arc for thread-safe sharing)
+                let shared_registry = std::sync::Arc::new(registry);
+                core::query::set_plugin_registry(shared_registry.clone());
 
-            Some(shared_registry)
-        }
-        Err(e) => {
-            log_init_warn!(
-                "Plugin System",
-                &format!("continuing without plugins: {}", e)
-            );
-            None
+                Some(shared_registry)
+            }
+            Err(e) => {
+                log_init_warn!(
+                    "Plugin System",
+                    &format!("continuing without plugins: {}", e)
+                );
+                None
+            }
         }
     };
+    #[cfg(not(feature = "plugins"))]
+    let plugin_registry: Option<()> = None;
 
     // Start PEN (Private Enterprise Numbers) periodic update task
+    #[cfg(feature = "pen")]
     tokio::spawn(async move {
         log_task_start!("PEN Periodic Update Service");
         start_pen_periodic_update().await;
     });
 
     // Start web server
-    let web_stats = stats.clone();
-    let web_port = args.web_port;
-    tokio::spawn(async move {
-        log_task_start!(&format!("Web Server on port {}", web_port));
-        if let Err(e) = run_web_server(web_stats, web_port).await {
-            log_error!("Web server error: {}", e);
-        }
-    });
+    #[cfg(feature = "web")]
+    {
+        let web_stats = stats.clone();
+        let web_port = args.web_port;
+        tokio::spawn(async move {
+            log_task_start!(&format!("Web Server on port {}", web_port));
+            if let Err(e) = run_web_server(web_stats, web_port).await {
+                log_error!("Web server error: {}", e);
+            }
+        });
+    }
 
     // Start SSH server if enabled
+    #[cfg(feature = "ssh")]
     if args.enable_ssh {
         let ssh_config = SshServerConfig {
             listen_addr: args.host.clone(),
@@ -213,6 +235,7 @@ async fn main() -> Result<()> {
     save_stats_on_shutdown(&stats).await;
 
     // Cleanup plugins
+    #[cfg(feature = "plugins")]
     if let Some(registry) = plugin_registry {
         log_info!("Cleaning up plugins...");
         for suffix in registry.get_all_suffixes() {

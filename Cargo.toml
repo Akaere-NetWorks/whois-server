@@ -17,8 +17,91 @@ path = "src/lib.rs"
 name = "whois-server"
 path = "src/main.rs"
 
+[features]
+
+# ── Default ────────────────────────────────────────────────────
+default = ["full"]
+
+# ── Atomic features ────────────────────────────────────────────
+dn42 = ["dep:rayon"]
+bgp = []
+bgp-irr = ["bgp"]
+bgp-manrs = ["bgp"]
+peeringdb = []
+geo = []
+bgp-prefixes = ["bgp"]
+dns = []
+ping = []
+traceroute = []
+ntp = []
+ssl = ["dep:x509-parser", "dep:der-parser", "dep:sha2", "dep:rustls"]
+crt = ["dep:rustls"]
+cfstatus = []
+email = []
+pkg-alma = []
+pkg-aosc = []
+pkg-aur = []
+pkg-cargo = []
+pkg-curseforge = []
+pkg-debian = []
+pkg-epel = []
+pkg-modrinth = []
+pkg-nixos = []
+pkg-npm = []
+pkg-opensuse = []
+pkg-openwrt = []
+pkg-pypi = []
+pkg-ubuntu = []
+steam = []
+imdb = []
+minecraft = []
+acgc = []
+lyric = []
+meal = []
+wikipedia = []
+github = []
+icp = []
+pen = []
+pixiv = ["dep:base64", "dep:uuid", "dep:hmac", "dep:md5"]
+rdap-explicit = []
+
+# ── Infrastructure ─────────────────────────────────────────────
+ssh = ["dep:russh", "dep:russh-keys", "dep:async-trait"]
+web = ["dep:axum", "dep:tower", "dep:tower-http"]
+plugins = ["dep:mlua"]
+telemetry = []
+
+# ── Preset groups ──────────────────────────────────────────────
+packages = [
+    "pkg-alma", "pkg-aosc", "pkg-aur", "pkg-cargo", "pkg-curseforge",
+    "pkg-debian", "pkg-epel", "pkg-modrinth", "pkg-nixos", "pkg-npm",
+    "pkg-opensuse", "pkg-openwrt", "pkg-pypi", "pkg-ubuntu",
+]
+entertainment = [
+    "steam", "imdb", "minecraft", "acgc",
+    "lyric", "meal", "wikipedia", "github",
+]
+network-tools = ["dns", "ping", "traceroute", "ntp", "ssl", "crt", "cfstatus", "email"]
+bgp-full = ["bgp", "bgp-irr", "bgp-manrs", "peeringdb", "bgp-prefixes"]
+network = [
+    "dn42", "bgp-full", "geo", "network-tools",
+    "pen", "peeringdb", "rdap-explicit",
+]
+full = [
+    "network",
+    "packages",
+    "entertainment",
+    "pixiv",
+    "icp",
+    "ssh",
+    "web",
+    "plugins",
+    "telemetry",
+]
+
 [dependencies]
-rdap = "0.2.0" # RDAP client library
+# ── Core (always compiled) ─────────────────────────────────────
+rdap = "0.2.0"
 tokio = { version = "1.48.0", features = ["full"] }
 anyhow = "1.0.100"
 clap = { version = "4.5.51", features = ["derive"] }
@@ -34,37 +117,47 @@ reqwest = { version = "0.11", features = [
 ], default-features = false }
 serde = { version = "1.0", features = ["derive"] }
 urlencoding = "2.1"
-axum = "0.7"
-tower = "0.4"
-tower-http = { version = "0.5", features = ["cors", "fs"] }
 serde_json = "1.0"
 tokio-util = "0.7"
-rayon = "1.11"
 tokio-cron-scheduler = "0.11"
 lmdb = "0.8.0"
 rand = "0.8"
-rustls = "0.21"
-x509-parser = "0.15"
-der-parser = "9.0"
-sha1 = "0.10"
-sha2 = "0.10"
 futures = "0.3"
 sysinfo = "0.32"
 dotenv = "0.15"
 once_cell = "1.21"
-russh = "0.45"
-russh-keys = "0.45"
-async-trait = "0.1"
-mlua = { version = "0.11", features = ["lua54", "async", "serialize", "send"] }
-toml = "0.8"
-
-# Pixiv client dependencies
-base64 = "0.21"
-uuid = { version = "1.0", features = ["v4", "serde"] }
-hmac = "0.12"
-md5 = "0.7"
 lazy_static = "1.4"
 url = "2.2"
+toml = "0.8"
+
+# ── Optional: dn42 ─────────────────────────────────────────────
+rayon = { version = "1.11", optional = true }
+
+# ── Optional: ssh ──────────────────────────────────────────────
+russh = { version = "0.45", optional = true }
+russh-keys = { version = "0.45", optional = true }
+async-trait = { version = "0.1", optional = true }
+
+# ── Optional: web ──────────────────────────────────────────────
+axum = { version = "0.7", optional = true }
+tower = { version = "0.4", optional = true }
+tower-http = { version = "0.5", features = ["cors", "fs"], optional = true }
+
+# ── Optional: plugins ──────────────────────────────────────────
+mlua = { version = "0.11", features = ["lua54", "async", "serialize", "send"], optional = true }
+
+# ── Optional: ssl / crt ────────────────────────────────────────
+rustls = { version = "0.21", optional = true }
+x509-parser = { version = "0.15", optional = true }
+der-parser = { version = "9.0", optional = true }
+sha1 = "0.10"
+sha2 = { version = "0.10", optional = true }
+
+# ── Optional: pixiv ────────────────────────────────────────────
+base64 = { version = "0.21", optional = true }
+uuid = { version = "1.0", features = ["v4", "serde"], optional = true }
+hmac = { version = "0.12", optional = true }
+md5 = { version = "0.7", optional = true }
 
 [dev-dependencies]
 tempfile = "3.8"
