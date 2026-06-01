@@ -333,6 +333,12 @@ impl LmdbStorage {
         current_keys: &std::collections::HashSet<String>,
     ) -> Result<usize> {
         let txn = self.env.begin_ro_txn()?;
+
+        // Guard: lmdb crate panics on cursor.iter() with empty database
+        if self.env.stat().map(|s| s.entries()).unwrap_or(0) == 0 {
+            return Ok(0);
+        }
+
         let mut cursor = txn.open_ro_cursor(self.db)?;
         let mut keys_to_delete = Vec::new();
 
@@ -379,6 +385,12 @@ impl LmdbStorage {
         F: FnMut(&str) -> bool, // Return false to stop iteration
     {
         let txn = self.env.begin_ro_txn()?;
+
+        // Guard: lmdb crate panics on cursor.iter_from() with empty database
+        if self.env.stat().map(|s| s.entries()).unwrap_or(0) == 0 {
+            return Ok(());
+        }
+
         let mut cursor = txn.open_ro_cursor(self.db)?;
 
         for (key_bytes, _) in cursor.iter_from(prefix.as_bytes()) {
@@ -408,6 +420,12 @@ impl LmdbStorage {
         F: FnMut(&str, &str) -> bool, // Return false to stop iteration
     {
         let txn = self.env.begin_ro_txn()?;
+
+        // Guard: lmdb crate panics on cursor.iter_from() with empty database
+        if self.env.stat().map(|s| s.entries()).unwrap_or(0) == 0 {
+            return Ok(());
+        }
+
         let mut cursor = txn.open_ro_cursor(self.db)?;
 
         for (key_bytes, value_bytes) in cursor.iter_from(prefix.as_bytes()) {
@@ -456,6 +474,12 @@ impl LmdbStorage {
     #[allow(dead_code)]
     pub fn get_keys_with_prefix(&self, prefix: &str) -> Result<Vec<String>> {
         let txn = self.env.begin_ro_txn()?;
+
+        // Guard: lmdb crate panics on cursor.iter_from() with empty database
+        if self.env.stat().map(|s| s.entries()).unwrap_or(0) == 0 {
+            return Ok(Vec::new());
+        }
+
         let mut cursor = txn.open_ro_cursor(self.db)?;
         let mut keys = Vec::new();
 
@@ -476,6 +500,12 @@ impl LmdbStorage {
     /// List all keys (excluding metadata keys)
     pub fn list_keys(&self) -> Result<Vec<String>> {
         let txn = self.env.begin_ro_txn()?;
+
+        // Guard: lmdb crate panics on cursor.iter() with empty database
+        if self.env.stat().map(|s| s.entries()).unwrap_or(0) == 0 {
+            return Ok(Vec::new());
+        }
+
         let mut cursor = txn.open_ro_cursor(self.db)?;
         let mut keys = Vec::new();
 

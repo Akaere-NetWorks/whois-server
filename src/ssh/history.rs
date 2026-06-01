@@ -145,6 +145,11 @@ impl SshConnectionHistory {
             .begin_ro_txn()
             .with_context(|| "Failed to begin read transaction")?;
 
+        // Guard: lmdb crate panics on cursor.iter() with empty database
+        if self.env.stat().map(|s| s.entries()).unwrap_or(0) == 0 {
+            return Ok(Vec::new());
+        }
+
         let mut cursor = txn
             .open_ro_cursor(self.db)
             .with_context(|| "Failed to open cursor")?;
@@ -182,6 +187,11 @@ impl SshConnectionHistory {
 
         // Separate scope for cursor to avoid borrow checker issues
         {
+            // Guard: lmdb crate panics on cursor.iter() with empty database
+            if self.env.stat().map(|s| s.entries()).unwrap_or(0) == 0 {
+                return Ok(());
+            }
+
             let mut cursor = txn
                 .open_ro_cursor(self.db)
                 .with_context(|| "Failed to open cursor for cleanup")?;
@@ -268,6 +278,11 @@ impl SshConnectionHistory {
             .env
             .begin_ro_txn()
             .with_context(|| "Failed to begin read transaction")?;
+
+        // Guard: lmdb crate panics on cursor.iter() with empty database
+        if self.env.stat().map(|s| s.entries()).unwrap_or(0) == 0 {
+            return Ok(0);
+        }
 
         let mut cursor = txn
             .open_ro_cursor(self.db)
