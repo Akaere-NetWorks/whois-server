@@ -2,9 +2,12 @@
 pub mod desc;
 pub mod help;
 pub mod iana_cache;
-pub mod rdap;
 pub mod utils;
 pub mod whois;
+
+// Experimental: RDAP backend (WHOIS is the default)
+#[cfg(feature = "rdap-backend")]
+pub mod rdap;
 
 // Feature-gated modules
 #[cfg(feature = "acgc")]
@@ -81,7 +84,9 @@ pub mod packages;
 // Core re-exports (always compiled)
 pub use desc::*;
 pub use whois::*;
-// pub use iana_cache::*; // Used via explicit imports in modules
+
+// Experimental: RDAP re-exports
+#[cfg(feature = "rdap-backend")]
 pub use rdap::process_rdap_query;
 
 // Feature-gated re-exports

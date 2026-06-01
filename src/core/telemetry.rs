@@ -183,6 +183,7 @@ pub fn query_type_to_string(query_type: &crate::core::QueryType) -> String {
         crate::core::QueryType::ASN(_) => "asn".to_string(),
         crate::core::QueryType::BareASN(_) => "bare_asn".to_string(),
         crate::core::QueryType::Desc(_) => "description".to_string(),
+        #[cfg(feature = "rdap-backend")]
         crate::core::QueryType::Rdap(_) => "rdap".to_string(),
         crate::core::QueryType::Help => "help".to_string(),
         crate::core::QueryType::UpdatePatch => "update_patch".to_string(),

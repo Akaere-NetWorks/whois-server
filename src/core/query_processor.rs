@@ -9,6 +9,7 @@ use crate::core::{ColorScheme, Colorizer, QueryType, apply_response_patches};
 use crate::core::{is_private_ipv4, is_private_ipv6};
 use crate::log_debug;
 use anyhow::Result;
+#[cfg(feature = "rdap-backend")]
 use rdap::QueryType as RdapQueryType;
 
 #[cfg(feature = "dn42")]
@@ -27,9 +28,9 @@ use crate::config::{
 // Core service imports (always compiled)
 #[cfg(feature = "bgp-irr")]
 use crate::services::query_whois;
-use crate::services::{
-    process_desc_query, query_with_iana_referral, rdap::query_rdap_with_whois_fallback,
-};
+#[cfg(feature = "rdap-backend")]
+use crate::services::rdap::query_rdap_with_whois_fallback;
+use crate::services::{process_desc_query, query_with_iana_referral};
 
 #[cfg(feature = "bgp")]
 use crate::services::{
@@ -102,7 +103,7 @@ use crate::services::process_icp_query;
 #[cfg(feature = "pen")]
 use crate::services::process_pen_query;
 
-#[cfg(feature = "rdap-explicit")]
+#[cfg(feature = "rdap-backend")]
 use crate::services::process_rdap_query;
 
 #[cfg(feature = "pixiv")]
@@ -161,12 +162,19 @@ pub async fn process_query(
                 log_debug!("Detected .dn42 domain, using DN42 query");
                 return process_dn42_query_managed(domain).await;
             }
-            query_rdap_with_whois_fallback(
-                domain,
-                RdapQueryType::Domain,
-                query_with_iana_referral(domain),
-            )
-            .await
+            #[cfg(feature = "rdap-backend")]
+            {
+                query_rdap_with_whois_fallback(
+                    domain,
+                    RdapQueryType::Domain,
+                    query_with_iana_referral(domain),
+                )
+                .await
+            }
+            #[cfg(not(feature = "rdap-backend"))]
+            {
+                query_with_iana_referral(domain).await
+            }
         }
         QueryType::IPv4(ip) => {
             log_debug!("Processing IPv4 query: {}", ip);
@@ -175,12 +183,19 @@ pub async fn process_query(
                 log_debug!("Detected private IPv4 address, using DN42 query");
                 return process_dn42_query_managed(query).await;
             }
-            query_rdap_with_whois_fallback(
-                query,
-                RdapQueryType::Ip,
-                query_with_iana_referral(query),
-            )
-            .await
+            #[cfg(feature = "rdap-backend")]
+            {
+                query_rdap_with_whois_fallback(
+                    query,
+                    RdapQueryType::Ip,
+                    query_with_iana_referral(query),
+                )
+                .await
+            }
+            #[cfg(not(feature = "rdap-backend"))]
+            {
+                query_with_iana_referral(query).await
+            }
         }
         QueryType::IPv6(ip) => {
             log_debug!("Processing IPv6 query: {}", ip);
@@ -189,12 +204,19 @@ pub async fn process_query(
                 log_debug!("Detected private IPv6 address, using DN42 query");
                 return process_dn42_query_managed(query).await;
             }
-            query_rdap_with_whois_fallback(
-                query,
-                RdapQueryType::Ip,
-                query_with_iana_referral(query),
-            )
-            .await
+            #[cfg(feature = "rdap-backend")]
+            {
+                query_rdap_with_whois_fallback(
+                    query,
+                    RdapQueryType::Ip,
+                    query_with_iana_referral(query),
+                )
+                .await
+            }
+            #[cfg(not(feature = "rdap-backend"))]
+            {
+                query_with_iana_referral(query).await
+            }
         }
         QueryType::ASN(asn) => {
             log_debug!("Processing ASN query: {}", asn);
@@ -203,12 +225,19 @@ pub async fn process_query(
                 log_debug!("Detected DN42 ASN, using DN42 query");
                 return process_dn42_query_managed(asn).await;
             }
-            query_rdap_with_whois_fallback(
-                asn,
-                RdapQueryType::Autnum,
-                query_with_iana_referral(asn),
-            )
-            .await
+            #[cfg(feature = "rdap-backend")]
+            {
+                query_rdap_with_whois_fallback(
+                    asn,
+                    RdapQueryType::Autnum,
+                    query_with_iana_referral(asn),
+                )
+                .await
+            }
+            #[cfg(not(feature = "rdap-backend"))]
+            {
+                query_with_iana_referral(asn).await
+            }
         }
         QueryType::BareASN(num) => {
             let asn_query = format!("AS{}", num);
@@ -230,12 +259,19 @@ pub async fn process_query(
                     }
                 }
             }
-            query_rdap_with_whois_fallback(
-                &asn_query,
-                RdapQueryType::Autnum,
-                query_with_iana_referral(&asn_query),
-            )
-            .await
+            #[cfg(feature = "rdap-backend")]
+            {
+                query_rdap_with_whois_fallback(
+                    &asn_query,
+                    RdapQueryType::Autnum,
+                    query_with_iana_referral(&asn_query),
+                )
+                .await
+            }
+            #[cfg(not(feature = "rdap-backend"))]
+            {
+                query_with_iana_referral(&asn_query).await
+            }
         }
 
         #[cfg(feature = "email")]
@@ -579,22 +615,10 @@ pub async fn process_query(
             process_pen_query(base_query).await
         }
 
+        #[cfg(feature = "rdap-backend")]
         QueryType::Rdap(base_query) => {
             log_debug!("Processing RDAP query: {}", base_query);
-            #[cfg(feature = "rdap-explicit")]
-            {
-                process_rdap_query(base_query).await
-            }
-            #[cfg(not(feature = "rdap-explicit"))]
-            {
-                use rdap::QueryType as RdapQueryType;
-                crate::services::rdap::query_rdap_with_whois_fallback(
-                    base_query,
-                    RdapQueryType::Domain,
-                    crate::services::query_with_iana_referral(base_query),
-                )
-                .await
-            }
+            process_rdap_query(base_query).await
         }
 
         #[cfg(feature = "pixiv")]
@@ -653,11 +677,21 @@ pub async fn process_query(
                 return process_dn42_query_managed(q).await;
             }
             // RDAP-first with WHOIS fallback, then DN42 if still not found
-            let rdap_whois_result = match crate::services::rdap::detect_rdap_query_type(q) {
-                Some(rdap_qt) => {
-                    query_rdap_with_whois_fallback(q, rdap_qt, query_with_iana_referral(q)).await
+            let rdap_whois_result = {
+                #[cfg(feature = "rdap-backend")]
+                {
+                    match crate::services::rdap::detect_rdap_query_type(q) {
+                        Some(rdap_qt) => {
+                            query_rdap_with_whois_fallback(q, rdap_qt, query_with_iana_referral(q))
+                                .await
+                        }
+                        None => query_with_iana_referral(q).await,
+                    }
                 }
-                None => query_with_iana_referral(q).await,
+                #[cfg(not(feature = "rdap-backend"))]
+                {
+                    query_with_iana_referral(q).await
+                }
             };
 
             #[cfg(feature = "dn42")]

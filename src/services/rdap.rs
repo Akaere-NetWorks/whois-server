@@ -1,3 +1,15 @@
+// WHOIS Server - RDAP Backend (Experimental)
+// Copyright (C) 2025 Akaere Networks
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+//! RDAP (Registration Data Access Protocol) backend for WHOIS queries.
+//!
+//! This module provides an alternative query backend that tries RDAP first,
+//! falling back to legacy WHOIS on failure. This is **experimental** and must
+//! be enabled via the `rdap-backend` feature flag.
+//!
+//! When `rdap-backend` is NOT enabled, all queries use the default WHOIS backend.
+
 use crate::{log_debug, log_warn};
 use anyhow::Result;
 use rdap::whois::format_whois;

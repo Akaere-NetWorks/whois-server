@@ -17,6 +17,7 @@ pub enum QueryType {
     ASN(String),
     BareASN(String),
     Desc(String),
+    #[cfg(feature = "rdap-backend")]
     Rdap(String),
     Help,
     UpdatePatch,
@@ -646,7 +647,7 @@ pub fn analyze_query(query: &str) -> QueryType {
     }
 
     // Check if it's a RDAP query
-    #[cfg(feature = "rdap-explicit")]
+    #[cfg(feature = "rdap-backend")]
     if query_upper.ends_with("-RDAP") {
         let base_query = &query[..query.len() - 5]; // Remove "-RDAP" suffix
         return QueryType::Rdap(base_query.to_string());

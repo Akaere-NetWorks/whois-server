@@ -839,6 +839,7 @@ impl Colorizer {
                 }
             }
 
+            #[cfg(feature = "rdap-backend")]
             QueryType::Rdap(_) => {
                 if line.starts_with("%") {
                     format!("{}{}\x1b[0m", comment_color, line)
@@ -1271,7 +1272,7 @@ impl Colorizer {
                 feature = "pkg-ubuntu",
                 feature = "pkg-curseforge",
                 feature = "icp",
-                feature = "rdap-explicit",
+                feature = "rdap-backend",
             ))]
             _ => {
                 // General network highlighting for feature-gated query types

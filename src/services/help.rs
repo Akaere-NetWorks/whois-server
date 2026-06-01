@@ -453,7 +453,7 @@ pub fn generate_help_response() -> String {
         output.push('\n');
     }
 
-    #[cfg(feature = "rdap-explicit")]
+    #[cfg(feature = "rdap-backend")]
     {
         output.push_str("RDAP PROTOCOL:\n");
         output.push_str(&"-".repeat(40));

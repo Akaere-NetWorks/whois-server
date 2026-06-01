@@ -165,6 +165,7 @@ fn detect_query_type(query: &str) -> String {
         QueryType::Help => "Help",
         QueryType::UpdatePatch => "Update-Patch",
         QueryType::Desc(_) => "Description",
+        #[cfg(feature = "rdap-backend")]
         QueryType::Rdap(_) => "RDAP",
         QueryType::Unknown(_) => "Unknown",
         // Feature-gated variants
