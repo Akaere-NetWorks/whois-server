@@ -254,12 +254,14 @@ jobs:
           echo '--- payload ---';  rpm -qlp dist/*.rpm | grep -v '^/usr/lib/whois-server/'
 
       # dnf install, not rpm -i, so the Requires above are resolved for real.
+      # --nogpgcheck because release packages are signed by the Release workflow,
+      # not here; without it dnf rejects the unsigned local file outright.
       # The systemctl calls in %post fail inside a container and are swallowed by
       # the scriptlets' `|| :`, which is the intended behaviour there.
       - name: Install and smoke-test on Fedora
         run: |
           docker run --rm -v "$PWD/dist:/dist:ro" fedora:latest bash -euxo pipefail -c '
-            dnf install -y /dist/whois-server-0.0.1-1.x86_64.rpm
+            dnf install -y --nogpgcheck /dist/whois-server-0.0.1-1.x86_64.rpm
 
             # %pre created the account, and %attr resolved it at install time.
             id whois-server

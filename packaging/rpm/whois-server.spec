@@ -29,6 +29,14 @@
 %global __brp_check_rpaths %{nil}
 %global __brp_mangle_shebangs %{nil}
 
+# Not %%{_sharedstatedir}: that macro is /var/lib only because Fedora patches it,
+# and this spec is routinely built with Debian's rpm, where it keeps the ancient
+# GNU default of /usr/com — every %%files entry under it then fails to resolve.
+# The path is hardcoded in the shared systemd unit anyway, so a literal is both
+# safer and more honest here. Spelled out rather than /var/lib/%%{name} because
+# %%global expands its body at definition time, and Name: is not set yet.
+%global statedir /var/lib/whois-server
+
 Name:           whois-server
 Version:        %{?_pkg_version}%{!?_pkg_version:0.0.1}
 Release:        %{?_pkg_release}%{!?_pkg_release:1}%{?dist}
@@ -103,9 +111,9 @@ cp -a ./* %{buildroot}/
 # Ownership is declared by name rather than fixed up in %%post: %%pre creates the
 # account before any file is unpacked, so rpm can resolve these at install time —
 # and unlike a %%post chown, it survives an upgrade without extra scriptlets.
-%dir %attr(0750,whois-server,whois-server) %{_sharedstatedir}/%{name}
-%dir %attr(0750,whois-server,whois-server) %{_sharedstatedir}/%{name}/cache
-%dir %attr(0750,whois-server,whois-server) %{_sharedstatedir}/%{name}/plugins
+%dir %attr(0750,whois-server,whois-server) %{statedir}
+%dir %attr(0750,whois-server,whois-server) %{statedir}/cache
+%dir %attr(0750,whois-server,whois-server) %{statedir}/plugins
 
 %pre
 # System account, no login shell, home pointed at the state directory but not
@@ -113,7 +121,7 @@ cp -a ./* %{buildroot}/
 getent group whois-server >/dev/null || groupadd --system whois-server
 getent passwd whois-server >/dev/null || \
     useradd --system --gid whois-server \
-            --home-dir %{_sharedstatedir}/%{name} --no-create-home \
+            --home-dir %{statedir} --no-create-home \
             --shell /sbin/nologin \
             --comment "whois-server daemon" whois-server
 exit 0
