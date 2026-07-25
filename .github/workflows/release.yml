@@ -14,7 +14,7 @@ env:
   DOTNET_CLI_TELEMETRY_OPTOUT: true
 
 jobs:
-  tarball:
+  package:
     name: Publish ${{ matrix.rid }}
     runs-on: blacksmith-4vcpu-ubuntu-2404
     strategy:
@@ -29,14 +29,22 @@ jobs:
           dotnet-version: '10.0.x'
 
       # A v* tag drives the stamped assembly version; a manual run falls back to
-      # whatever VersionPrefix Directory.Build.props declares.
+      # whatever VersionPrefix Directory.Build.props declares. Two outputs: the
+      # MSBuild flag for `dotnet publish`, and the bare number for the .deb,
+      # whose version field must start with a digit.
       - name: Resolve version
         id: version
         run: |
           ref='${{ github.ref }}'
           case "$ref" in
-            refs/tags/v*) echo "prefix=-p:VersionPrefix=${ref#refs/tags/v}" >> "$GITHUB_OUTPUT" ;;
-            *)            echo "prefix=" >> "$GITHUB_OUTPUT" ;;
+            refs/tags/v*)
+              echo "prefix=-p:VersionPrefix=${ref#refs/tags/v}" >> "$GITHUB_OUTPUT"
+              echo "number=${ref#refs/tags/v}" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "prefix=" >> "$GITHUB_OUTPUT"
+              echo "number=" >> "$GITHUB_OUTPUT"
+              ;;
           esac
 
       # Self-contained here, unlike the container image: a tarball has no
@@ -52,6 +60,26 @@ jobs:
             --self-contained true \
             ${{ steps.version.outputs.prefix }} \
             -o dist/whois-server-${{ matrix.rid }}
+
+      # rpmbuild is not preinstalled on the Ubuntu images; dpkg-deb is.
+      - name: Install rpmbuild
+        run: sudo apt-get update && sudo apt-get install -y rpm
+
+      # Both reuse the publish tree above rather than republishing — but they
+      # must run BEFORE the tarball's plugin/docs steps, which mutate that same
+      # directory with files the packages place elsewhere (/usr/share, not
+      # /usr/lib). Neither format needs QEMU or a chroot to target arm64: nothing
+      # is compiled at package time, so the tools only relabel an existing tree.
+      - name: Build .deb and .rpm
+        run: |
+          version_flag=${{ steps.version.outputs.number && format('--version {0}', steps.version.outputs.number) || '' }}
+          for fmt in deb rpm; do
+            packaging/$fmt/build-$fmt.sh \
+              --rid ${{ matrix.rid }} \
+              --publish-dir dist/whois-server-${{ matrix.rid }} \
+              --output dist \
+              $version_flag
+          done
 
       # The example plugin is built separately and dropped in beside the host:
       # PluginLoader discovers it at runtime by scanning plugins/, it is never
@@ -79,11 +107,15 @@ jobs:
           path: |
             dist/whois-server-${{ matrix.rid }}.tar.gz
             dist/whois-server-${{ matrix.rid }}.tar.gz.sha256
+            dist/*.deb
+            dist/*.deb.sha256
+            dist/*.rpm
+            dist/*.rpm.sha256
           retention-days: 14
 
   release:
     name: Attach to GitHub Release
-    needs: tarball
+    needs: package
     runs-on: blacksmith-4vcpu-ubuntu-2404
     # workflow_dispatch is a dry run: it builds and uploads artifacts but never
     # touches a Release, so the pipeline can be exercised without cutting a tag.
@@ -100,5 +132,7 @@ jobs:
         with:
           files: |
             dist/*.tar.gz
+            dist/*.deb
+            dist/*.rpm
             dist/*.sha256
           generate_release_notes: true

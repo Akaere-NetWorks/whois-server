@@ -1,0 +1,74 @@
+#!/bin/sh
+# postinst — create the service account, take ownership of the state directory,
+# then register and start the unit.
+set -e
+
+USER=whois-server
+GROUP=whois-server
+STATE=/var/lib/whois-server
+
+case "$1" in
+    configure)
+        # System account, no login shell, no home of its own beyond the state
+        # directory. adduser is idempotent in practice, but guard anyway so a
+        # reconfigure on a box where the admin pre-created the user is a no-op.
+        if ! getent group "$GROUP" >/dev/null; then
+            addgroup --system "$GROUP"
+        fi
+        if ! getent passwd "$USER" >/dev/null; then
+            adduser --system --ingroup "$GROUP" \
+                    --home "$STATE" --no-create-home \
+                    --gecos "whois-server daemon" \
+                    --disabled-password "$USER"
+        fi
+
+        # The package ships these directories empty; ownership can only be set
+        # here because the account does not exist at unpack time.
+        for dir in "$STATE" "$STATE/cache" "$STATE/plugins"; do
+            mkdir -p "$dir"
+            chown "$USER:$GROUP" "$dir"
+            chmod 0750 "$dir"
+        done
+
+        # /etc/default/whois-server may hold API tokens. Readable by the daemon,
+        # not by the world.
+        if [ -e /etc/default/whois-server ]; then
+            chown "root:$GROUP" /etc/default/whois-server
+            chmod 0640 /etc/default/whois-server
+        fi
+        ;;
+
+    abort-upgrade|abort-remove|abort-deconfigure)
+        ;;
+
+    *)
+        echo "postinst called with unknown argument \`$1'" >&2
+        exit 1
+        ;;
+esac
+
+# Unit registration. deb-systemd-helper ships in init-system-helpers (priority
+# required), so it is present on every Debian/Ubuntu system; the systemctl path
+# below is only a courtesy for derivatives that trimmed it.
+if [ -x /usr/bin/deb-systemd-helper ]; then
+    deb-systemd-helper unmask whois-server.service >/dev/null || true
+    if deb-systemd-helper --quiet was-enabled whois-server.service; then
+        deb-systemd-helper enable whois-server.service >/dev/null || true
+    else
+        deb-systemd-helper update-state whois-server.service >/dev/null || true
+    fi
+elif [ -d /run/systemd/system ]; then
+    systemctl --system enable whois-server.service >/dev/null 2>&1 || true
+fi
+
+if [ -d /run/systemd/system ]; then
+    systemctl --system daemon-reload >/dev/null 2>&1 || true
+    if [ -x /usr/bin/deb-systemd-invoke ]; then
+        deb-systemd-invoke "$([ "$1" = configure ] && echo restart || echo start)" \
+            whois-server.service >/dev/null || true
+    else
+        systemctl --system restart whois-server.service >/dev/null 2>&1 || true
+    fi
+fi
+
+exit 0

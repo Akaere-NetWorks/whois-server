@@ -1,0 +1,75 @@
+[Unit]
+Description=Multi-protocol WHOIS server (RFC 3912) with DN42 support
+Documentation=https://github.com/Akaere-NetWorks/whois-server
+# DN42 sync and every upstream integration need working DNS/routing at startup,
+# not merely a configured interface.
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=whois-server
+Group=whois-server
+
+# The app resolves its state paths relative to the working directory — "./cache"
+# is passed literally in Program.cs, and the plugin loader scans "plugins". So
+# the working directory is the state directory, not the install directory.
+WorkingDirectory=/var/lib/whois-server
+StateDirectory=whois-server
+
+# …but wwwroot/ and the static-web-assets manifest live next to the binary under
+# /usr/lib, which the working directory is deliberately not. ASPNETCORE_CONTENTROOT
+# is the only way to split the two: the CLI parser rejects unknown flags, so
+# --contentRoot on the command line would abort startup.
+Environment=ASPNETCORE_CONTENTROOT=/usr/lib/whois-server
+Environment=DOTNET_CLI_TELEMETRY_OPTOUT=1
+# git (the DN42 backend shells out to it) wants a writable HOME for its config
+# probing; without one it warns on every clone.
+Environment=HOME=/var/lib/whois-server
+
+# Operator configuration: API tokens and WHOIS_SERVER_ARGS. Both paths are
+# listed because this one unit ships in both the .deb and the .rpm, and the two
+# distro families disagree on where such a file lives. The leading '-' makes
+# each optional, so whichever one the installed package did not create is
+# skipped rather than failing startup. If both exist, sysconfig wins.
+EnvironmentFile=-/etc/default/whois-server
+EnvironmentFile=-/etc/sysconfig/whois-server
+
+# $WHOIS_SERVER_ARGS is deliberately unquoted: systemd word-splits $VAR (but not
+# ${VAR}), so multiple flags in /etc/default arrive as separate argv entries.
+ExecStart=/usr/lib/whois-server/WhoisServer.Host $WHOIS_SERVER_ARGS
+
+Restart=on-failure
+RestartSec=5s
+
+# Port 43 is privileged and the default. This is the whole reason the unit grants
+# a capability rather than running as root — drop both lines if you move the
+# listener to a high port with --port.
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+# NOT MemoryDenyWriteExecute=true — the .NET JIT maps executable pages at runtime
+# and the process will not start with it set.
+
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

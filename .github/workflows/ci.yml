@@ -151,6 +151,134 @@ jobs:
       - name: Build with every feature disabled
         run: dotnet build whois-server.slnx -c Release -warnaserror ${{ steps.flags.outputs.value }}
 
+  deb-package:
+    name: Debian package (build, install, purge)
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    # An install test, not just a build test. Almost everything that can go
+    # wrong with this package goes wrong at install or first boot — the service
+    # account, the CAP_NET_BIND_SERVICE grant that lets a non-root process bind
+    # port 43, the ASPNETCORE_CONTENTROOT split between /usr/lib and
+    # /var/lib — and none of it is visible from `dpkg-deb --build` succeeding.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.NUGET_PACKAGES }}
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: ${{ runner.os }}-nuget-
+
+      - name: Build .deb
+        run: packaging/deb/build-deb.sh --version 0.0.1
+
+      # apt, not `dpkg -i`, so the dependency list in the control file is
+      # actually resolved — a wrong libicu alternative would pass dpkg and fail
+      # here, which is the whole point.
+      - name: Install
+        run: sudo apt-get install -y ./dist/whois-server_0.0.1_amd64.deb
+
+      - name: Service starts and binds the privileged port unprivileged
+        run: |
+          for _ in $(seq 1 30); do
+            systemctl is-active --quiet whois-server && break
+            sleep 1
+          done
+          systemctl is-active whois-server
+          # Running as the service account, not root: this is what the ambient
+          # capability buys, and a regression would silently fall back to root.
+          test "$(systemctl show -p User --value whois-server)" = whois-server
+          ss -tlnp | grep -E ':43\b'
+
+      - name: WHOIS query over TCP 43
+        run: |
+          sudo apt-get install -y netcat-openbsd
+          printf 'HELP\r\n' | nc -q 5 127.0.0.1 43 | head -20 | tee /tmp/help.txt
+          test -s /tmp/help.txt
+
+      # The dashboard is served out of /usr/lib/whois-server/wwwroot while the
+      # process runs from /var/lib/whois-server, so a 200 here is the only proof
+      # the content-root override in the unit file is doing its job.
+      - name: Dashboard responds from the split content root
+        run: curl -fsS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:9999/
+
+      - name: State landed under /var/lib
+        run: |
+          sudo test -d /var/lib/whois-server/cache
+          sudo find /var/lib/whois-server -maxdepth 2 -ls
+
+      - name: Purge leaves nothing behind
+        run: |
+          sudo apt-get purge -y whois-server
+          test ! -e /var/lib/whois-server
+          test ! -e /usr/lib/whois-server
+          test ! -e /etc/default/whois-server
+          ! getent passwd whois-server
+
+  rpm-package:
+    name: RPM package (build, install on Fedora, erase)
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    # Built on Ubuntu (rpmbuild compiles nothing here — see the spec header) but
+    # installed on real Fedora, because that is the only way to find out whether
+    # the hand-written Requires list actually resolves against distro repos and
+    # whether the bundled runtime runs on a non-Debian libc/ICU. The .deb job
+    # covers the systemd side; a container has no PID 1 to test that with.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.NUGET_PACKAGES }}
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: ${{ runner.os }}-nuget-
+
+      - name: Install rpmbuild
+        run: sudo apt-get update && sudo apt-get install -y rpm
+
+      - name: Build .rpm
+        run: packaging/rpm/build-rpm.sh --version 0.0.1
+
+      - name: Inspect package metadata
+        run: |
+          rpm -qip dist/whois-server-0.0.1-1.x86_64.rpm
+          echo '--- requires ---'; rpm -qp --requires dist/*.rpm
+          echo '--- payload ---';  rpm -qlp dist/*.rpm | grep -v '^/usr/lib/whois-server/'
+
+      # dnf install, not rpm -i, so the Requires above are resolved for real.
+      # The systemctl calls in %post fail inside a container and are swallowed by
+      # the scriptlets' `|| :`, which is the intended behaviour there.
+      - name: Install and smoke-test on Fedora
+        run: |
+          docker run --rm -v "$PWD/dist:/dist:ro" fedora:latest bash -euxo pipefail -c '
+            dnf install -y /dist/whois-server-0.0.1-1.x86_64.rpm
+
+            # %pre created the account, and %attr resolved it at install time.
+            id whois-server
+            test "$(stat -c "%U:%G %a" /var/lib/whois-server)"       = "whois-server:whois-server 750"
+            test "$(stat -c "%U:%G %a" /var/lib/whois-server/cache)" = "whois-server:whois-server 750"
+            test "$(stat -c "%U:%G %a" /etc/sysconfig/whois-server)" = "root:whois-server 640"
+
+            # The bundled runtime executing on Fedora at all is the point of the
+            # hand-written dependency list; --help exits 0 without touching state.
+            /usr/bin/whois-server --help | head -3
+
+            test -f /usr/lib/systemd/system/whois-server.service
+            test -f /usr/share/whois-server/plugins/weather/plugin.json
+
+            dnf remove -y whois-server
+            test ! -e /usr/lib/whois-server
+            test ! -e /usr/bin/whois-server
+          '
+
   integration-tests:
     name: Integration tests (live network)
     runs-on: blacksmith-4vcpu-ubuntu-2404

@@ -11,17 +11,20 @@ PORT           ?= 4343
 ARGS           ?=
 FEATURES       ?=
 
+RID            ?= linux-x64
+
 .PHONY: help restore build build-release watch run test test-unit test-integration \
-        format format-check clean minimal publish
+        format format-check clean minimal publish deb rpm packages
 
 help: ## Show this help
 	@echo "Targets:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
 	@echo ""
-	@echo "Variables: CONFIGURATION=$(CONFIGURATION) PORT=$(PORT) FEATURES='$(FEATURES)'"
+	@echo "Variables: CONFIGURATION=$(CONFIGURATION) PORT=$(PORT) RID=$(RID) FEATURES='$(FEATURES)'"
 	@echo "Examples:"
 	@echo "  make run ARGS='--debug'"
 	@echo "  make build FEATURES='-p:Feature_Dn42=false'   # real cut build, see plan.md §6"
+	@echo "  make packages RID=linux-arm64 VERSION=1.4.0   # .deb + .rpm"
 
 restore: ## Restore NuGet packages for the whole solution
 	dotnet restore $(SOLUTION)
@@ -59,7 +62,19 @@ minimal: ## Build with DN42 excluded, proving the real cut-build mechanism (plan
 publish: ## Publish a self-contained release build of the WHOIS host
 	dotnet publish $(HOST_PROJECT) -c Release -o publish
 
+deb: ## Build a .deb into dist/ (RID=linux-x64|linux-arm64, VERSION=... overrides Directory.Build.props)
+	packaging/deb/build-deb.sh --rid $(RID) \
+		$(if $(VERSION),--version $(VERSION),) \
+		$(if $(FEATURES),--features '$(FEATURES)',)
+
+rpm: ## Build an .rpm into dist/ (same RID/VERSION/FEATURES variables as `make deb`)
+	packaging/rpm/build-rpm.sh --rid $(RID) \
+		$(if $(VERSION),--version $(VERSION),) \
+		$(if $(FEATURES),--features '$(FEATURES)',)
+
+packages: deb rpm ## Build both the .deb and the .rpm for $(RID)
+
 clean: ## Remove build artifacts (bin/obj) and the local dev cache/ directory
 	dotnet clean $(SOLUTION)
 	find src tests -type d \( -name bin -o -name obj \) -prune -exec rm -rf {} +
-	rm -rf cache publish
+	rm -rf cache publish dist

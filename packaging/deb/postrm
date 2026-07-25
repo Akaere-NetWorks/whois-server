@@ -1,0 +1,49 @@
+#!/bin/sh
+# postrm — unregister the unit on remove; on purge also discard the state
+# directory and the service account.
+set -e
+
+USER=whois-server
+GROUP=whois-server
+STATE=/var/lib/whois-server
+
+if [ -d /run/systemd/system ]; then
+    systemctl --system daemon-reload >/dev/null 2>&1 || true
+fi
+
+case "$1" in
+    remove)
+        if [ -x /usr/bin/deb-systemd-helper ]; then
+            deb-systemd-helper mask whois-server.service >/dev/null || true
+        fi
+        ;;
+
+    purge)
+        if [ -x /usr/bin/deb-systemd-helper ]; then
+            deb-systemd-helper purge whois-server.service >/dev/null || true
+            deb-systemd-helper unmask whois-server.service >/dev/null || true
+        fi
+
+        # Everything here is regenerable: SQLite caches, the DN42 git clone,
+        # accumulated query stats. Purge means purge. Operator-supplied plugins
+        # live under $STATE/plugins and go too — that is what purge asks for.
+        rm -rf "$STATE"
+
+        if getent passwd "$USER" >/dev/null; then
+            deluser --system "$USER" >/dev/null 2>&1 || true
+        fi
+        if getent group "$GROUP" >/dev/null; then
+            delgroup --system "$GROUP" >/dev/null 2>&1 || true
+        fi
+        ;;
+
+    upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
+        ;;
+
+    *)
+        echo "postrm called with unknown argument \`$1'" >&2
+        exit 1
+        ;;
+esac
+
+exit 0

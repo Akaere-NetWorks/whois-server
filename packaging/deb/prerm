@@ -1,0 +1,27 @@
+#!/bin/sh
+# prerm — stop the daemon before its files go away. On upgrade the unit is left
+# running: postinst restarts it once the new binary is in place, which keeps the
+# WHOIS listener down for one restart rather than for the whole unpack.
+set -e
+
+case "$1" in
+    remove|deconfigure)
+        if [ -d /run/systemd/system ]; then
+            if [ -x /usr/bin/deb-systemd-invoke ]; then
+                deb-systemd-invoke stop whois-server.service >/dev/null || true
+            else
+                systemctl --system stop whois-server.service >/dev/null 2>&1 || true
+            fi
+        fi
+        ;;
+
+    upgrade|failed-upgrade)
+        ;;
+
+    *)
+        echo "prerm called with unknown argument \`$1'" >&2
+        exit 1
+        ;;
+esac
+
+exit 0

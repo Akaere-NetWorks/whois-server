@@ -20,6 +20,7 @@ upstream service integrations, DN42 registry support, and a web dashboard with a
   - [Contents](#contents)
   - [What it does](#what-it-does)
   - [Quick start](#quick-start)
+  - [Linux packages](#linux-packages)
   - [Docker](#docker)
   - [Configuration](#configuration)
     - [CLI flags](#cli-flags)
@@ -78,6 +79,100 @@ whois -h 127.0.0.1 -p 4343 HELP           # authoritative suffix list for *your*
 `HELP` is worth repeating: because suffixes are registered by whichever features were compiled in,
 the running server's own help output is always the accurate list for that binary, where this README
 can only describe a default build.
+
+## Linux packages
+
+Tagged releases ship `.deb` and `.rpm` packages for `amd64`/`x86_64` and `arm64`/`aarch64`
+alongside the tarballs. The .NET runtime is bundled, so there is no `dotnet` dependency and no
+third-party repository to add first:
+
+```bash
+# Debian / Ubuntu
+curl -fLO https://github.com/Akaere-NetWorks/whois-server/releases/latest/download/whois-server_1.0.0_amd64.deb
+sudo apt install ./whois-server_1.0.0_amd64.deb
+
+# Fedora / RHEL / openSUSE
+curl -fLO https://github.com/Akaere-NetWorks/whois-server/releases/latest/download/whois-server-1.0.0-1.x86_64.rpm
+sudo dnf install ./whois-server-1.0.0-1.x86_64.rpm
+```
+
+Installing enables and starts `whois-server.service`, which listens on WHOIS port 43 and dashboard
+port 9999 straight away. Verify with:
+
+```bash
+systemctl status whois-server
+whois -h 127.0.0.1 HELP
+```
+
+### What the packages install
+
+Both formats install the same layout and share one systemd unit; only the config file path follows
+each family's convention.
+
+| Path | Contents |
+| --- | --- |
+| `/usr/lib/whois-server/` | Binary, bundled runtime, `wwwroot/` |
+| `/usr/bin/whois-server` | Symlink, for running it by hand |
+| `/usr/lib/systemd/system/whois-server.service` | The unit |
+| `/etc/default/whois-server` (deb) | Config file: CLI flags and API tokens |
+| `/etc/sysconfig/whois-server` (rpm) | Same, at the RPM-conventional path |
+| `/var/lib/whois-server/cache/` | Every SQLite store and the DN42 clone |
+| `/var/lib/whois-server/plugins/` | Drop plugins here |
+| `/usr/share/whois-server/plugins/weather/` | The example plugin, to copy from |
+
+The daemon runs as the unprivileged `whois-server` system account and binds port 43 through
+`AmbientCapabilities=CAP_NET_BIND_SERVICE` rather than by being root. State lives under
+`/var/lib/whois-server`, which is the unit's working directory, so the relative paths described in
+[State on disk](#state-on-disk) resolve there.
+
+### Configuring it
+
+Edit `/etc/default/whois-server` (or `/etc/sysconfig/whois-server` on RPM systems) — it is read as a
+systemd `EnvironmentFile`, so it takes plain `KEY=value` lines and no shell syntax. CLI flags go in
+`WHOIS_SERVER_ARGS`, and every environment variable from
+[Environment variables](#environment-variables) works here too:
+
+```sh
+WHOIS_SERVER_ARGS=--max-connections 200 --debug
+IPINFO_TOKEN=...
+```
+
+```bash
+sudo systemctl restart whois-server
+```
+
+To run entirely unprivileged, set `--port 4343` there and drop the two capability lines with
+`systemctl edit whois-server`.
+
+On removal the two formats differ, as their conventions do. `apt remove` leaves
+`/var/lib/whois-server` intact and `apt purge` deletes it along with the service account. `dnf
+remove` is always the non-destructive one: state and the account stay behind for you to clean up.
+
+### Building the packages yourself
+
+```bash
+make deb                                        # dist/whois-server_<version>_amd64.deb
+make rpm                                        # dist/whois-server-<version>-1.x86_64.rpm
+make packages RID=linux-arm64 VERSION=1.4.0     # both, cross-built without QEMU
+```
+
+These wrap `packaging/deb/build-deb.sh` and `packaging/rpm/build-rpm.sh`, which take the same
+`--rid`, `--version`, `--output`, `--publish-dir`, `--no-plugin`, and `--features` options — the
+last for [cut builds](#feature-flags-and-cut-builds):
+
+```bash
+packaging/rpm/build-rpm.sh --features '-p:Feature_Dn42=false'   # also drops the git dependency
+```
+
+Requirements are the .NET 10 SDK plus `dpkg-deb` (`apt install dpkg-dev`) or `rpmbuild`
+(`dnf install rpm-build`, or `apt install rpm`). Neither package is built from source under the
+packaging tool: both repack one `dotnet publish` tree through the same
+`packaging/common/stage-tree.sh`, which is what keeps the two layouts identical and lets an amd64
+runner emit arm64 packages.
+
+CI exercises both on every push — the `.deb` through a full install, WHOIS query, dashboard fetch
+and purge cycle under real systemd, and the `.rpm` by installing it on Fedora to prove the
+hand-written dependency list resolves and the bundled runtime runs on a non-Debian base.
 
 ## Docker
 
@@ -404,7 +499,10 @@ make test-integration  # live WHOIS/RDAP/HTTP tests
 make format            # apply style fixes
 make format-check      # verify style, CI-equivalent
 make publish           # framework-dependent Release build into publish/
-make clean             # remove bin/obj, cache/ and publish/
+make deb               # self-contained .deb into dist/ (RID=, VERSION=)
+make rpm               # self-contained .rpm into dist/ (same variables)
+make packages          # both of the above
+make clean             # remove bin/obj, cache/, publish/ and dist/
 ```
 
 Three test projects, 61 tests:
@@ -417,8 +515,9 @@ Three test projects, 61 tests:
   non-blocking in CI for that reason.
 
 CI (`.github/workflows/ci.yml`) gates on a warning-free Release build, the offline tests,
-`dotnet format --verify-no-changes`, and the cut-build matrix. Images are built and pushed by
-`docker.yml`; tagged releases produce self-contained tarballs via `release.yml`.
+`dotnet format --verify-no-changes`, the cut-build matrix, a full install/query/purge cycle of the
+Debian package, and an install of the RPM on Fedora. Images are built and pushed by `docker.yml`;
+tagged releases produce self-contained tarballs plus `.deb` and `.rpm` packages via `release.yml`.
 
 ## Project layout
 
@@ -430,6 +529,7 @@ src/
 ├── WhoisServer.Plugins/         # plugin loader, isolated load contexts, permission enforcement
 └── WhoisServer.Host/            # composition root: TCP 43 listener, Kestrel, dashboard, CLI
 plugins-src/Weather/             # worked plugin example
+packaging/                       # common systemd unit + layout, .deb and .rpm build scripts
 tests/                           # Core, Plugins, Integration
 ```
 

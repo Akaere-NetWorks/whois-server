@@ -183,6 +183,9 @@ DocProject/Help/html
 # Click-Once directory
 publish/
 
+# Release artifacts: tarballs and .deb packages (packaging/deb/build-deb.sh)
+dist/
+
 # Publish Web Output
 *.[Pp]ublish.xml
 *.azurePubxml
