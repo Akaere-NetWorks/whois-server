@@ -22,7 +22,7 @@ env:
 jobs:
   build-and-test:
     name: Build and unit-test
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@v4
 
@@ -55,7 +55,7 @@ jobs:
 
   format:
     name: Code style
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@v4
 
@@ -79,7 +79,7 @@ jobs:
 
   cut-builds:
     name: Cut build (${{ matrix.name }})
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     # Feature flags are a headline requirement of this project, not a
     # nice-to-have: each combination below must produce a genuinely compiling
     # binary with the disabled code and dependencies eliminated. Without this
@@ -121,7 +121,7 @@ jobs:
 
   minimal-build:
     name: Cut build (every feature off)
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@v4
 
@@ -153,7 +153,7 @@ jobs:
 
   integration-tests:
     name: Integration tests (live network)
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     # Non-blocking on purpose. This suite boots the real host and queries real
     # WHOIS/RDAP/HTTP infrastructure, so a failure here is as likely to mean
     # "whois.verisign-grs.com rate-limited the runner" as "we broke something".
