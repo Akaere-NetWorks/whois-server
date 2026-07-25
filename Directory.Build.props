@@ -1,0 +1,151 @@
+<Project>
+
+  <!--
+    Single source of truth for the version stamped into every assembly in the solution. Overridable
+    from CI (`-p:VersionPrefix=…`) so a `v*` tag can drive the build without editing this file.
+  -->
+  <PropertyGroup>
+    <VersionPrefix>0.0.1</VersionPrefix>
+  </PropertyGroup>
+
+  <!--
+    Works around a local SDK install quirk: this machine's net10.0 SDK ships without a
+    PrunePackageData directory (used to prune shared-framework-provided transitive packages from
+    restore output), which makes any Microsoft.NET.Sdk.Web project fail to build with NETSDK1226
+    regardless of project content. The SDK's own error message names this exact property as the
+    sanctioned escape hatch — it only disables that pruning optimization, no functional effect.
+  -->
+  <PropertyGroup>
+    <AllowMissingPrunePackageData>true</AllowMissingPrunePackageData>
+  </PropertyGroup>
+
+  <!--
+    Feature-flag scaffold (see plan.md §6). Each atomic feature gets one MSBuild property here,
+    default true. Override per-build with e.g. `dotnet publish -p:Feature_Dn42=false`.
+
+    A feature property does two things simultaneously, mirroring Cargo's #[cfg(feature = "...")]:
+      1. Gates the corresponding <PackageReference> in that feature's project file, so a disabled
+         feature's dependency is never restored or shipped.
+      2. Defines a matching preprocessor symbol (FEATURE_XXX) consumed by #if in source, so a
+         disabled feature's code is never compiled in.
+
+    Only Feature_Dn42 is wired to a real project so far (WhoisServer.Services.Dn42, gated on
+    LibGit2Sharp) — it exists to prove the mechanism end-to-end per Phase 1's TODO item. The rest
+    are listed now so later phases just add project-level conditions, not new plumbing here.
+  -->
+  <PropertyGroup>
+    <Feature_Dn42        Condition="'$(Feature_Dn42)' == ''">true</Feature_Dn42>
+    <Feature_Bgp         Condition="'$(Feature_Bgp)' == ''">true</Feature_Bgp>
+    <Feature_BgpIrr      Condition="'$(Feature_BgpIrr)' == ''">true</Feature_BgpIrr>
+    <Feature_BgpManrs    Condition="'$(Feature_BgpManrs)' == ''">true</Feature_BgpManrs>
+    <Feature_BgpPrefixes Condition="'$(Feature_BgpPrefixes)' == ''">true</Feature_BgpPrefixes>
+    <Feature_PeeringDb   Condition="'$(Feature_PeeringDb)' == ''">true</Feature_PeeringDb>
+    <Feature_Geo         Condition="'$(Feature_Geo)' == ''">true</Feature_Geo>
+    <Feature_Dns         Condition="'$(Feature_Dns)' == ''">true</Feature_Dns>
+    <Feature_Ping        Condition="'$(Feature_Ping)' == ''">true</Feature_Ping>
+    <Feature_Traceroute  Condition="'$(Feature_Traceroute)' == ''">true</Feature_Traceroute>
+    <Feature_Ntp         Condition="'$(Feature_Ntp)' == ''">true</Feature_Ntp>
+    <Feature_Ssl         Condition="'$(Feature_Ssl)' == ''">true</Feature_Ssl>
+    <Feature_Crt         Condition="'$(Feature_Crt)' == ''">true</Feature_Crt>
+    <Feature_CfStatus    Condition="'$(Feature_CfStatus)' == ''">true</Feature_CfStatus>
+    <Feature_Email       Condition="'$(Feature_Email)' == ''">true</Feature_Email>
+    <Feature_Steam       Condition="'$(Feature_Steam)' == ''">true</Feature_Steam>
+    <Feature_Imdb        Condition="'$(Feature_Imdb)' == ''">true</Feature_Imdb>
+    <Feature_Minecraft   Condition="'$(Feature_Minecraft)' == ''">true</Feature_Minecraft>
+    <Feature_Acgc        Condition="'$(Feature_Acgc)' == ''">true</Feature_Acgc>
+    <Feature_Lyric       Condition="'$(Feature_Lyric)' == ''">true</Feature_Lyric>
+    <Feature_Meal        Condition="'$(Feature_Meal)' == ''">true</Feature_Meal>
+    <Feature_Wikipedia   Condition="'$(Feature_Wikipedia)' == ''">true</Feature_Wikipedia>
+    <Feature_GitHub      Condition="'$(Feature_GitHub)' == ''">true</Feature_GitHub>
+    <Feature_Icp         Condition="'$(Feature_Icp)' == ''">true</Feature_Icp>
+    <Feature_Pen         Condition="'$(Feature_Pen)' == ''">true</Feature_Pen>
+    <Feature_Pixiv       Condition="'$(Feature_Pixiv)' == ''">true</Feature_Pixiv>
+    <!--
+      Cargo.toml's real "packages" preset is 14 individual atomic features (pkg-alma, pkg-aosc,
+      ...), not one umbrella — Feature_Packages here is a *convenience* preset only (mirroring that
+      grouping), not itself an atomic flag: each Feature_Pkg* below defaults to WHATEVER
+      Feature_Packages resolved to (true by default), so `-p:Feature_Packages=false` cascades to
+      all 14, while any individual one can still be overridden on its own
+      (`-p:Feature_PkgNpm=false` alone disables just npm). This mirrors Cargo's own
+      preset-expands-to-atomics semantics exactly.
+    -->
+    <Feature_Packages    Condition="'$(Feature_Packages)' == ''">true</Feature_Packages>
+    <Feature_PkgAlma       Condition="'$(Feature_PkgAlma)' == ''">$(Feature_Packages)</Feature_PkgAlma>
+    <Feature_PkgAosc       Condition="'$(Feature_PkgAosc)' == ''">$(Feature_Packages)</Feature_PkgAosc>
+    <Feature_PkgAur        Condition="'$(Feature_PkgAur)' == ''">$(Feature_Packages)</Feature_PkgAur>
+    <Feature_PkgCargo      Condition="'$(Feature_PkgCargo)' == ''">$(Feature_Packages)</Feature_PkgCargo>
+    <Feature_PkgCurseForge Condition="'$(Feature_PkgCurseForge)' == ''">$(Feature_Packages)</Feature_PkgCurseForge>
+    <Feature_PkgDebian     Condition="'$(Feature_PkgDebian)' == ''">$(Feature_Packages)</Feature_PkgDebian>
+    <Feature_PkgEpel       Condition="'$(Feature_PkgEpel)' == ''">$(Feature_Packages)</Feature_PkgEpel>
+    <Feature_PkgModrinth   Condition="'$(Feature_PkgModrinth)' == ''">$(Feature_Packages)</Feature_PkgModrinth>
+    <Feature_PkgNixOs      Condition="'$(Feature_PkgNixOs)' == ''">$(Feature_Packages)</Feature_PkgNixOs>
+    <Feature_PkgNpm        Condition="'$(Feature_PkgNpm)' == ''">$(Feature_Packages)</Feature_PkgNpm>
+    <Feature_PkgOpenSuse   Condition="'$(Feature_PkgOpenSuse)' == ''">$(Feature_Packages)</Feature_PkgOpenSuse>
+    <Feature_PkgOpenWrt    Condition="'$(Feature_PkgOpenWrt)' == ''">$(Feature_Packages)</Feature_PkgOpenWrt>
+    <Feature_PkgPypi       Condition="'$(Feature_PkgPypi)' == ''">$(Feature_Packages)</Feature_PkgPypi>
+    <Feature_PkgUbuntu     Condition="'$(Feature_PkgUbuntu)' == ''">$(Feature_Packages)</Feature_PkgUbuntu>
+    <Feature_Web         Condition="'$(Feature_Web)' == ''">true</Feature_Web>
+    <Feature_Plugins     Condition="'$(Feature_Plugins)' == ''">true</Feature_Plugins>
+    <Feature_Telemetry   Condition="'$(Feature_Telemetry)' == ''">true</Feature_Telemetry>
+    <!--
+      The one deliberate exception to "every flag defaults true": Rust's own `default = ["full"]`
+      Cargo feature set does NOT include `rdap-backend` (Cargo.toml's `full` preset omits it
+      entirely — confirmed by reading the source, not assumed). Its module doc comment says so
+      explicitly: "This is experimental and must be enabled via the rdap-backend feature flag...
+      When rdap-backend is NOT enabled, all queries use the default WHOIS backend." Defaulting
+      this one to true would have made this port's default query resolution silently diverge from
+      upstream's actual default behavior (RDAP-first instead of WHOIS-via-IANA-referral-first) —
+      exactly the bug this flag was added to fix. The explicit `-RDAP` suffix still works
+      regardless of this flag (see ResolutionOrchestrator's doc comment) — a deliberate,
+      documented improvement over Rust, where the whole RDAP capability (suffix included) requires
+      a recompile.
+    -->
+    <Feature_RdapBackend Condition="'$(Feature_RdapBackend)' == ''">false</Feature_RdapBackend>
+
+    <DefineConstants Condition="'$(Feature_Dn42)' == 'true'">$(DefineConstants);FEATURE_DN42</DefineConstants>
+    <DefineConstants Condition="'$(Feature_Bgp)' == 'true'">$(DefineConstants);FEATURE_BGP</DefineConstants>
+    <DefineConstants Condition="'$(Feature_BgpIrr)' == 'true'">$(DefineConstants);FEATURE_BGP_IRR</DefineConstants>
+    <DefineConstants Condition="'$(Feature_BgpManrs)' == 'true'">$(DefineConstants);FEATURE_BGP_MANRS</DefineConstants>
+    <DefineConstants Condition="'$(Feature_BgpPrefixes)' == 'true'">$(DefineConstants);FEATURE_BGP_PREFIXES</DefineConstants>
+    <DefineConstants Condition="'$(Feature_PeeringDb)' == 'true'">$(DefineConstants);FEATURE_PEERINGDB</DefineConstants>
+    <DefineConstants Condition="'$(Feature_Geo)' == 'true'">$(DefineConstants);FEATURE_GEO</DefineConstants>
+    <DefineConstants Condition="'$(Feature_Dns)' == 'true'">$(DefineConstants);FEATURE_DNS</DefineConstants>
+    <DefineConstants Condition="'$(Feature_Ping)' == 'true'">$(DefineConstants);FEATURE_PING</DefineConstants>
+    <DefineConstants Condition="'$(Feature_Traceroute)' == 'true'">$(DefineConstants);FEATURE_TRACEROUTE</DefineConstants>
+    <DefineConstants Condition="'$(Feature_Ntp)' == 'true'">$(DefineConstants);FEATURE_NTP</DefineConstants>
+    <DefineConstants Condition="'$(Feature_Ssl)' == 'true'">$(DefineConstants);FEATURE_SSL</DefineConstants>
+    <DefineConstants Condition="'$(Feature_Crt)' == 'true'">$(DefineConstants);FEATURE_CRT</DefineConstants>
+    <DefineConstants Condition="'$(Feature_CfStatus)' == 'true'">$(DefineConstants);FEATURE_CFSTATUS</DefineConstants>
+    <DefineConstants Condition="'$(Feature_Email)' == 'true'">$(DefineConstants);FEATURE_EMAIL</DefineConstants>
+    <DefineConstants Condition="'$(Feature_Steam)' == 'true'">$(DefineConstants);FEATURE_STEAM</DefineConstants>
+    <DefineConstants Condition="'$(Feature_Imdb)' == 'true'">$(DefineConstants);FEATURE_IMDB</DefineConstants>
+    <DefineConstants Condition="'$(Feature_Minecraft)' == 'true'">$(DefineConstants);FEATURE_MINECRAFT</DefineConstants>
+    <DefineConstants Condition="'$(Feature_Acgc)' == 'true'">$(DefineConstants);FEATURE_ACGC</DefineConstants>
+    <DefineConstants Condition="'$(Feature_Lyric)' == 'true'">$(DefineConstants);FEATURE_LYRIC</DefineConstants>
+    <DefineConstants Condition="'$(Feature_Meal)' == 'true'">$(DefineConstants);FEATURE_MEAL</DefineConstants>
+    <DefineConstants Condition="'$(Feature_Wikipedia)' == 'true'">$(DefineConstants);FEATURE_WIKIPEDIA</DefineConstants>
+    <DefineConstants Condition="'$(Feature_GitHub)' == 'true'">$(DefineConstants);FEATURE_GITHUB</DefineConstants>
+    <DefineConstants Condition="'$(Feature_Icp)' == 'true'">$(DefineConstants);FEATURE_ICP</DefineConstants>
+    <DefineConstants Condition="'$(Feature_Pen)' == 'true'">$(DefineConstants);FEATURE_PEN</DefineConstants>
+    <DefineConstants Condition="'$(Feature_Pixiv)' == 'true'">$(DefineConstants);FEATURE_PIXIV</DefineConstants>
+    <DefineConstants Condition="'$(Feature_PkgAlma)' == 'true'">$(DefineConstants);FEATURE_PKG_ALMA</DefineConstants>
+    <DefineConstants Condition="'$(Feature_PkgAosc)' == 'true'">$(DefineConstants);FEATURE_PKG_AOSC</DefineConstants>
+    <DefineConstants Condition="'$(Feature_PkgAur)' == 'true'">$(DefineConstants);FEATURE_PKG_AUR</DefineConstants>
+    <DefineConstants Condition="'$(Feature_PkgCargo)' == 'true'">$(DefineConstants);FEATURE_PKG_CARGO</DefineConstants>
+    <DefineConstants Condition="'$(Feature_PkgCurseForge)' == 'true'">$(DefineConstants);FEATURE_PKG_CURSEFORGE</DefineConstants>
+    <DefineConstants Condition="'$(Feature_PkgDebian)' == 'true'">$(DefineConstants);FEATURE_PKG_DEBIAN</DefineConstants>
+    <DefineConstants Condition="'$(Feature_PkgEpel)' == 'true'">$(DefineConstants);FEATURE_PKG_EPEL</DefineConstants>
+    <DefineConstants Condition="'$(Feature_PkgModrinth)' == 'true'">$(DefineConstants);FEATURE_PKG_MODRINTH</DefineConstants>
+    <DefineConstants Condition="'$(Feature_PkgNixOs)' == 'true'">$(DefineConstants);FEATURE_PKG_NIXOS</DefineConstants>
+    <DefineConstants Condition="'$(Feature_PkgNpm)' == 'true'">$(DefineConstants);FEATURE_PKG_NPM</DefineConstants>
+    <DefineConstants Condition="'$(Feature_PkgOpenSuse)' == 'true'">$(DefineConstants);FEATURE_PKG_OPENSUSE</DefineConstants>
+    <DefineConstants Condition="'$(Feature_PkgOpenWrt)' == 'true'">$(DefineConstants);FEATURE_PKG_OPENWRT</DefineConstants>
+    <DefineConstants Condition="'$(Feature_PkgPypi)' == 'true'">$(DefineConstants);FEATURE_PKG_PYPI</DefineConstants>
+    <DefineConstants Condition="'$(Feature_PkgUbuntu)' == 'true'">$(DefineConstants);FEATURE_PKG_UBUNTU</DefineConstants>
+    <DefineConstants Condition="'$(Feature_Web)' == 'true'">$(DefineConstants);FEATURE_WEB</DefineConstants>
+    <DefineConstants Condition="'$(Feature_Plugins)' == 'true'">$(DefineConstants);FEATURE_PLUGINS</DefineConstants>
+    <DefineConstants Condition="'$(Feature_Telemetry)' == 'true'">$(DefineConstants);FEATURE_TELEMETRY</DefineConstants>
+    <DefineConstants Condition="'$(Feature_RdapBackend)' == 'true'">$(DefineConstants);FEATURE_RDAP_BACKEND</DefineConstants>
+  </PropertyGroup>
+
+</Project>

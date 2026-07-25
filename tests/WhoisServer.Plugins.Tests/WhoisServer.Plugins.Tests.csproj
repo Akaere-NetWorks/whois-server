@@ -1,0 +1,40 @@
+<!--
+  This test project exercises Phase 6's plugin system specifically, so — unlike the other test
+  projects — it's ALSO feature-gated: when Feature_Plugins=false, WhoisServer.Plugins.csproj
+  compiles to a genuinely empty assembly (see its own <Compile Remove>), and every type these tests
+  reference (PluginHost, PluginRegistry, ...) would no longer exist. Rather than let that turn into
+  a hard compile error on `dotnet build -p:Feature_Plugins=false` for the whole solution, this
+  project goes empty too — a cut build that deliberately excludes plugins reasonably excludes the
+  plugin tests along with it.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup Condition="'$(Feature_Plugins)' != 'true'">
+    <Compile Remove="**/*.cs" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.10" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\WhoisServer.Core\WhoisServer.Core.csproj" />
+    <ProjectReference Include="..\..\src\WhoisServer.Plugins\WhoisServer.Plugins.csproj" />
+  </ItemGroup>
+
+</Project>

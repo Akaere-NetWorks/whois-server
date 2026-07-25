@@ -1,0 +1,104 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build (dry run — nothing is attached to a Release)'
+        required: false
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  tarball:
+    name: Publish ${{ matrix.rid }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        rid: [linux-x64, linux-arm64]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # A v* tag drives the stamped assembly version; a manual run falls back to
+      # whatever VersionPrefix Directory.Build.props declares.
+      - name: Resolve version
+        id: version
+        run: |
+          ref='${{ github.ref }}'
+          case "$ref" in
+            refs/tags/v*) echo "prefix=-p:VersionPrefix=${ref#refs/tags/v}" >> "$GITHUB_OUTPUT" ;;
+            *)            echo "prefix=" >> "$GITHUB_OUTPUT" ;;
+          esac
+
+      # Self-contained here, unlike the container image: a tarball has no
+      # ASP.NET Core runtime underneath it, so the target host would otherwise
+      # need a matching .NET 10 install. Not trimmed — the JSON/DI paths are
+      # reflection-heavy enough that PublishTrimmed is a correctness risk for
+      # ~40 MB of savings.
+      - name: Publish self-contained
+        run: |
+          dotnet publish src/WhoisServer.Host/WhoisServer.Host.csproj \
+            -c Release \
+            -r ${{ matrix.rid }} \
+            --self-contained true \
+            ${{ steps.version.outputs.prefix }} \
+            -o dist/whois-server-${{ matrix.rid }}
+
+      # The example plugin is built separately and dropped in beside the host:
+      # PluginLoader discovers it at runtime by scanning plugins/, it is never
+      # referenced by the host assembly. Ships as a working manifest+dll pair to
+      # copy when writing your own.
+      - name: Build example plugin
+        run: |
+          dotnet build plugins-src/Weather/Weather.csproj -c Release
+          mkdir -p dist/whois-server-${{ matrix.rid }}/plugins/weather
+          cp plugins/weather/Weather.dll plugins/weather/plugin.json \
+             dist/whois-server-${{ matrix.rid }}/plugins/weather/
+
+      - name: Add licence and docs
+        run: cp README.md LICENSE COPYRIGHT dist/whois-server-${{ matrix.rid }}/
+
+      - name: Create tarball
+        working-directory: dist
+        run: |
+          tar -czf whois-server-${{ matrix.rid }}.tar.gz whois-server-${{ matrix.rid }}
+          sha256sum whois-server-${{ matrix.rid }}.tar.gz > whois-server-${{ matrix.rid }}.tar.gz.sha256
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: whois-server-${{ matrix.rid }}
+          path: |
+            dist/whois-server-${{ matrix.rid }}.tar.gz
+            dist/whois-server-${{ matrix.rid }}.tar.gz.sha256
+          retention-days: 14
+
+  release:
+    name: Attach to GitHub Release
+    needs: tarball
+    runs-on: ubuntu-latest
+    # workflow_dispatch is a dry run: it builds and uploads artifacts but never
+    # touches a Release, so the pipeline can be exercised without cutting a tag.
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.tar.gz
+            dist/*.sha256
+          generate_release_notes: true

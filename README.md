@@ -1,816 +1,459 @@
-<div align="center">
+# whois-server
 
-# 🌐 WHOIS Server
+[![CI](https://github.com/Akaere-NetWorks/whois-server/actions/workflows/ci.yml/badge.svg)](https://github.com/Akaere-NetWorks/whois-server/actions/workflows/ci.yml)
+[![Container image](https://github.com/Akaere-NetWorks/whois-server/actions/workflows/docker.yml/badge.svg)](https://github.com/Akaere-NetWorks/whois-server/actions/workflows/docker.yml)
+[![Licence: AGPL v3](https://img.shields.io/badge/licence-AGPL--3.0-blue.svg)](LICENSE)
 
-[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
-[![Rust](https://img.shields.io/badge/Rust-1.92.0+-orange.svg)](https://www.rust-lang.org/)
-[![RFC 3912](https://img.shields.io/badge/RFC-3912-green.svg)](https://datatracker.ietf.org/doc/html/rfc3912)
-[![DN42](https://img.shields.io/badge/DN42-Compatible-blueviolet)](https://dn42.eu/)
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/Akaere-NetWorks/whois-server)
-[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FAkaere-NetWorks%2Fwhois-server.svg?type=shield&issueType=license)](https://app.fossa.com/projects/git%2Bgithub.com%2FAkaere-NetWorks%2Fwhois-server?ref=badge_shield&issueType=license)
+A multi-protocol WHOIS daemon: RFC 3912 on TCP 43, a 60-suffix query dispatcher fanning out to ~46
+upstream service integrations, DN42 registry support, and a web dashboard with a JSON API — in one
+.NET 10 process.
 
-**A high-performance WHOIS server with DN42 support, geo-location services, and comprehensive query capabilities.**
+> **Note** — this is the C#/.NET rewrite of the original Rust implementation. The SSH server and
+> the Lua plugin system are **not** carried over; see [Differences from the Rust
+> implementation](#differences-from-the-rust-implementation).
 
-*Deployed at [whois.akae.re](https://whois.akae.re) - Try it now!*
+---
 
-</div>
+## Contents
 
-## 📑 Table of Contents
+- [whois-server](#whois-server)
+  - [Contents](#contents)
+  - [What it does](#what-it-does)
+  - [Quick start](#quick-start)
+  - [Docker](#docker)
+  - [Configuration](#configuration)
+    - [CLI flags](#cli-flags)
+    - [Environment variables](#environment-variables)
+    - [State on disk](#state-on-disk)
+  - [Query reference](#query-reference)
+    - [Colour protocol](#colour-protocol)
+  - [Web dashboard and REST API](#web-dashboard-and-rest-api)
+  - [DN42](#dn42)
+  - [Response patches](#response-patches)
+  - [Plugins](#plugins)
+  - [Feature flags and cut builds](#feature-flags-and-cut-builds)
+  - [Development](#development)
+  - [Project layout](#project-layout)
+  - [Differences from the Rust implementation](#differences-from-the-rust-implementation)
+  - [Licence](#licence)
 
-- [🌐 WHOIS Server](#-whois-server)
-  - [📑 Table of Contents](#-table-of-contents)
-  - [✨ Features](#-features)
-  - [🌍 Public Instance](#-public-instance)
-  - [🖥️ Web Dashboard](#️-web-dashboard)
-    - [API Endpoints](#api-endpoints)
-  - [🚀 Installation](#-installation)
-    - [As a Standalone Server](#as-a-standalone-server)
-    - [As a Rust Library](#as-a-rust-library)
-  - [🧩 Feature Flags (Compile-time Trimming)](#-feature-flags-compile-time-trimming)
-    - [Atomic Features](#atomic-features)
-    - [Preset Groups](#preset-groups)
-    - [Typical Scenarios](#typical-scenarios)
-    - [As a Dependency](#as-a-dependency)
-  - [🔧 Usage](#-usage)
-    - [Running the server](#running-the-server)
-    - [Configuration](#configuration)
-      - [Environment Variables](#environment-variables)
-    - [Command-line options](#command-line-options)
-    - [Testing with WHOIS clients](#testing-with-whois-clients)
-  - [🔍 Query Types and Features](#-query-types-and-features)
-    - [Standard WHOIS Queries](#standard-whois-queries)
-    - [Enhanced Query Types](#enhanced-query-types)
-    - [Geo-location Services](#geo-location-services)
-    - [Network Intelligence \& Advanced Features](#network-intelligence--advanced-features)
-  - [🛠️ Advanced Query Features](#️-advanced-query-features)
-    - [IRR Explorer Integration (`-IRR` suffix)](#irr-explorer-integration--irr-suffix)
-    - [Looking Glass Services (`-LG` suffix)](#looking-glass-services--lg-suffix)
-    - [RADB Direct Access (`-RADB` suffix)](#radb-direct-access--radb-suffix)
-    - [ALTDB Direct Access (`-ALTDB` suffix)](#altdb-direct-access--altdb-suffix)
-    - [IRR Direct Access (Multiple registries)](#irr-direct-access-multiple-registries)
-    - [Modrinth Integration (`-MODRINTH` suffix)](#modrinth-integration--modrinth-suffix)
-    - [CurseForge Integration (`-CURSEFORGE` suffix)](#curseforge-integration--curseforge-suffix)
-  - [📊 Statistics and Monitoring](#-statistics-and-monitoring)
-  - [🏗️ Architecture](#️-architecture)
-    - [Key Components](#key-components)
-  - [📜 License](#-license)
+---
 
-## ✨ Features
+## What it does
 
-- **🚀 High Performance** - Asynchronous Rust implementation with configurable connection limits
-- **🧩 Feature Flags** - Compile-time feature trimming: build only what you need (core WHOIS → full server)
-- **🌐 RFC 3912 Compliant** - Full WHOIS protocol support
-- **🔍 Smart Query Detection** - Automatic identification of domains, IP addresses, ASNs, and special query types
-- **🌟 Platform-Aware DN42 Integration** - Cross-platform DN42 support with automatic backend selection
-- **📍 Geo-location Services** - Built-in IP geolocation using multiple data sources
-- **🔧 BGP Tools Integration** - Network analysis and BGP information queries
-- **📧 Email Search** - Contact information lookup capabilities
-- **🛡️ IRR Explorer Integration** - Comprehensive routing registry analysis with RPKI validation
-- **🔭 Looking Glass Services** - RIPE RIS BGP data in BIRD routing daemon format
-- **📊 RADB Direct Access** - Routing Assets Database queries for AS-SET and route objects
-- **🔐 RPKI Validation** - Resource Public Key Infrastructure validation for prefix-ASN pairs
-- **🛡️ MANRS Integration** - Mutually Agreed Norms for Routing Security compliance checking
-- **🌐 DNS Resolution** - Comprehensive DNS record lookups using Cloudflare 1.1.1.1
-- **🔍 Network Analysis** - Traceroute functionality for network path analysis
-- **🔐 SSL/TLS Analysis** - Certificate analysis and validation using rustls
-- **🔍 Certificate Transparency** - CT logs search via crt.sh API integration
-- **🎮 Minecraft Integration** - Server status and user profile queries using Server List Ping protocol
-- **🎮 Steam Integration** - Game information, user profiles, and game search with price display
-- **🎬 IMDb Integration** - Movie and TV show information with ratings, cast, and search functionality
-- **📦 Package Repository Support** - Comprehensive package queries for 10 major repositories (Cargo, NPM, PyPI, GitHub, AUR, Debian, Ubuntu, NixOS, OpenSUSE, AOSC, Modrinth)
-- **🎮 Modrinth Integration** - Minecraft mods, resource packs, datapacks, and shaders information with downloads statistics
-- **Pixiv Integration** - Artwork and user information with image URLs, search, and ranking queries via pixivpy3
-- **🎭 Entertainment Services** - Wikipedia articles, anime/comic/game character database, and Luotianyi lyrics
-- **🛠️ Development Tools** - GitHub user/repository information and built-in help system
-- **Response Patch System** - Remote-managed response customization with automatic updates from GitHub
-  - Context-aware text replacement with line-based rules
-  - SHA1 checksum verification for integrity
-  - LMDB storage for persistence and fast loading
-  - Online updates via `UPDATE-PATCH` command
-  - Detailed documentation in [patches/README.md](patches/README.md)
-- **�📈 Real-time Statistics** - Comprehensive usage tracking and monitoring
-- **🌐 Web Dashboard** - Modern web interface for statistics and testing
-- **🔒 Robust Error Handling** - Graceful handling of network issues and timeouts
-- **📋 Traffic Logging** - Optional query/response dumping for debugging
-- **🧩 Compile-time Feature Flags** - Cargo feature flags for building minimal to full-featured binaries
-- **🎯 Intelligent Fallback** - Automatic fallback to DN42 for failed public queries
+| | |
+| --- | --- |
+| **WHOIS server** | RFC 3912, TCP 43. Domains, IPv4/IPv6, CIDR, ASNs — resolved via IANA referral by default, RDAP optionally. |
+| **Suffix dispatcher** | `example.com-DNS`, `AS213605-PEERINGDB`, `rust-CARGO`, … 60 built-in suffixes across five categories in a default build. |
+| **DN42** | Git-mirrored private-internet registry, with automatic routing of DN42 IP/ASN ranges. |
+| **Web dashboard + API** | Kestrel on port 9999: query UI, live stats, REST/JSON endpoints, OpenAPI document. |
+| **Response patches** | SHA1-verified, remotely updatable DSL that rewrites specific lines of outgoing WHOIS text. |
+| **Colour protocol** | Opt-in ANSI colourisation negotiated with an `X-WHOIS-COLOR:` header — an extension to raw WHOIS, invisible to standard clients. |
+| **Native plugins** | Third-party query suffixes as ordinary .NET assemblies, loaded into an isolated `AssemblyLoadContext` with a manifest-declared permission set. |
+| **Cut builds** | 44 MSBuild feature flags that genuinely remove code and dependencies, not just disable them at runtime. |
 
-## 🌍 Public Instance
+## Quick start
 
-A public instance of this WHOIS server is deployed at **whois.akae.re**. You can query it using:
+Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0). `git` must be on
+`PATH` if DN42 is enabled.
 
 ```bash
-# Domain queries
-whois -h whois.akae.re example.com
-
-# ASN queries  
-whois -h whois.akae.re AS213605
-
-# DN42-specific queries (automatically routed to DN42 WHOIS)
-whois -h whois.akae.re AS4242420000
-whois -h whois.akae.re example.dn42
-
-# IP geolocation
-whois -h whois.akae.re 8.8.8.8-GEO
-
-# BGP information  
-whois -h whois.akae.re AS213605-BGPTOOL
-
-# Email search
-whois -h whois.akae.re contact@example.com-EMAIL
-
-# RADB queries
-whois -h whois.akae.re 1.1.1.0-RADB
-
-# IRR Explorer analysis
-whois -h whois.akae.re 192.0.2.0/24-IRR
-
-# Looking Glass (BIRD-style routing data)
-whois -h whois.akae.re 1.1.1.0-LG
-
-# RPKI validation
-whois -h whois.akae.re 192.0.2.0/24-AS213605-RPKI
-
-# MANRS compliance check
-whois -h whois.akae.re AS213605-MANRS
-
-# DNS resolution
-whois -h whois.akae.re example.com-DNS
-
-# Network traceroute
-whois -h whois.akae.re 8.8.8.8-TRACEROUTE
-
-# SSL certificate analysis
-whois -h whois.akae.re example.com-SSL
-
-# Certificate Transparency search
-whois -h whois.akae.re example.com-CRT
-
-# Minecraft server status
-whois -h whois.akae.re play.hypixel.net-MC
-
-# Steam game information
-whois -h whois.akae.re 730-STEAM
-
-# IMDb movie search  
-whois -h whois.akae.re Inception-IMDB
-
-# Package repository queries
-whois -h whois.akae.re rust-CARGO
-whois -h whois.akae.re express-NPM
-whois -h whois.akae.re requests-PYPI
-
-# Modrinth (Minecraft mods/resource packs)
-whois -h whois.akae.re sodium-MODRINTH
-whois -h whois.akae.re iris-MODRINTH
-
-# Pixiv artwork and user information
-whois -h whois.akae.re 123456789-PIXIV
-whois -h whois.akae.re user:12345678-PIXIV
-whois -h whois.akae.re search:风景-PIXIV
-whois -h whois.akae.re ranking-PIXIV
-
-# Entertainment services
-whois -h whois.akae.re "Linux-WIKIPEDIA"
-whois -h whois.akae.re "Miku-ACGC"
-whois -h whois.akae.re "LYRIC"
-
-# Development tools
-whois -h whois.akae.re torvalds-GITHUB
-whois -h whois.akae.re "HELP"
-```
-
-## 🖥️ Web Dashboard
-
-The server includes a modern web dashboard accessible at `http://your-server:9999` (default port). The dashboard provides:
-
-- **📊 Real-time Statistics** - Query counts, response times, and server metrics with auto-refresh
-- **🧪 Query Testing** - Interactive WHOIS query interface for all supported query types
-- **📈 Visual Analytics** - Charts and graphs with 24-hour and 30-day views
-- **🎨 Theme Support** - Light/dark/auto theme with beautiful pink-themed UI
-- **📱 Responsive Design** - Works perfectly on desktop and mobile devices
-- **🔄 Live Updates** - Statistics refresh every 30 seconds automatically
-- **📋 Query Type Distribution** - Visual breakdown of query types and usage patterns
-- **⚡ Performance Metrics** - Connection counts, data transfer, and response times
-
-### API Endpoints
-
-The web server provides several API endpoints for integration:
-
-- **`/api/whois?q=<query>`** - JSON-formatted WHOIS response with structured data
-- **`/raw/<query>`** - Raw WHOIS output (text/plain) without JSON formatting
-- **`/pixiv/<query>`** - Pixiv-specific JSON API for artwork, user, search, and ranking queries
-- **`/api/stats`** - Server statistics in JSON format
-- **`/api/openapi.json`** - OpenAPI 3.0 specification
-
-Example usage:
-
-```bash
-# Get JSON-formatted response
-curl "http://localhost:9999/api/whois?q=google.com"
-
-# Get raw WHOIS output (plain text)
-curl "http://localhost:9999/raw/google.com"
-curl "http://localhost:9999/raw/AS13335"
-curl "http://localhost:9999/raw/8.8.8.8"
-
-# Get Pixiv data in pure JSON format
-curl "http://localhost:9999/pixiv/123456789"
-curl "http://localhost:9999/pixiv/user:12345678"
-curl "http://localhost:9999/pixiv/search:风景"
-curl "http://localhost:9999/pixiv/ranking"
-
-# Get server statistics
-curl "http://localhost:9999/api/stats"
-```
-
-## 🚀 Installation
-
-### As a Standalone Server
-
-Ensure you have Rust and Cargo installed, then:
-
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/whois-server.git
+git clone https://github.com/Akaere-NetWorks/whois-server.git
 cd whois-server
 
-# Build in release mode
-cargo build --release
-
-# The executable will be available at target/release/whois-server
+# Port 4343 rather than 43 so it needs no root
+make run                       # or: dotnet run --project src/WhoisServer.Host -- --port 4343
 ```
 
-### As a Rust Library
+Then query it:
 
-Add to your `Cargo.toml`:
-
-```toml
-[dependencies]
-whois-server = { git = "https://github.com/Akaere-NetWorks/whois-server.git" }
-tokio = { version = "1.35", features = ["full"] }
-anyhow = "1.0"
+```bash
+whois -h 127.0.0.1 -p 4343 example.com
+whois -h 127.0.0.1 -p 4343 AS213605-PEERINGDB
+whois -h 127.0.0.1 -p 4343 HELP           # authoritative suffix list for *your* build
 ```
 
-Then use it in your code:
+…and open <http://127.0.0.1:9999> for the dashboard.
 
-```rust
-use whois_server::query;
+`HELP` is worth repeating: because suffixes are registered by whichever features were compiled in,
+the running server's own help output is always the accurate list for that binary, where this README
+can only describe a default build.
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    // Query any resource just like the whois command
-    let result = query("example.com").await?;
-    println!("{}", result);
-    
-    // Works with all query types
-    let result = query("AS13335").await?;
-    let result = query("1.1.1.1-GEO").await?;
-    let result = query("example.com-DNS").await?;
-    
-    Ok(())
+## Docker
+
+Images are published to GHCR for `linux/amd64` and `linux/arm64`:
+
+```bash
+docker run -d --name whois-server \
+  -p 43:43 -p 9999:9999 \
+  -v whois-cache:/app/cache \
+  ghcr.io/akaere-networks/whois-server:latest
+```
+
+Configuration is by environment variable and CLI flag — flags go after the image name, since they
+are passed straight to the entrypoint:
+
+```bash
+docker run -d --name whois-server \
+  -p 43:43 -p 9999:9999 \
+  -v whois-cache:/app/cache \
+  -v "$PWD/plugins:/app/plugins" \
+  --env-file .env \
+  ghcr.io/akaere-networks/whois-server:latest \
+  --debug --max-connections 200
+```
+
+Notes:
+
+- **`/app/cache` should be a volume.** Every SQLite store lives there (stats, patches, the DN42
+  clone, referral caches). Without it, each restart re-clones the DN42 registry and discards stats.
+- **The container runs as root** because binding port 43 is privileged. To run rootless, listen high
+  inside the container and remap on the host:
+  ```bash
+  docker run -d -u 1654:1654 -p 43:4343 -p 9999:9999 -v whois-cache:/app/cache \
+    ghcr.io/akaere-networks/whois-server:latest --port 4343
+  ```
+- **Building with feature flags** is supported through a build argument:
+  ```bash
+  docker build --build-arg FEATURES="-p:Feature_Dn42=false -p:Feature_Pixiv=false" -t whois-server .
+  ```
+  Disabling DN42 also makes the image's `git` dependency redundant.
+
+## Configuration
+
+### CLI flags
+
+| Flag | Default | Meaning |
+| --- | --- | --- |
+| `-H`, `--host <HOST>` | `0.0.0.0` | Listen address, for **both** the WHOIS and web listeners |
+| `-p`, `--port <PORT>` | `43` | WHOIS TCP port |
+| `--web-port <PORT>` | `9999` | Dashboard / REST API port |
+| `-d`, `--debug` | off | Debug-level logging |
+| `-t`, `--trace` | off | Trace-level logging (extremely verbose) |
+| `--max-connections <N>` | `100` | Concurrent WHOIS connection ceiling |
+| `--timeout <SECONDS>` | `10` | Per-connection timeout |
+| `--dump-traffic` | off | Write raw queries and responses to disk |
+| `--dump-dir <DIR>` | `dumps` | Where `--dump-traffic` writes |
+| `--enable-color` | `true` | Honour the `X-WHOIS-COLOR:` negotiation header |
+| `-h`, `--help` | | Print usage |
+
+### Environment variables
+
+All are optional. Each unlocks one integration; when unset, that integration degrades (usually to
+an explanatory WHOIS response) rather than failing startup.
+
+| Variable | Used by |
+| --- | --- |
+| `IPINFO_TOKEN` | `-GEO` aggregated geolocation (ipinfo.io) |
+| `IPINFO_API_TOKEN` | Hop geolocation in `-PING` / `-TRACEROUTE` |
+| `STEAM_API_KEY` | `-STEAM` user profiles (app lookups work without it) |
+| `OMDB_API_KEY` | `-IMDB` / `-IMDBSEARCH` |
+| `CURSEFORGE_API_KEY` | `-CURSEFORGE` |
+| `PIXIV_REFRESH_TOKEN` | `-PIXIV` and the image reverse-proxy |
+| `TELEMETRY_ENABLED` | Set to `true` to enable query telemetry export |
+| `TELEMETRY_ENDPOINT` | Telemetry collector URL (required when enabled) |
+| `TELEMETRY_BEARER_TOKEN` | Telemetry `Authorization` bearer token |
+
+> **The host does not read a `.env` file.** It reads real process environment variables only. Use
+> your shell, systemd's `EnvironmentFile=`, or `docker run --env-file`. A stray `.env` in the
+> working directory has no effect. (The one exception is `plugins/.plugins.env`, which the plugin
+> loader reads on plugins' behalf — see [Plugins](#plugins).)
+
+### State on disk
+
+Everything is relative to the process working directory:
+
+| Path | Contents |
+| --- | --- |
+| `cache/patches.db` | Loaded response-patch set |
+| `cache/stats.db` | Query counters and byte totals |
+| `cache/iana-referral.db` | Cached IANA → registry WHOIS referrals |
+| `cache/dn42.db`, `cache/dn42-registry/` | DN42 object index and the git clone itself |
+| `cache/manrs.db`, `peeringdb.db`, `icp.db`, `pen.db`, `openwrt.db` | Per-service caches |
+| `cache/plugins.db` | Plugin-visible key/value store, namespaced per plugin |
+| `plugins/` | Runtime-scanned plugin directory |
+| `dumps/` | Only with `--dump-traffic` |
+
+## Query reference
+
+Suffixes are case-insensitive and matched longest-first, so a short suffix can never shadow a
+longer one. A query with no recognised suffix is classified by shape (domain / IPv4 / IPv6 / CIDR /
+ASN) and resolved normally.
+
+**Core**
+
+| Query | Result |
+| --- | --- |
+| `HELP` | Suffix list for this build |
+| `UPDATE-PATCH` | Re-fetch response patches from the remote repository |
+| `<query>-DESC` | Description/remarks-only summary |
+| `<query>-RDAP` | Force an RDAP lookup (works regardless of `Feature_RdapBackend`) |
+
+**Network intelligence**
+
+| Query | Result |
+| --- | --- |
+| `<AS/prefix>-BGPTOOL` | BGP looking-glass data via bgp.tools |
+| `<resource>-IRR` | IRR Explorer route-object lookup |
+| `<resource>-LG` | Looking-glass query |
+| `AS<n>-MANRS` | MANRS compliance status |
+| `AS<n>-PEERINGDB` | PeeringDB network record |
+| `AS<n>-PREFIXES` | Announced prefixes |
+| `<ip>-GEO` | Aggregated geolocation, multiple sources |
+| `<ip>-RIRGEO` | RIR-reported geolocation |
+| `<domain>-DNS` | DNS records over DoH |
+| `<host>-PING` | Globalping ping measurement |
+| `<host>-TRACEROUTE`, `<host>-TRACE` | Globalping traceroute (`-TRACE` is an alias) |
+| `<server>-NTP` | NTP server query |
+| `<domain>-SSL` | TLS certificate details |
+| `<domain>-CRT` | crt.sh certificate-transparency search |
+| `CFSTATUS` | Cloudflare status summary |
+| `<resource>-EMAIL` | DN42 e-mail search |
+| `<resource>-<REGISTRY>` | Direct query to one IRR registry |
+
+The direct-registry suffixes are `-RADB`, `-ALTDB`, `-AFRINIC`, `-APNIC`, `-ARIN`, `-BELL`,
+`-JPIRR`, `-LACNIC`, `-LEVEL3`, `-NTTCOM`, `-RIPE`, `-RIS` and `-TC`.
+
+**Miscellaneous**
+
+`<domain>-ICP` (China ICP filing) · `<n|name>-PEN` (IANA Private Enterprise Number) ·
+`<id>-PIXIV` (artwork metadata)
+
+**Entertainment**
+
+`-STEAM` / `-STEAMSEARCH` · `-IMDB` / `-IMDBSEARCH` · `-MINECRAFT` (`-MC`) · `-MCU`
+(Minecraft user) · `-ACGC` (characters) · `-LYRIC` · `-WIKIPEDIA` · `-GITHUB`
+
+Random meal suggestions are matched by whole query as well as by suffix: `今天吃什么` or
+`<x>-MEAL` (TheMealDB), and `今天吃什么中国` or `<x>-MEAL-CN` (a bundled Chinese recipe dataset).
+
+**Package registries**
+
+`-ALMA` · `-AOSC` · `-AUR` · `-CARGO` · `-CURSEFORGE` · `-DEBIAN` · `-EPEL` · `-MODRINTH` ·
+`-NIXOS` · `-NPM` · `-OPENSUSE` · `-OPENWRT` · `-PYPI` · `-UBUNTU`
+
+### Colour protocol
+
+An extension, not part of RFC 3912. A client may send a header line before its query:
+
+```
+X-WHOIS-COLOR-PROBE: 1.0        →  X-WHOIS-COLOR-SUPPORT: 1.0 schemes=ripe,ripe-dark,bgptools,bgptools-dark
+X-WHOIS-COLOR: ripe-dark        →  the following response is ANSI-colourised
+```
+
+Standard clients never send these headers and so never see colour. Disable server-side with
+`--enable-color=false`.
+
+## Web dashboard and REST API
+
+Served by Kestrel on `--web-port` (default 9999).
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /` | Dashboard (query UI + statistics) |
+| `GET /api/whois?q=<query>` | Run a query, JSON response |
+| `POST /api/whois` | Same, query in the JSON body |
+| `GET /raw/{query}` | Run a query, `text/plain` response |
+| `GET /api/stats` | Request counters, bytes served, 24-hour histogram |
+| `GET /api/openapi.json` | OpenAPI document |
+| `GET /pixiv-proxy/{**path}` | Pixiv image reverse-proxy (needs `Feature_Pixiv`) |
+| `GET /pixiv-proxy-health` | Proxy liveness check |
+
+```bash
+curl 'http://127.0.0.1:9999/raw/example.com'
+curl 'http://127.0.0.1:9999/api/whois?q=AS213605-PEERINGDB'
+curl -X POST http://127.0.0.1:9999/api/whois -H 'content-type: application/json' -d '{"query":"1.1.1.1-GEO"}'
+```
+
+> `Feature_Web=false` removes the dashboard, the API routes and static-file serving, but Kestrel
+> still **binds** the web port and answers 404 — the TCP listener and the HTTP host are deliberately
+> one process. If the port must not be bound at all, keep it on loopback with `--host`.
+
+## DN42
+
+With `Feature_Dn42` on (the default), the server shallow-clones
+`https://git.akae.re/pysio/mirrors-dn42.git` into `cache/dn42-registry/` at startup and pulls
+hourly, indexing objects into `cache/dn42.db`.
+
+Queries falling inside DN42's private ranges are routed to that registry automatically, so
+`172.20.0.1` or `AS4242420000` need no suffix. Handles ending in `-DN42` or `-MNT` (person and
+maintainer objects) are also recognised directly.
+
+Sync happens through the system `git` binary, so `git` must be installed. A failed sync is logged
+and retried on the next tick; it never stops the server.
+
+## Response patches
+
+A small DSL rewrites specific lines of outgoing WHOIS text — used to correct or annotate upstream
+data. Patches load from `cache/patches.db` at startup; to fetch or refresh them, send the
+`UPDATE-PATCH` query. Failure to load patches is a warning, not a fatal error: the server starts and
+serves unpatched text.
+
+The patch set is fetched over HTTPS from a `patches.json` manifest and **SHA1-verified per patch**
+against the digest that manifest declares, so a tampered or truncated download is rejected rather
+than applied. The manifest URL points at [`patches/patches.json`](patches/) on this repository's
+`main` branch — that directory is the published source of truth for every deployed server, not just
+a local copy, so **removing it breaks patch updates everywhere**. The URL is a constant in
+`PatchManager`, with no CLI flag or environment override: running a private patch set means changing
+it in source.
+
+To add a patch: drop the `.patch` file in `patches/`, run `patches/update-patches-json.sh` to
+recompute the manifest's digests and sizes, and verify with `patches/verify-patches.sh`. See
+[`patches/README.md`](patches/README.md) for the DSL itself.
+
+## Plugins
+
+A plugin is an ordinary .NET assembly plus a `plugin.json` manifest, in its own directory under
+`plugins/`. Each is loaded into an isolated `AssemblyLoadContext` and given only what its manifest
+requests.
+
+```
+plugins/
+├── .plugins.env          # optional KEY=VALUE lines, exposed per manifest `envVars`
+└── weather/
+    ├── plugin.json
+    └── Weather.dll
+```
+
+```jsonc
+{
+  "name": "weather",
+  "version": "1.0.0",
+  "suffix": "-WEATHER",              // rejected at load time if already claimed
+  "author": "Akaere Networks",
+  "description": "Weather information via wttr.in",
+  "enabled": true,
+  "timeoutSeconds": 5,               // exceeded → the query fails, the server does not
+  "entryPoint": "Weather.dll",
+  "permissions": {
+    "network": true,
+    "allowedDomains": ["wttr.in"],   // enforced by an HTTP handler, not advisory
+    "cacheRead": true,
+    "cacheWrite": true,              // a namespaced slice of cache/plugins.db
+    "envVars": []
+  }
 }
 ```
 
-**📚 For detailed library usage examples and API documentation, see [LIBRARY_USAGE.md](LIBRARY_USAGE.md)**
+The contract is one method:
 
-## 🧩 Feature Flags (Compile-time Trimming)
+```csharp
+public sealed class WeatherPlugin(HttpClient http) : IWhoisPlugin
+{
+    // `query` arrives already suffix-stripped
+    public Task<string> ProcessAsync(string query, CancellationToken ct = default) => /* … */;
+}
+```
 
-All features are controlled via Cargo feature flags. Disabled features are **completely excluded** from the binary — zero code, zero dependencies, zero overhead.
+The type must have **exactly one** public constructor. Its parameters may include an `HttpClient`
+(wrapped in the domain whitelist) and an `IKvStore` (namespaced to this plugin); the loader supplies
+whichever are present, and refuses to load the plugin if a parameter asks for something the manifest
+does not permit.
 
-> **Default behavior unchanged**: `cargo build --release` still compiles everything.
-
-### Atomic Features
-
-| Feature | Flag | Description |
-|---------|------|-------------|
-| **DN42 Private Network** | `dn42` | DN42 registry queries, .dn42 domains, private IP auto-routing |
-| **BGP Tools** | `bgp` | BGPTool / IRR Explorer / Looking Glass / RPKI |
-| **IRR Direct Connect** | `bgp-irr` | RADB / ALTDB / AFRINIC / APNIC / ARIN / BELL / JPIRR / LACNIC / LEVEL3 / NTTCOM / RIPE / RIS / TC |
-| **MANRS Compliance** | `bgp-manrs` | MANRS routing security compliance checking |
-| **ASN Prefix List** | `bgp-prefixes` | `-PREFIXES` ASN prefix listing |
-| **PeeringDB** | `peeringdb` | PeeringDB ASN/IX queries |
-| **IP Geolocation** | `geo` | `-GEO` / `-RIRGEO` geolocation queries |
-| **DNS Lookup** | `dns` | DNS resolution information |
-| **Ping** | `ping` | ICMP ping test |
-| **Traceroute** | `traceroute` | Network path tracing |
-| **NTP Time** | `ntp` | NTP time synchronization test |
-| **SSL Certificate** | `ssl` | SSL/TLS certificate analysis |
-| **Certificate Transparency** | `crt` | CT log search |
-| **Cloudflare Status** | `cfstatus` | Cloudflare service status queries |
-| **Email Search** | `email` | Email address search in WHOIS data |
-| **Steam** | `steam` | Steam game/user info and search |
-| **IMDb** | `imdb` | IMDb movie/TV info and search |
-| **Minecraft** | `minecraft` | Minecraft server status and user profiles |
-| **ACGC** | `acgc` | Anime/Comic/Game character database |
-| **Luotianyi Lyrics** | `lyric` | Random lyrics |
-| **Meal Suggestions** | `meal` | Random meal suggestions (EN/CN) |
-| **Wikipedia** | `wikipedia` | Wikipedia article lookup |
-| **GitHub** | `github` | GitHub user/repository information |
-| **ICP Filing** | `icp` | Chinese domain ICP filing queries |
-| **IANA PEN** | `pen` | IANA Private Enterprise Numbers database |
-| **Pixiv** | `pixiv` | Pixiv artwork/user/ranking queries |
-| **RDAP Explicit** | `rdap-explicit` | `-RDAP` suffix for explicit RDAP queries |
-| **SSH Server** | `ssh` | SSH remote access support |
-| **Web Dashboard** | `web` | HTTP web interface and REST API |
-| **Lua Plugins** | `plugins` | Lua plugin system |
-| **Telemetry** | `telemetry` | Anonymous query statistics reporting |
-| **Package Managers** | `pkg-alma` / `pkg-aosc` / `pkg-aur` / `pkg-cargo` / `pkg-curseforge` / `pkg-debian` / `pkg-epel` / `pkg-modrinth` / `pkg-nixos` / `pkg-npm` / `pkg-opensuse` / `pkg-openwrt` / `pkg-pypi` / `pkg-ubuntu` | Individual package manager control |
-
-### Preset Groups
-
-| Preset | Includes | Use Case |
-|--------|----------|----------|
-| `packages` | All 14 package managers | Developer tooling |
-| `entertainment` | steam / imdb / minecraft / acgc / lyric / meal / wikipedia / github | Entertainment & content |
-| `network-tools` | dns / ping / traceroute / ntp / ssl / crt / cfstatus / email | Network diagnostics |
-| `bgp-full` | bgp + bgp-irr + bgp-manrs + peeringdb + bgp-prefixes | Full BGP analysis |
-| `network` | dn42 + bgp-full + geo + network-tools + pen + peeringdb + rdap-explicit | NOC / ISP operations |
-| `full` | All features (**default**) | Complete server |
-
-### Typical Scenarios
+`plugins-src/Weather/` is a complete worked example. Building it copies the DLL and manifest into
+`plugins/weather/` automatically:
 
 ```bash
-# 1. Minimal WHOIS core (domain/IP/ASN/RDAP/DESC/HELP)
-cargo build --release --no-default-features
-
-# 2. Core + DN42
-cargo build --release --no-default-features --features "dn42"
-
-# 3. NOC/ISP network operations (no entertainment)
-cargo build --release --no-default-features --features "network"
-
-# 4. Operations + SSH remote access + Web dashboard
-cargo build --release --no-default-features --features "network,ssh,web"
-
-# 5. Developer tooling server (package managers + GitHub + Web)
-cargo build --release --no-default-features --features "packages,github,web"
-
-# 6. BGP analysis only
-cargo build --release --no-default-features --features "bgp,bgp-irr"
-
-# 7. Hand-picked package managers + DNS + BGP
-cargo build --release --no-default-features --features "pkg-cargo,pkg-npm,pkg-pypi,dns,bgp"
-
-# 8. Full features (same as default, no extra flags needed)
-cargo build --release
+dotnet build plugins-src/Weather/Weather.csproj
 ```
 
-### As a Dependency
+When writing your own, reference `WhoisServer.Plugins` and `WhoisServer.Core` with
+`Private="false" ExcludeAssets="runtime"` — copying those assemblies next to your plugin would load
+second copies of the shared contract types into your isolated context and break the
+`IWhoisPlugin` type check at runtime. `plugins-src/Weather/Weather.csproj` documents this in detail.
 
-```toml
-# WHOIS/RDAP core only
-[dependencies]
-whois-server = { git = "https://github.com/Akaere-NetWorks/whois-server.git", default-features = false }
+## Feature flags and cut builds
 
-# BGP analysis only
-[dependencies]
-whois-server = { git = "https://github.com/Akaere-NetWorks/whois-server.git", default-features = false, features = ["bgp", "bgp-irr"] }
+44 MSBuild properties, one per atomic feature, each defaulting to `true` — except
+`Feature_RdapBackend`, which defaults to `false` so the default resolution order stays
+WHOIS-via-IANA-referral rather than RDAP-first.
 
-# Network operations toolkit
-[dependencies]
-whois-server = { git = "https://github.com/Akaere-NetWorks/whois-server.git", default-features = false, features = ["network"] }
-```
+A flag does two things at once, closely mirroring Cargo's `#[cfg(feature = "…")]`:
 
-## 🔧 Usage
+1. Drops that feature's source files from compilation (`<Compile Remove>`), and
+2. undefines its `FEATURE_*` preprocessor symbol, so `#if`-guarded registrations and dispatch cases
+   disappear too.
 
-### Running the server
+The result is a genuinely smaller binary with the disabled dependencies absent, not a build with
+dead code switched off at runtime.
 
 ```bash
-# With default settings (WHOIS on port 43, Web dashboard on port 9999)
-cargo run --release
-
-# With custom ports
-cargo run --release -- --port 4343 --web-port 8080
-
-# With debug output enabled
-cargo run --release -- --debug
-
-# With specific listen address
-cargo run --release -- --host 127.0.0.1 
-
-# Enable traffic dumping for debugging
-cargo run --release -- --dump-traffic --dump-dir ./logs
+dotnet build whois-server.slnx -p:Feature_Dn42=false
+dotnet publish src/WhoisServer.Host -c Release -p:Feature_Web=false -p:Feature_Pixiv=false
+make minimal                                    # DN42 excluded
 ```
 
-### Configuration
+`Feature_Packages` is a convenience preset, not an atomic flag: the 14 `Feature_Pkg*` flags default
+to whatever it resolved to, so `-p:Feature_Packages=false` cascades to all of them while
+`-p:Feature_PkgNpm=false` still disables just npm.
 
-#### Environment Variables
+The full list lives in [`Directory.Build.props`](Directory.Build.props), which is the single source
+of truth. CI builds several combinations plus an every-flag-off build whose flag list is derived
+from that file, so a newly added flag is covered without editing the workflow.
 
-The server supports configuration via environment variables. Create a `.env` file in the project root:
+## Development
 
 ```bash
-# Pixiv Integration (Optional)
-PIXIV_REFRESH_TOKEN=your_refresh_token_here    # Required for Pixiv queries
-PIXIV_PROXY_ENABLED=false                       # Enable image proxy (true/false)
-PIXIV_PROXY_BASE_URL=http://localhost:8080/pixiv-proxy  # Proxy base URL
-
-# Other configurations...
+make help              # list targets
+make build             # Debug build of the solution
+make run               # run on port 4343
+make watch             # dotnet watch, auto-restart
+make test              # everything, including live-network tests
+make test-unit         # Core tests only — no network needed
+make test-integration  # live WHOIS/RDAP/HTTP tests
+make format            # apply style fixes
+make format-check      # verify style, CI-equivalent
+make publish           # framework-dependent Release build into publish/
+make clean             # remove bin/obj, cache/ and publish/
 ```
 
-**Pixiv Setup:**
-1. Obtain a refresh token from Pixiv (see [pixivpy documentation](https://github.com/upbit/pixivpy))
-2. Set `PIXIV_REFRESH_TOKEN` in your `.env` file
-3. Optionally enable the image proxy to bypass referrer restrictions
-4. The proxy allows images to be accessed without Pixiv's referrer checks
+Three test projects, 61 tests:
 
-### Command-line options
+- **`WhoisServer.Core.Tests`** (45) — query classification, patch DSL, colouriser, storage. Offline.
+- **`WhoisServer.Plugins.Tests`** (10) — manifest parsing, registry collisions, end-to-end load of a
+  real compiled plugin.
+- **`WhoisServer.Integration.Tests`** (6) — boots the actual DI-wired host on a free port and drives
+  it over TCP, resolving real domains against real registries. Needs outbound 43 and 443, and is
+  non-blocking in CI for that reason.
 
-```
-Options:
-  -H, --host <HOST>              Listen address [default: 0.0.0.0]
-  -p, --port <PORT>              WHOIS server port [default: 43]
-      --web-port <PORT>          Web dashboard port [default: 9999]
-  -d, --debug                    Enable debug output
-  -t, --trace                    Enable trace output (extremely verbose)  
-      --max-connections <N>      Maximum concurrent connections [default: 100]
-      --timeout <SECONDS>        Connection timeout in seconds [default: 10]
-      --dump-traffic             Write raw queries and responses to files for debugging
-      --dump-dir <DIR>           Dump traffic directory [default: dumps]
-      --help                     Print help
-      --version                  Print version
-```
+CI (`.github/workflows/ci.yml`) gates on a warning-free Release build, the offline tests,
+`dotnet format --verify-no-changes`, and the cut-build matrix. Images are built and pushed by
+`docker.yml`; tagged releases produce self-contained tarballs via `release.yml`.
 
-### Testing with WHOIS clients
-
-```bash
-# Linux/Mac
-whois -h localhost -p 43 example.com
-
-# Windows PowerShell  
-(New-Object System.Net.Sockets.TcpClient("localhost", 43)).GetStream().Write([Text.Encoding]::ASCII.GetBytes("example.com`r`n"), 0, 13)
-
-# Using netcat
-echo "example.com" | nc localhost 43
-
-# Using telnet
-telnet localhost 43
-# Then type your query and press Enter
-```
-
-## 🔍 Query Types and Features
-
-### Standard WHOIS Queries
-
-| Query Type | Example | Description |
-|------------|---------|-------------|
-| **Domains** | `example.com` | Standard domain WHOIS lookup |
-| **IPv4 Addresses** | `8.8.8.8` | IPv4 address registration info |
-| **IPv6 Addresses** | `2001:4860:4860::8888` | IPv6 address registration info |
-| **ASN Numbers** | `AS213605` | Autonomous System information |
-| **CIDR Blocks** | `192.168.1.0/24` | Network block information |
-
-### Enhanced Query Types
-
-| Query Suffix | Example | Description |
-|--------------|---------|-------------|
-| **-EMAIL** | `admin@example.com-EMAIL` | Search for contact information |
-| **-BGPTOOL** | `AS213605-BGPTOOL` | BGP routing and peering info |
-| **-PREFIXES** | `AS213605-PREFIXES` | List all prefixes announced by ASN |
-| **-RADB** | `1.1.1.0-RADB` | Query RADB (Routing Assets Database) directly |
-| **-ALTDB** | `1.1.1.0-ALTDB` | Query ALTDB (Alternative Database) routing registry |
-| **-AFRINIC** | `AS37271-AFRINIC` | Query AFRINIC IRR (African region) |
-| **-APNIC** | `AS4134-APNIC` | Query APNIC IRR (Asia-Pacific region) |
-| **-ARIN** | `AS7018-ARIN` | Query ARIN IRR (North American region) |
-| **-BELL** | `AS577-BELL` | Query BELL IRR (Bell Canada) |
-| **-JPIRR** | `AS2497-JPIRR` | Query JPIRR (Japan Internet Routing Registry) |
-| **-LACNIC** | `AS27715-LACNIC` | Query LACNIC IRR (Latin America region) |
-| **-LEVEL3** | `AS3356-LEVEL3` | Query LEVEL3 IRR (Level3/CenturyLink) |
-| **-NTTCOM** | `AS2914-NTTCOM` | Query NTTCOM IRR (NTT Communications) |
-| **-RIPE** | `AS3333-RIPE` | Query RIPE IRR (European region) |
-| **-TC** | `AS262589-TC` | Query TC IRR (Brazilian Telecom) |
-| **-IRR** | `192.0.2.0/24-IRR` | IRR Explorer - comprehensive routing registry analysis |
-| **-LG** | `1.1.1.0-LG` | Looking Glass - RIPE RIS BGP routing data in BIRD format |
-| **-RPKI** | `192.0.2.0/24-AS213605-RPKI` | RPKI validation for prefix-ASN combinations |
-| **-MANRS** | `AS213605-MANRS` | MANRS compliance and routing security status |
-| **-DNS** | `example.com-DNS` | DNS resolution with multiple record types |
-| **-TRACEROUTE** | `8.8.8.8-TRACEROUTE` | Network traceroute analysis (alias: -TRACE) |
-| **-SSL** | `example.com-SSL` | SSL/TLS certificate analysis and validation |
-| **-CRT** | `example.com-CRT` | Certificate Transparency logs search |
-| **-MINECRAFT** | `mc.hypixel.net-MINECRAFT` | Minecraft server status (alias: -MC) |
-| **-MCU** | `Notch-MCU` | Minecraft user profile information |
-| **-STEAM** | `730-STEAM` | Steam game/user information |
-| **-STEAMSEARCH** | `Counter-Strike-STEAMSEARCH` | Steam game search |
-| **-IMDB** | `Inception-IMDB` | IMDb movie/TV show information |
-| **-IMDBSEARCH** | `Batman-IMDBSEARCH` | IMDb title search |
-| **-CARGO** | `rust-CARGO` | Rust crate information |
-| **-NPM** | `express-NPM` | NPM package information |
-| **-PYPI** | `requests-PYPI` | Python package information |
-| **-MODRINTH** | `sodium-MODRINTH` | Modrinth mods/resource packs for Minecraft |
-| **-AUR** | `firefox-AUR` | Arch User Repository packages |
-| **-DEBIAN** | `nginx-DEBIAN` | Debian package information |
-| **-UBUNTU** | `vim-UBUNTU` | Ubuntu package information |
-| **-NIXOS** | `git-NIXOS` | NixOS package information |
-| **-OPENSUSE** | `gcc-OPENSUSE` | OpenSUSE package information |
-| **-AOSC** | `kernel-AOSC` | AOSC package information |
-| **-GITHUB** | `torvalds-GITHUB` | GitHub user/repository information |
-| **-WIKIPEDIA** | `Linux-WIKIPEDIA` | Wikipedia article information |
-| **-ACGC** | `Miku-ACGC` | Anime/Comic/Game character info |
-| **-LYRIC** | `LYRIC` | Random Luotianyi lyrics |
-| **-PIXIV** | `123456789-PIXIV` | Pixiv artwork information |
-| **-PIXIV** | `user:12345678-PIXIV` | Pixiv user profile |
-| **-PIXIV** | `search:keyword-PIXIV` | Search Pixiv artworks |
-| **-PIXIV** | `ranking-PIXIV` | Pixiv daily ranking (top 10) |
-| **-PIXIV** | `illusts:12345678-PIXIV` | User's artwork list |
-| **HELP** | `HELP` | Show all available query types |
-
-### Geo-location Services
-
-| Query Suffix | Example | Description |
-|--------------|---------|-------------|
-| **-GEO** | `8.8.8.8-GEO` | IP geolocation information |
-| **-RIRGEO** | `203.0.113.1-RIRGEO` | RIR-specific geographic data |
-
-### Network Intelligence & Advanced Features
-
-The server provides intelligent query routing and advanced networking tools:
-
-- **DN42 Detection** - Automatically routes DN42 queries (AS42424xxx, .dn42 domains, private IPs)
-- **Private IP Handling** - RFC1918 and other private ranges routed to DN42
-- **Smart Referrals** - Uses IANA for initial queries, then follows referrals
-- **Multi-source Data** - Combines information from multiple WHOIS servers
-- **IRR Explorer Integration** - Access to comprehensive Internet Routing Registry data with RPKI validation
-- **Looking Glass Services** - Real-time BGP routing data from RIPE Route Information Service (RIS)
-- **RADB Direct Access** - Query Routing Assets Database for AS-SET expansions and route objects
-- **Intelligent Fallback** - Automatically tries DN42 when public WHOIS returns no results
-- **BIRD-style Output** - Looking Glass queries formatted as BIRD routing daemon configuration
-
-## 🛠️ Advanced Query Features
-
-### IRR Explorer Integration (`-IRR` suffix)
-
-The IRR Explorer integration provides comprehensive routing registry analysis using data from [irrexplorer.nlnog.net](https://irrexplorer.nlnog.net/). This feature analyzes prefixes across multiple Internet Routing Registries (IRRs) and provides RPKI validation information.
-
-**Supported IRR Databases:**
-- RIPE, RADB, ARIN, APNIC, AFRINIC, LACNIC
-- LEVEL3, ALTDB, BELL, JPIRR, NTTCOM
-- RPKI (Resource Public Key Infrastructure) data
-
-**Example:**
-```bash
-whois -h whois.akae.re 192.0.2.0/24-IRR
-```
-
-### Looking Glass Services (`-LG` suffix)
-
-Looking Glass queries provide real-time BGP routing data from RIPE's Route Information Service (RIS). The output is formatted in BIRD routing daemon style, making it useful for network operators and researchers.
-
-**Features:**
-- Real-time BGP routing tables from multiple RRC (Route Collector) locations
-- BIRD-style configuration format output
-- Community and extended community information
-- AS-Path and origin validation data
-
-**Example:**
-```bash
-whois -h whois.akae.re 1.1.1.0-LG
-```
-
-### RADB Direct Access (`-RADB` suffix)
-
-Direct queries to the Routing Assets Database (RADB) for AS-SET expansions, route objects, and routing policies. This is particularly useful for network operators managing routing policies and filters.
-
-**Example:**
-```bash
-whois -h whois.akae.re AS-SET:AS-EXAMPLE-RADB
-```
-
-### ALTDB Direct Access (`-ALTDB` suffix)
-
-Direct queries to the ALTDB (Alternative Database) routing registry for route objects and routing information. ALTDB provides an alternative source for routing registry data.
-
-**Example:**
-```bash
-whois -h whois.akae.re AS-EXAMPLE-ALTDB
-whois -h whois.akae.re 192.0.2.0/24-ALTDB
-```
-
-### IRR Direct Access (Multiple registries)
-
-The server supports direct queries to 12+ major Internet Routing Registries (IRRs) worldwide, providing comprehensive access to routing information across different regions and ISPs.
-
-**Supported Registries:**
-
-- **-AFRINIC**: African Network Information Centre IRR
-- **-APNIC**: Asia-Pacific Network Information Centre IRR
-- **-ARIN**: American Registry for Internet Numbers IRR
-- **-BELL**: Bell Canada routing registry
-- **-JPIRR**: Japan Internet Routing Registry
-- **-LACNIC**: Latin America and Caribbean Network Information Centre IRR
-- **-LEVEL3**: Level3/CenturyLink routing registry
-- **-NTTCOM**: NTT Communications routing registry
-- **-RIPE**: Réseaux IP Européens Network Coordination Centre IRR
-- **-TC**: Brazilian Telecom routing registry
-
-**Examples:**
-```bash
-# Query AFRINIC IRR for African networks
-whois -h whois.akae.re AS37271-AFRINIC
-
-# Query APNIC IRR for Asia-Pacific networks
-whois -h whois.akae.re AS4134-APNIC
-
-# Query ARIN IRR for North American networks
-whois -h whois.akae.re AS7018-ARIN
-
-# Query RIPE IRR for European networks
-whois -h whois.akae.re AS3333-RIPE
-
-# Query LACNIC IRR for Latin American networks
-whois -h whois.akae.re AS27715-LACNIC
-
-# Query ISP-specific registries
-whois -h whois.akae.re AS3356-LEVEL3
-whois -h whois.akae.re AS2914-NTTCOM
-```
-
-**Use Cases:**
-- Multi-registry validation and cross-referencing
-- Regional routing information analysis
-- ISP-specific routing policy research
-- Route origin validation across different registries
-- Network planning and AS-SET management
-
-**Use Cases:**
-- Multi-registry comparison
-- Alternative routing data sources
-- Cross-reference verification
-
-### Modrinth Integration (`-MODRINTH` suffix)
-
-The Modrinth integration provides comprehensive information about Minecraft mods, resource packs, datapacks, and shaders from [modrinth.com](https://modrinth.com).
-
-**Features:**
-- Project information with download statistics and follower counts
-- Compatibility details (client/server side, mod loaders, Minecraft versions)
-- License information and project links
-- Gallery images and donation links
-- Available versions and update history
-- Smart search when exact project slug is not provided
-
-**Popular Queries:**
-```bash
-# Performance optimization mods
-whois -h whois.akae.re sodium-MODRINTH      # Sodium rendering optimization
-whois -h whois.akae.re lithium-MODRINTH     # Lithium server optimization
-
-# Shaders
-whois -h whois.akae.re iris-MODRINTH        # Iris Shaders
-
-# Utility mods
-whois -h whois.akae.re jei-MODRINTH         # Just Enough Items
-whois -h whois.akae.re rei-MODRINTH         # Roughly Enough Items
-```
-
-### CurseForge Integration (`-CURSEFORGE` suffix)
-
-The CurseForge integration provides access to the extensive CurseForge mod database, featuring millions of Minecraft mods and addons.
-
-**Features:**
-- Project information with download counts and popularity metrics
-- Category classification and tags
-- Latest file versions with dependencies
-- Screenshots and project gallery
-- Author information and links
-- Support for both project ID and search queries
-
-**API Key Setup:**
-```bash
-# Get your API key from https://console.curseforge.com/
-export CURSEFORGE_API_KEY="your-api-key-here"
-```
-
-**Popular Queries:**
-```bash
-# Query by project ID
-whois -h whois.akae.re 238222-CURSEFORGE    # Just Enough Items (JEI)
-whois -h whois.akae.re 223794-CURSEFORGE    # Tinkers Construct
-
-# Query by project name (search)
-whois -h whois.akae.re jei-CURSEFORGE       # Search for JEI
-whois -h whois.akae.re optifine-CURSEFORGE  # Search for OptiFine
-whois -h whois.akae.re biomes-CURSEFORGE    # Search for Biomes O' Plenty
-```
-
-> 📘 **Detailed Documentation**: For comprehensive technical documentation of all advanced features, including API details, implementation specifics, and usage examples, see [ADVANCED_FEATURES.md](ADVANCED_FEATURES.md).
-
-## 📊 Statistics and Monitoring
-
-The server maintains comprehensive statistics including:
-
-- **Query Metrics** - Total queries, queries per minute, response times
-- **Query Type Distribution** - Breakdown by domain, IP, ASN, etc.
-- **Geographic Analytics** - Query origins and target distributions  
-- **Error Tracking** - Failed queries, timeouts, and error rates
-- **Performance Metrics** - Connection counts, processing times
-
-Statistics are available through:
-- **Web Dashboard** - Visual charts and real-time data at `/api/stats`
-- **JSON API** - Programmatic access to all metrics
-- **Automatic Persistence** - Stats saved on server shutdown
-
-## 🏗️ Architecture
-
-The server is built with a modular Rust architecture organized into logical components:
+## Project layout
 
 ```
 src/
-├── main.rs          # Application entry point and initialization
-├── lib.rs           # Library API entry point for external usage
-├── config.rs        # Configuration constants (WHOIS servers, ports, etc.)
-├── core/            # Core application logic
-│   ├── query.rs     # Query type detection and routing (35+ query types)
-│   ├── query_processor.rs # Query processing and execution logic
-│   ├── color.rs     # Terminal colorization support
-│   ├── stats.rs     # Real-time statistics collection and persistence  
-│   └── utils.rs     # Shared utility functions
-├── server/          # TCP server implementations
-│   ├── async_server.rs     # Tokio-based async server
-│   ├── connection.rs       # Connection handling and query processing
-│   └── utils.rs            # Server utility functions
-├── ssh/             # SSH server support
-│   ├── server.rs    # SSH server implementation
-│   ├── handler.rs   # SSH connection handling
-│   ├── certificates.rs # SSH certificate management
-│   └── history.rs   # Command history support
-├── services/        # External service integrations
-│   ├── whois.rs     # Standard WHOIS protocol clients
-│   ├── email.rs     # Email search functionality
-│   ├── bgptool.rs   # BGP tools integration
-│   ├── irr.rs       # IRR Explorer integration
-│   ├── looking_glass.rs # RIPE RIS Looking Glass services
-│   ├── rpki.rs      # RPKI validation services
-│   ├── manrs.rs     # MANRS integration
-│   ├── dns.rs       # DNS resolution service
-│   ├── traceroute.rs # Network traceroute functionality
-│   ├── ssl.rs       # SSL/TLS certificate analysis
-│   ├── crt.rs       # Certificate Transparency logs
-│   ├── minecraft.rs # Minecraft server status and user profiles
-│   ├── steam.rs     # Steam game and user information
-│   ├── imdb.rs      # IMDb movie and TV show information
-│   ├── acgc.rs      # Anime/Comic/Game character database
-│   ├── wikipedia.rs # Wikipedia article information
-│   ├── lyric.rs     # Luotianyi random lyrics
-│   ├── github.rs    # GitHub user and repository information
-│   ├── meal.rs      # Random meal suggestions
-│   ├── desc.rs      # Description service
-│   ├── help.rs      # Built-in help system
-│   ├── iana_cache.rs # IANA registry data caching
-│   ├── packages/    # Package repository integrations (14+ distros)
-│   │   ├── cargo.rs    # Rust crate information
-│   │   ├── npm.rs      # NPM package information
-│   │   ├── pypi.rs     # Python package information
-│   │   ├── aur.rs      # Arch User Repository
-│   │   ├── debian.rs   # Debian packages
-│   │   ├── ubuntu.rs   # Ubuntu packages
-│   │   ├── nixos.rs    # NixOS packages
-│   │   ├── opensuse.rs # OpenSUSE packages
-│   │   ├── aosc.rs     # AOSC packages
-│   │   ├── alma.rs     # AlmaLinux packages
-│   │   ├── epel.rs     # EPEL packages
-│   │   └── openwrt.rs  # OpenWrt packages
-│   └── geo/         # Geo-location services
-│       ├── services.rs     # Service orchestration
-│       ├── types.rs        # Data type definitions
-│       ├── formatters.rs   # Output formatting
-│       ├── ripe_api.rs     # RIPE database integration
-│       ├── ipinfo_api.rs   # IPInfo service integration
-│       ├── constants.rs    # Geographic constants
-│       └── utils.rs        # Geographic utility functions
-├── dn42/            # DN42 network support (platform-aware)
-│   ├── manager.rs   # Platform detection and backend orchestration
-│   ├── git_backend.rs      # Git repository backend (Unix-like)
-│   ├── online_backend.rs   # HTTP API backend (Windows)
-│   └── query.rs     # DN42-specific query processing
-├── storage/         # Data persistence layer
-│   └── lmdb.rs      # LMDB storage for caching and persistence
-└── web/             # Web dashboard and HTTP API
-    ├── dashboard.rs # Axum-based web interface and REST endpoints
-    ├── json_formatter.rs # JSON response formatting
-    ├── dashboard_template.html # Dashboard HTML template
-    └── docs_template.html # API documentation template
+├── WhoisServer.Core/            # query classification, patch DSL, colour protocol, SQLite stores, stats
+├── WhoisServer.Services/        # ~70 upstream integrations (BGP, geo, DNS, packages, entertainment, …)
+├── WhoisServer.Services.Dn42/   # DN42 git mirror, object index, private-range routing
+├── WhoisServer.Plugins/         # plugin loader, isolated load contexts, permission enforcement
+└── WhoisServer.Host/            # composition root: TCP 43 listener, Kestrel, dashboard, CLI
+plugins-src/Weather/             # worked plugin example
+tests/                           # Core, Plugins, Integration
 ```
 
-### Key Components
+Storage is SQLite throughout (`Microsoft.Data.Sqlite`) behind a narrow `IKvStore`, one database file
+per subsystem.
 
-- **Query Engine** - Intelligent query parsing and type detection with 35+ query types
-- **IRR Registry Support** - Direct access to 12+ Internet Routing Registries (RADB, ALTDB, AFRINIC, APNIC, ARIN, BELL, JPIRR, LACNIC, LEVEL3, NTTCOM, RIPE, TC)
-- **Platform-Aware DN42** - Automatic Windows/Unix backend selection with LMDB caching
-- **Async Server Architecture** - High-performance Tokio-based TCP and SSH server implementations
-- **Modular Services** - Clean separation of 30+ external service integrations
-- **Library API** - Exportable Rust library with `query()` and `query_with_color()` functions
-- **Web Interface** - Axum-based REST API and dashboard with real-time updates
-- **Statistics Engine** - Real-time metrics collection with 24h/30d historical data
-- **Advanced Network Tools** - IRR Explorer, Looking Glass, BGP Tools, RPKI validation, MANRS
-- **Cross-platform Storage** - LMDB-based caching for performance and persistence
-- **Package Repositories** - Support for 14+ Linux distributions and package managers
-- **Colorization Support** - Terminal color schemes for enhanced readability
-- **Intelligent Routing** - Smart query routing with multi-source fallback mechanisms
+## Differences from the Rust implementation
 
-## 📜 License
+Deliberate, locked-in decisions of the rewrite — not gaps awaiting work:
 
-This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+| | |
+| --- | --- |
+| **SSH server dropped** | The interactive shell on port 2222 is gone entirely. WHOIS over TCP 43 and the web API are the only front doors. |
+| **Lua plugins replaced** | No embedded scripting engine. Extensibility is native .NET assemblies with manifest-declared permissions (see [Plugins](#plugins)). |
+| **DN42 backend unified** | One git-backed, cross-platform implementation. The Windows / online-HTTP-fetch variant is gone. |
+| **SQLite instead of LMDB** | Same `IKvStore` shape, one file per subsystem. |
+| **RDAP stays opt-in** | Matching upstream's actual default (its `full` preset omits `rdap-backend`), though the explicit `-RDAP` suffix now works in every build rather than requiring a recompile. |
 
-This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
+Not a byte-for-byte port: correctness and idiomatic .NET design took precedence, and known upstream
+bugs were fixed in passing rather than reproduced.
 
-You should have received a copy of the GNU Affero General Public License along with this program. If not, see <https://www.gnu.org/licenses/>. 
+## Licence
+
+GNU Affero General Public License v3.0 or later. See [LICENSE](LICENSE) and [COPYRIGHT](COPYRIGHT).
+
+Issues and questions: <noc@akae.re> or the
+[issue tracker](https://github.com/Akaere-NetWorks/whois-server/issues).

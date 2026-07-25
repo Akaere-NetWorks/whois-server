@@ -1,0 +1,177 @@
+name: CI
+
+on:
+  push:
+    branches: [main, csharp]
+  pull_request:
+    branches: [main, csharp]
+  workflow_dispatch:
+
+# A force-push to a PR branch should cancel the superseded run rather than
+# queue behind it.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
+
+jobs:
+  build-and-test:
+    name: Build and unit-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.NUGET_PACKAGES }}
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: ${{ runner.os }}-nuget-
+
+      - name: Restore
+        run: dotnet restore whois-server.slnx
+
+      # -warnaserror because the tree is warning-clean today (a Roslyn
+      # analyzer strict-mode pass was part of the port); this keeps it that way.
+      - name: Build
+        run: dotnet build whois-server.slnx -c Release --no-restore -warnaserror
+
+      # Core + Plugins only. These need no network, so they are the blocking
+      # gate; the live-network integration suite runs separately below.
+      - name: Unit tests (Core)
+        run: dotnet test tests/WhoisServer.Core.Tests/WhoisServer.Core.Tests.csproj -c Release --no-build
+
+      - name: Unit tests (Plugins)
+        run: dotnet test tests/WhoisServer.Plugins.Tests/WhoisServer.Plugins.Tests.csproj -c Release --no-build
+
+  format:
+    name: Code style
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.NUGET_PACKAGES }}
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: ${{ runner.os }}-nuget-
+
+      - name: Restore
+        run: dotnet restore whois-server.slnx
+
+      # Same check as `make format-check`; run `make format` to fix locally.
+      - name: dotnet format --verify-no-changes
+        run: dotnet format whois-server.slnx --verify-no-changes
+
+  cut-builds:
+    name: Cut build (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    # Feature flags are a headline requirement of this project, not a
+    # nice-to-have: each combination below must produce a genuinely compiling
+    # binary with the disabled code and dependencies eliminated. Without this
+    # matrix, a flag only ever gets exercised in its default position.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: no-dn42
+            flags: -p:Feature_Dn42=false
+          - name: no-web
+            flags: -p:Feature_Web=false
+          - name: no-plugins
+            flags: -p:Feature_Plugins=false
+          - name: no-packages
+            flags: -p:Feature_Packages=false
+          - name: no-telemetry
+            flags: -p:Feature_Telemetry=false
+          # The one flag that ships OFF by default, so its ON position is the
+          # untested one — it swaps the default resolution order to RDAP-first.
+          - name: rdap-backend
+            flags: -p:Feature_RdapBackend=true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.NUGET_PACKAGES }}
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: ${{ runner.os }}-nuget-
+
+      - name: Build with ${{ matrix.flags }}
+        run: dotnet build whois-server.slnx -c Release -warnaserror ${{ matrix.flags }}
+
+  minimal-build:
+    name: Cut build (every feature off)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.NUGET_PACKAGES }}
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: ${{ runner.os }}-nuget-
+
+      # Derived from Directory.Build.props rather than hardcoded, so a flag
+      # added there is covered by this job automatically instead of silently
+      # staying untested in its off position.
+      - name: Derive all-features-off flag list
+        id: flags
+        run: |
+          flags=$(grep -oE '<Feature_[A-Za-z]+ ' Directory.Build.props \
+            | tr -d '< ' | sort -u | sed 's/^/-p:/;s/$/=false/' | tr '\n' ' ')
+          echo "Disabling $(echo "$flags" | wc -w) features:"
+          echo "$flags" | tr ' ' '\n'
+          echo "value=$flags" >> "$GITHUB_OUTPUT"
+
+      - name: Build with every feature disabled
+        run: dotnet build whois-server.slnx -c Release -warnaserror ${{ steps.flags.outputs.value }}
+
+  integration-tests:
+    name: Integration tests (live network)
+    runs-on: ubuntu-latest
+    # Non-blocking on purpose. This suite boots the real host and queries real
+    # WHOIS/RDAP/HTTP infrastructure, so a failure here is as likely to mean
+    # "whois.verisign-grs.com rate-limited the runner" as "we broke something".
+    # Read the log before believing a red mark; do not gate merges on it.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.NUGET_PACKAGES }}
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: ${{ runner.os }}-nuget-
+
+      - name: Integration tests
+        run: dotnet test tests/WhoisServer.Integration.Tests/WhoisServer.Integration.Tests.csproj -c Release
