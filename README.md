@@ -16,20 +16,26 @@ upstream service integrations, DN42 registry support, and a web dashboard with a
 
 ## Contents
 
-- [What it does](#what-it-does)
-- [Quick start](#quick-start)
-- [Docker](#docker)
-- [Configuration](#configuration)
-- [Query reference](#query-reference)
-- [Web dashboard and REST API](#web-dashboard-and-rest-api)
-- [DN42](#dn42)
-- [Response patches](#response-patches)
-- [Plugins](#plugins)
-- [Feature flags and cut builds](#feature-flags-and-cut-builds)
-- [Development](#development)
-- [Project layout](#project-layout)
-- [Differences from the Rust implementation](#differences-from-the-rust-implementation)
-- [Licence](#licence)
+- [whois-server](#whois-server)
+  - [Contents](#contents)
+  - [What it does](#what-it-does)
+  - [Quick start](#quick-start)
+  - [Docker](#docker)
+  - [Configuration](#configuration)
+    - [CLI flags](#cli-flags)
+    - [Environment variables](#environment-variables)
+    - [State on disk](#state-on-disk)
+  - [Query reference](#query-reference)
+    - [Colour protocol](#colour-protocol)
+  - [Web dashboard and REST API](#web-dashboard-and-rest-api)
+  - [DN42](#dn42)
+  - [Response patches](#response-patches)
+  - [Plugins](#plugins)
+  - [Feature flags and cut builds](#feature-flags-and-cut-builds)
+  - [Development](#development)
+  - [Project layout](#project-layout)
+  - [Differences from the Rust implementation](#differences-from-the-rust-implementation)
+  - [Licence](#licence)
 
 ---
 
@@ -266,7 +272,7 @@ curl -X POST http://127.0.0.1:9999/api/whois -H 'content-type: application/json'
 ## DN42
 
 With `Feature_Dn42` on (the default), the server shallow-clones
-`https://git.pysio.online/pysio/mirrors-dn42.git` into `cache/dn42-registry/` at startup and pulls
+`https://git.akae.re/pysio/mirrors-dn42.git` into `cache/dn42-registry/` at startup and pulls
 hourly, indexing objects into `cache/dn42.db`.
 
 Queries falling inside DN42's private ranges are routed to that registry automatically, so
