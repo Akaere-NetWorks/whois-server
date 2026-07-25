@@ -1,0 +1,17 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/WhoisServer.Core/WhoisServer.Core.csproj" />
+    <Project Path="src/WhoisServer.Host/WhoisServer.Host.csproj" />
+    <Project Path="src/WhoisServer.Plugins/WhoisServer.Plugins.csproj" />
+    <Project Path="src/WhoisServer.Services.Dn42/WhoisServer.Services.Dn42.csproj" />
+    <Project Path="src/WhoisServer.Services/WhoisServer.Services.csproj" />
+  </Folder>
+  <Folder Name="/plugins-src/">
+    <Project Path="plugins-src/Weather/Weather.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/WhoisServer.Core.Tests/WhoisServer.Core.Tests.csproj" />
+    <Project Path="tests/WhoisServer.Integration.Tests/WhoisServer.Integration.Tests.csproj" />
+    <Project Path="tests/WhoisServer.Plugins.Tests/WhoisServer.Plugins.Tests.csproj" />
+  </Folder>
+</Solution>

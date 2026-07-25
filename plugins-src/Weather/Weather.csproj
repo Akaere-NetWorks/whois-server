@@ -1,0 +1,65 @@
+<!--
+  Native C# reimplementation of plugins/weather/init.lua — the plugin API demo, no longer Lua (see
+  plan.md's locked-in decision to delete the Lua/mlua sandbox entirely). This project is a
+  "companion .csproj" (plan.md's own phrase for this from the original Phase 6 planning): its
+  compiled output is meant to be copied into plugins/weather/ alongside a plugin.json manifest,
+  NOT referenced directly by WhoisServer.Host — the host only ever discovers it at runtime via
+  PluginLoader scanning the plugins/ directory.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Same <Compile Remove> gate WhoisServer.Plugins itself uses: with Feature_Plugins=false the
+    contract assembly is deliberately empty, so this project's `IWhoisPlugin` reference would no
+    longer resolve and `dotnet build` on the solution would fail outright (it's a solution member,
+    see whois-server.slnx). Gating it keeps every cut build of the *solution* green, which is what
+    the feature-flag matrix in CI actually exercises.
+  -->
+  <ItemGroup Condition="'$(Feature_Plugins)' != 'true'">
+    <Compile Remove="**/*.cs" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <!-- This is a plugin, not an app — nothing else loads it as an entry point. -->
+    <OutputType>Library</OutputType>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      CRITICAL: Private=false + ExcludeAssets=runtime stop these two assemblies from being copied
+      into THIS project's own output folder. If they were copied here, PluginLoadContext's
+      AssemblyDependencyResolver would find and load them as separate, isolated copies distinct
+      from the host's own already-loaded copies — and `typeof(IWhoisPlugin).IsAssignableFrom(...)`
+      (or a constructor-parameter-type match against `IKvStore`) would then fail at runtime despite
+      WeatherPlugin correctly implementing/using them, because they'd be two different Type objects
+      from two different assembly-load contexts. This is the standard fix for the well-documented
+      ".NET plugin shared-contract-assembly gets duplicated" pitfall (same pattern Microsoft's own
+      plugin-tutorial docs use for a shared "Contracts" project) — Private=false on the *direct*
+      Plugins reference alone was NOT enough in practice: WhoisServer.Core.dll (Plugins' own
+      transitive dependency, needed here for the IKvStore parameter type) still got copied until
+      it was ALSO marked Private=false explicitly, confirmed by inspecting this project's build
+      output before adding the second line below.
+    -->
+    <ProjectReference Include="..\..\src\WhoisServer.Plugins\WhoisServer.Plugins.csproj"
+                       Private="false" ExcludeAssets="runtime" />
+    <ProjectReference Include="..\..\src\WhoisServer.Core\WhoisServer.Core.csproj"
+                       Private="false" ExcludeAssets="runtime" />
+  </ItemGroup>
+
+  <!--
+    Drop the compiled plugin (+ its manifest) straight into the runtime plugins/ directory on every
+    build — no separate Makefile step needed to keep plugins-src/ and plugins/ in sync.
+  -->
+  <Target Name="CopyToRuntimePluginsDir" AfterTargets="Build" Condition="'$(Feature_Plugins)' == 'true'">
+    <ItemGroup>
+      <PluginRuntimeFiles Include="$(TargetDir)Weather.dll" />
+      <PluginRuntimeFiles Include="plugin.json" />
+    </ItemGroup>
+    <Copy SourceFiles="@(PluginRuntimeFiles)" DestinationFolder="$(MSBuildProjectDirectory)\..\..\plugins\weather\" SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

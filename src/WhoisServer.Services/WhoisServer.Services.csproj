@@ -1,0 +1,77 @@
+﻿<!--
+  Phase 7's full feature-flag matrix: each atomic feature's service file(s) are only compiled in
+  when its flag is true, same real-cut-build proof as WhoisServer.Services.Dn42 in Phase 3. A few
+  files are shared by more than one flag (GeoAggregatorService/GeoDtos by geo OR bgp-prefixes;
+  GlobalpingClient/IpInfoClient/LocationQueryParser by ping OR traceroute) — those get an
+  AND-of-negations removal condition (removed only when *neither* flag needing them is on), mirrored
+  by the `#if FEATURE_X || FEATURE_Y` guards on their registrations/usages in HostFactory.cs and
+  QueryProcessor.cs.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\WhoisServer.Core\WhoisServer.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="Bgp/BgpToolService.cs;Bgp/IrrExplorerService.cs;Bgp/LookingGlassService.cs;Bgp/RpkiValidationService.cs" Condition="'$(Feature_Bgp)' != 'true'" />
+    <Compile Remove="Bgp/IrrDirectService.cs;Bgp/IrrRegistryConstants.cs" Condition="'$(Feature_BgpIrr)' != 'true'" />
+    <Compile Remove="Bgp/ManrsService.cs" Condition="'$(Feature_BgpManrs)' != 'true'" />
+    <Compile Remove="Bgp/PeeringDbService.cs" Condition="'$(Feature_PeeringDb)' != 'true'" />
+    <Compile Remove="Geo/GeoAggregatorService.cs;Geo/GeoDtos.cs" Condition="'$(Feature_Geo)' != 'true' AND '$(Feature_BgpPrefixes)' != 'true'" />
+    <Compile Remove="NetworkTools/DnsService.cs;NetworkTools/DohClient.cs" Condition="'$(Feature_Dns)' != 'true'" />
+    <Compile Remove="NetworkTools/GlobalpingClient.cs;NetworkTools/IpInfoClient.cs;NetworkTools/LocationQueryParser.cs" Condition="'$(Feature_Ping)' != 'true' AND '$(Feature_Traceroute)' != 'true'" />
+    <Compile Remove="NetworkTools/PingService.cs" Condition="'$(Feature_Ping)' != 'true'" />
+    <Compile Remove="NetworkTools/TracerouteService.cs" Condition="'$(Feature_Traceroute)' != 'true'" />
+    <Compile Remove="NetworkTools/NtpService.cs" Condition="'$(Feature_Ntp)' != 'true'" />
+    <Compile Remove="NetworkTools/SslService.cs" Condition="'$(Feature_Ssl)' != 'true'" />
+    <Compile Remove="NetworkTools/CrtService.cs" Condition="'$(Feature_Crt)' != 'true'" />
+    <Compile Remove="NetworkTools/CfStatusService.cs" Condition="'$(Feature_CfStatus)' != 'true'" />
+    <Compile Remove="EmailSearchService.cs" Condition="'$(Feature_Email)' != 'true'" />
+    <Compile Remove="Entertainment/SteamService.cs" Condition="'$(Feature_Steam)' != 'true'" />
+    <Compile Remove="Entertainment/ImdbService.cs" Condition="'$(Feature_Imdb)' != 'true'" />
+    <Compile Remove="Entertainment/MinecraftService.cs" Condition="'$(Feature_Minecraft)' != 'true'" />
+    <Compile Remove="Entertainment/AcgcService.cs" Condition="'$(Feature_Acgc)' != 'true'" />
+    <Compile Remove="Entertainment/LyricService.cs" Condition="'$(Feature_Lyric)' != 'true'" />
+    <Compile Remove="Entertainment/MealService.cs" Condition="'$(Feature_Meal)' != 'true'" />
+    <Compile Remove="Entertainment/WikipediaService.cs" Condition="'$(Feature_Wikipedia)' != 'true'" />
+    <Compile Remove="Entertainment/GitHubService.cs" Condition="'$(Feature_GitHub)' != 'true'" />
+    <Compile Remove="Icp/IcpService.cs" Condition="'$(Feature_Icp)' != 'true'" />
+    <Compile Remove="Pen/PenService.cs;Pen/PenSyncHostedService.cs" Condition="'$(Feature_Pen)' != 'true'" />
+    <Compile Remove="Pixiv/PixivAuthClient.cs;Pixiv/PixivClient.cs;Pixiv/PixivModels.cs;Pixiv/PixivService.cs" Condition="'$(Feature_Pixiv)' != 'true'" />
+    <Compile Remove="Packages/AlmaPackageService.cs" Condition="'$(Feature_PkgAlma)' != 'true'" />
+    <Compile Remove="Packages/AoscPackageService.cs" Condition="'$(Feature_PkgAosc)' != 'true'" />
+    <Compile Remove="Packages/AurPackageService.cs" Condition="'$(Feature_PkgAur)' != 'true'" />
+    <Compile Remove="Packages/CargoPackageService.cs" Condition="'$(Feature_PkgCargo)' != 'true'" />
+    <Compile Remove="Packages/CurseForgePackageService.cs" Condition="'$(Feature_PkgCurseForge)' != 'true'" />
+    <Compile Remove="Packages/DebianPackageService.cs" Condition="'$(Feature_PkgDebian)' != 'true'" />
+    <Compile Remove="Packages/EpelPackageService.cs" Condition="'$(Feature_PkgEpel)' != 'true'" />
+    <Compile Remove="Packages/ModrinthPackageService.cs" Condition="'$(Feature_PkgModrinth)' != 'true'" />
+    <Compile Remove="Packages/NixOsPackageService.cs" Condition="'$(Feature_PkgNixOs)' != 'true'" />
+    <Compile Remove="Packages/NpmPackageService.cs" Condition="'$(Feature_PkgNpm)' != 'true'" />
+    <Compile Remove="Packages/OpenSusePackageService.cs" Condition="'$(Feature_PkgOpenSuse)' != 'true'" />
+    <Compile Remove="Packages/OpenWrtPackageService.cs" Condition="'$(Feature_PkgOpenWrt)' != 'true'" />
+    <Compile Remove="Packages/PypiPackageService.cs" Condition="'$(Feature_PkgPypi)' != 'true'" />
+    <Compile Remove="Packages/UbuntuPackageService.cs" Condition="'$(Feature_PkgUbuntu)' != 'true'" />
+    <Compile Remove="Telemetry/TelemetryService.cs" Condition="'$(Feature_Telemetry)' != 'true'" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.10" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Bundled Chinese recipe dataset for MealService's -MEAL-CN variant (Rust used include_str!
+         for the same file; this is the .NET equivalent of a compile-time-embedded data file). -->
+    <EmbeddedResource Include="Entertainment/recipes.json" LogicalName="WhoisServer.Services.Entertainment.recipes.json" Condition="'$(Feature_Meal)' == 'true'" />
+  </ItemGroup>
+
+</Project>

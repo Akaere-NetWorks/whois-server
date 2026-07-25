@@ -1,0 +1,36 @@
+﻿<!--
+  Microsoft.NET.Sdk.Web (not the plain Sdk) as of Phase 4 — the WHOIS TCP listener and background
+  services still run exactly as before (see WhoisTcpServer/StatsFlushService), but the process is
+  now also a Kestrel-hosted ASP.NET Core app so the web dashboard (Phase 4) can use Minimal API
+  endpoints and static-file serving from wwwroot/ instead of a hand-rolled HTTP layer.
+-->
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\WhoisServer.Core\WhoisServer.Core.csproj" />
+    <ProjectReference Include="..\WhoisServer.Services\WhoisServer.Services.csproj" />
+    <!--
+      Referenced unconditionally even though the project itself is feature-gated: when
+      Feature_Dn42=false the Dn42 project's own <Compile Remove> makes it a genuinely empty
+      assembly, and the code here that would reference its types (HostFactory.cs) is itself
+      wrapped in #if FEATURE_DN42, so there's nothing left to fail to compile either way.
+    -->
+    <ProjectReference Include="..\WhoisServer.Services.Dn42\WhoisServer.Services.Dn42.csproj" />
+    <!-- Same unconditional-reference / #if-FEATURE_PLUGINS-in-consuming-code pattern as Dn42 above. -->
+    <ProjectReference Include="..\WhoisServer.Plugins\WhoisServer.Plugins.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.10" />
+    <PackageReference Include="Microsoft.OpenApi" Version="2.7.5" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>WhoisServer.Host</RootNamespace>
+  </PropertyGroup>
+
+</Project>

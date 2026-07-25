@@ -1,0 +1,17 @@
+{
+  "name": "weather",
+  "version": "1.0.0",
+  "suffix": "-WEATHER",
+  "author": "Akaere Networks",
+  "description": "Example plugin that demonstrates the plugin API by showing weather information using wttr.in",
+  "enabled": true,
+  "timeoutSeconds": 5,
+  "entryPoint": "Weather.dll",
+  "permissions": {
+    "network": true,
+    "allowedDomains": ["wttr.in"],
+    "cacheRead": true,
+    "cacheWrite": true,
+    "envVars": []
+  }
+}

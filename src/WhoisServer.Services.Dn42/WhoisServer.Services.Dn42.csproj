@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <!--
+    Real DN42 registry sync/query (Phase 3). Shells out to the system `git` CLI via
+    System.Diagnostics.Process rather than LibGit2Sharp — this is what the Rust version itself
+    does (git_backend.rs), and it sidesteps ever having to verify a native-binary package works on
+    every deployment target (plan.md's Phase 0 spike for that was never actually done). No extra
+    NuGet package is needed at all now, so there's nothing to conditionally exclude here anymore —
+    the Phase 1 placeholder proved the <PackageReference>-gating mechanism works
+    (`git log` for that commit has the deps.json verification); this project now proves the other
+    half, that `<Compile Remove>` alone still produces a genuinely empty, zero-DN42-code assembly
+    when Feature_Dn42=false.
+  -->
+  <ItemGroup Condition="'$(Feature_Dn42)' != 'true'">
+    <Compile Remove="**/*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WhoisServer.Core\WhoisServer.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.10" />
+  </ItemGroup>
+
+</Project>

@@ -1,14 +1,30 @@
-target/
-.git/
-.gitignore
-.github/
-.env
-*.md
+# Build output — must be excluded or a host-arch bin/obj gets layered into the
+# image and confuses the in-container restore for a different -a/TARGETARCH.
+**/bin/
+**/obj/
+publish/
+artifacts/
+
+# Local state, never part of an image
 cache/
-# Keep data/recipes.json as it's included via include_str!
-data/README.md
-patches/
+dumps/
+.env
 plugins/
-.claude/
-Dockerfile
-.dockerignore
+
+# VCS / editor / CI metadata
+.git/
+.github/
+.gitignore
+.vs/
+.vscode/
+.idea/
+
+# Not needed by the Dockerfile: it copies Directory.Build.props, src/ and the
+# licence files only. LICENSE and COPYRIGHT are deliberately NOT excluded — the
+# image redistributes AGPL-3.0 software and must carry its licence text.
+tests/
+plugins-src/
+whois-server.slnx
+Makefile
+plan.md
+*.md
